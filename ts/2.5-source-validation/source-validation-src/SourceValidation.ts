@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, type Range, Regxs } from '@shared'
+import { NewlineCharacter, type Range, Regxs, UserInput } from '@shared'
 
 /** assertValidStatements rejects invalid declaration names and statement placements in a complete document. */
 export function assertValidStatements(document: AST.Document, path: string): void {
@@ -37,25 +37,29 @@ function requireNoStatementDiagnostics(diagnostics: readonly StatementDiagnostic
   }
   const message = diagnostics.map(diagnostic => `${diagnostic.message} (${path}, offset ${diagnostic.range.start})`)
     .join(NewlineCharacter)
-  Errors.ThrowUserInput(message, { path, diagnostics })
+  UserInput.fail(message, { path, diagnostics })
 }
 
-type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'library' | 'tests' | 'test' | 'expect'
+type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'action' | 'library' | 'tests' | 'test' | 'expect'
 type ValidationScope = 'all' | 'requirements'
 type StatementKind = AST.Statement['kind']
 type StatementPlacement = { syntax: string; owners: readonly BlockOwner[] }
 type PlacementByStatementKind = Record<StatementKind, StatementPlacement>
-type RequiredStatement = { kinds: readonly StatementKind[]; message: string }
+type RequiredStatement = { kinds: readonly StatementKind[]; message: string; optional?: true }
 type RequiredStatementByOwner = Partial<Record<BlockOwner, RequiredStatement>>
 
 const FileOwners = ['file'] as const
 const TestOwners = ['test'] as const
 const ExpectOwners = ['expect'] as const
+const ActionOwners = ['action'] as const
 const PlacementByKind: PlacementByStatementKind = {
+  ActionDeclaration: { syntax: 'Action declarations', owners: ['view'] },
   AppDeclaration: { syntax: 'App declarations', owners: FileOwners },
+  DoStatement: { syntax: 'Do statements', owners: ActionOwners },
   ExpectStatement: { syntax: 'Expect statements', owners: TestOwners },
   InputExpectation: { syntax: 'Input value expectations', owners: ExpectOwners },
   LetDeclaration: { syntax: 'Let declarations', owners: ['file', 'view', 'render'] },
+  PressBinding: { syntax: 'Press bindings', owners: ['render'] },
   PressStatement: { syntax: 'Press statements', owners: TestOwners },
   PublishDeclaration: { syntax: 'Publish declarations', owners: ['library'] },
   RenderInjectStatement: { syntax: 'Render statements', owners: ['view'] },
@@ -63,6 +67,8 @@ const PlacementByKind: PlacementByStatementKind = {
   RequiresDeclaration: { syntax: 'Requirements', owners: FileOwners },
   RootDeclaration: { syntax: 'Root declarations', owners: ['app'] },
   RunStatement: { syntax: 'Run statements', owners: TestOwners },
+  SetStatement: { syntax: 'Set statements', owners: ActionOwners },
+  StateDeclaration: { syntax: 'State declarations', owners: ['view'] },
   TestDeclaration: { syntax: 'Test cases', owners: ['tests'] },
   TestsDeclaration: { syntax: 'Test suites', owners: FileOwners },
   TextExpectation: { syntax: 'Text expectations', owners: ExpectOwners },
@@ -79,6 +85,7 @@ const OwnerDescription: OwnerDescriptions = {
   app: 'directly inside an app',
   view: 'directly inside a view',
   render: 'inside a view invocation',
+  action: 'inside an action',
   library: 'directly inside a ts-library',
   tests: 'directly inside a tests suite',
   test: 'directly inside a test case',
@@ -92,12 +99,18 @@ const RequiredByOwner: RequiredStatementByOwner = {
     message: 'A view must contain exactly one render statement.',
   },
   library: { kinds: ['PublishDeclaration'], message: 'A ts-library must contain exactly one publish declaration.' },
+  render: {
+    kinds: ['PressBinding'],
+    message: 'A view invocation can have only one press binding.',
+    optional: true,
+  },
 }
 
 type OptionalStatementBlock = AST.Block | undefined
 type BlockOwningStatement = Extract<AST.Statement, { block: OptionalStatementBlock }>
 type BlockOwnerByKind = Record<BlockOwningStatement['kind'], BlockOwner>
 const OwnerByBlockKind: BlockOwnerByKind = {
+  ActionDeclaration: 'action',
   AppDeclaration: 'app',
   ExpectStatement: 'expect',
   TestDeclaration: 'test',
@@ -137,16 +150,22 @@ function collectBlockDiagnostics(
     collectDeclarationNameDiagnostics(statement, diagnostics)
     collectOwnedBlockDiagnostics(statement, diagnostics, scope)
   }
-  if (required && !foundRequired) {
+  if (required && !required.optional && !foundRequired) {
     diagnostics.push({ range: block.range, message: required.message })
   }
 }
 
 function collectDeclarationNameDiagnostics(statement: AST.Statement, diagnostics: StatementDiagnostic[]): void {
-  if (AST.IsValueDeclaration(statement) || AST.IsKind(statement, 'TypeScriptLibraryDeclaration')) {
+  if (
+    AST.IsValueDeclaration(statement) || AST.IsKind(statement, [
+      'TypeScriptLibraryDeclaration',
+      'StateDeclaration',
+      'ActionDeclaration',
+    ])
+  ) {
     addNameDiagnostic(statement.name, diagnostics)
   }
-  if (AST.IsViewDeclaration(statement)) {
+  if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration'])) {
     for (const parameter of statement.parameters) {
       addNameDiagnostic(parameter.name, diagnostics)
     }
@@ -210,6 +229,9 @@ function describeViewOrder(statement: AST.Statement, foundRender: boolean): stri
   if (AST.IsLetDeclaration(statement) && foundRender) {
     return 'A local let declaration must precede its view’s render statement.'
   }
+  if (foundRender && AST.IsKind(statement, ['StateDeclaration', 'ActionDeclaration'])) {
+    return 'A state or action declaration must precede its view’s render statement.'
+  }
   if (!AST.IsViewDeclaration(statement)) {
     return undefined
   }
@@ -235,6 +257,13 @@ function collectOwnedBlockDiagnostics(
   }
   if (AST.IsKind(statement, 'RenderViewExpressionStatement')) {
     collectOwnedBlockDiagnostics(statement.expression, diagnostics, scope)
+    return
+  }
+  if (AST.IsKind(statement, 'PressBinding') && AST.IsKind(statement.handler, 'InlineAction')) {
+    const body = statement.handler.body
+    if (AST.IsKind(body, 'Block')) {
+      collectBlockDiagnostics(body, 'action', diagnostics, scope)
+    }
     return
   }
   if (ownsBlock(statement) && statement.block !== undefined) {

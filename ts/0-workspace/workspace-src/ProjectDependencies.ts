@@ -1,4 +1,4 @@
-import { Errors, Json, Sort } from '@shared'
+import { Json, Sort, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 import { materializeLocations, readDependencyLock, resolveDependencyLockPath } from './dependencies/LockFile'
@@ -56,7 +56,7 @@ export class ProjectDependencies {
     this.requirements.set(owner, requirements)
     const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
     if (requirement === undefined) {
-      Errors.ThrowUserInput(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
+      UserInput.fail(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
     }
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
     if (source === undefined) {
@@ -113,7 +113,5 @@ function requireEditableDependencyDeclarations(lock: DependencyLock, owner: stri
   const pinnedRemote = Object.values(lock.sources).some(source =>
     source.location === owner && source.provider === 'github'
   )
-  if (pinnedRemote) {
-    Errors.ThrowUserInput('Pinned remote dependency declarations changed; restore the exact pinned source.')
-  }
+  UserInput.require(!pinnedRemote, 'Pinned remote dependency declarations changed; restore the exact pinned source.')
 }

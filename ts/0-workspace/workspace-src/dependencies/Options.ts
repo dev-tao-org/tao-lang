@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Path } from '@shared/os'
 import * as Stdlib from '@stdlib'
 import { gitSourceAdapter } from './Git'
@@ -27,9 +27,10 @@ async function requirementsWithStandardProject(
   }
   const standardAlias = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === 'tao')
   if (standardAlias) {
-    if (standardAlias.provider !== 'bundled' || standardAlias.identifier !== 'tao') {
-      Errors.ThrowUserInput('Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.')
-    }
+    UserInput.require(
+      !(standardAlias.provider !== 'bundled' || standardAlias.identifier !== 'tao'),
+      'Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.',
+    )
     return requirements
   }
   return [{ provider: 'bundled', identifier: 'tao', version: 'bundled' }, ...requirements]

@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Regxs, Try, UserInput } from '@shared'
 import { Artifacts, FS, Path } from '@shared/os'
 import Exec, { type CommandArgs } from '@shared/os/exec'
 import { IO } from './cli-kit'
@@ -16,9 +16,7 @@ export function createAgeCipher(identityPath: string, setupCommand: string): Cip
 }
 
 async function encrypt(plaintext: string, recipients: readonly string[]): Promise<string> {
-  if (recipients.length === 0) {
-    Errors.ThrowUserInput('The secret store has no recipients.')
-  }
+  UserInput.require(recipients.length !== 0, 'The secret store has no recipients.')
   const recipientArgs = recipients.flatMap(recipient => ['--recipient', recipient])
   return run('age', ['--armor', ...recipientArgs], plaintext)
 }

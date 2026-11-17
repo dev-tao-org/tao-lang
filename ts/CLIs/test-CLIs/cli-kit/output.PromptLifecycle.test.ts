@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { createPromptLifecycle } from '../../CLIs-src/cli-kit/output/PromptLifecycle'
@@ -173,7 +173,7 @@ Tests.test('keeps the prompt failure primary while exposing a failed renderer re
       reported.push(error)
     },
   })
-  await Tests.expect(lifecycle.run(async () => Errors.ThrowUserInput('primary prompt failure'))).rejects.toMatchObject({
+  await Tests.expect(lifecycle.run(async () => UserInput.fail('primary prompt failure'))).rejects.toMatchObject({
     name: 'UserInputError',
     messageForUser: 'primary prompt failure',
   })

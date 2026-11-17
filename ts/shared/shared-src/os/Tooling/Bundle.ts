@@ -1,5 +1,6 @@
 import { NewlineCharacter } from '../../universal/Characters'
-import { Errors } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
+
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import { editorBundleProbe } from '../bridges/Bridge_node/Bridge_node-editor-probe'
 import { bundleBanner } from '../bridges/Bridge_node/Bridge_node-emission'
@@ -18,7 +19,7 @@ export async function bundleNode(entrypoint: string, outdir: string, external: s
     define: { 'import.meta.url': '__taoImportMetaUrl' },
   })
   if (!result.success) {
-    Errors.ThrowUserInput(`Bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
+    UserInput.fail(`Bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
   }
 }
 

@@ -1,4 +1,4 @@
-import { Errors, Sort } from '@shared'
+import { Sort, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import * as Workspace from '@workspace'
 
@@ -17,14 +17,12 @@ async function findOwningProjectRoots(paths: readonly string[]): Promise<string[
   for (const path of paths) {
     const project = await Workspace.discoverProject(path)
     if (!project) {
-      Errors.ThrowUserInput(`No Tao project owns ${path}. Run tao init <path>.`)
+      UserInput.fail(`No Tao project owns ${path}. Run tao init <path>.`)
     }
     validateProjectPath(path, project.root)
     roots.add(Path.resolve(project.root))
   }
-  if (roots.size === 0) {
-    Errors.ThrowUserInput('A project-scoped command requires at least one path.')
-  }
+  UserInput.require(roots.size !== 0, 'A project-scoped command requires at least one path.')
   return [...roots].sort(Sort.CompareStrings)
 }
 
@@ -35,7 +33,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
   const root = FS.realpathSync(projectRoot)
   const physical = FS.realpathSync(path)
   if (!Path.isWithin(root, physical)) {
-    Errors.ThrowUserInput(`Project command path escapes its Tao project: ${path}`)
+    UserInput.fail(`Project command path escapes its Tao project: ${path}`)
   }
 }
 

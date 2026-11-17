@@ -1,5 +1,5 @@
-import { Json } from '@shared'
-import { Errors, Time, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { Time, Try } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
@@ -53,7 +53,7 @@ async function createStarterDirectory(): Promise<string> {
     ? Path.resolve(selected)
     : Artifacts.resolvePath('tmp', 'library-starter-' + Platform.randomUUID())
   if (!Path.isWithin(Artifacts.resolvePath(), root)) {
-    return Errors.ThrowUserInput('Starter proof output must remain in repository artifacts.')
+    return UserInput.fail('Starter proof output must remain in repository artifacts.')
   }
   if (!selected) {
     Artifacts.trackTemporary(root)
@@ -93,5 +93,5 @@ async function waitForStarterHost(host: StarterHost): Promise<void> {
     }
     await Time.sleep(50)
   }
-  Errors.ThrowUserInput('Starter host did not become ready.')
+  UserInput.fail('Starter host did not become ready.')
 }

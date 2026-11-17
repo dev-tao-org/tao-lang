@@ -1,5 +1,5 @@
-import { Json } from '@shared'
-import { Errors, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
 type GeneratedHostFiles = Record<string, string>
@@ -45,7 +45,7 @@ async function requireHostDirectory(directory: string): Promise<void> {
     return
   }
   if (!current.isDirectory()) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Generated Expo host root must be a real directory: ${directory}. Preserve the unrelated path before rebuilding.`,
     )
   }
@@ -58,12 +58,12 @@ async function requireOwnedHostFile(directory: string, name: string, expected?: 
     return
   }
   if (!current.isFile() || expected === undefined) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Generated Expo host contains unrelated file: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
     )
   }
   if (await FS.readFile(path, 'utf8') !== expected) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Generated Expo host contains modified file: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
     )
   }
@@ -77,7 +77,7 @@ async function requireOwnedDependencyLink(directory: string, expected?: string):
   }
   const target = current.isSymbolicLink() ? Path.resolve(directory, await FS.readlink(path)) : undefined
   if (!expected || target !== Path.resolve(directory, expected)) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Generated Expo host contains unrelated dependency path: ${path}. Preserve it, then run tao clean from the project root before rebuilding.`,
     )
   }
@@ -89,7 +89,7 @@ async function readHostOwnership(path: string): Promise<GeneratedHostOwnership |
     return undefined
   }
   if (!current.isFile()) {
-    return Errors.ThrowUserInput(`Generated Expo host contains unrelated ownership path: ${path}.`)
+    return UserInput.fail(`Generated Expo host contains unrelated ownership path: ${path}.`)
   }
   const source = await FS.readFile(path, 'utf8')
   return parseHostOwnership(source)
@@ -98,20 +98,20 @@ async function readHostOwnership(path: string): Promise<GeneratedHostOwnership |
 function parseHostOwnership(source: string): GeneratedHostOwnership {
   const value: unknown = Json.Parse(source)
   if (!isOwnershipRecord(value)) {
-    return Errors.ThrowUserInput('Invalid generated Expo host ownership record.')
+    return UserInput.fail('Invalid generated Expo host ownership record.')
   }
   const files = value.files
   if (!isOwnershipRecord(files)) {
-    return Errors.ThrowUserInput('Invalid generated Expo host file record.')
+    return UserInput.fail('Invalid generated Expo host file record.')
   }
   for (const [name, content] of Object.entries(files)) {
     if (Path.basename(name) !== name || typeof content !== 'string') {
-      return Errors.ThrowUserInput('Invalid generated Expo host file record.')
+      return UserInput.fail('Invalid generated Expo host file record.')
     }
   }
   const dependencies = value.dependencies
   if (dependencies !== undefined && typeof dependencies !== 'string') {
-    return Errors.ThrowUserInput('Invalid generated Expo host dependency record.')
+    return UserInput.fail('Invalid generated Expo host dependency record.')
   }
   return { files: files as GeneratedHostFiles, dependencies }
 }

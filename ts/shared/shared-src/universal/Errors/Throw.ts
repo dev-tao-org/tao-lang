@@ -6,14 +6,13 @@ export function Throw(error: unknown): never {
   throw fromUnknown(error)
 }
 
-/** ThrowUserInput throws a user-correctable Tao error.
- *  The author's data or contract is wrong; the message must tell the person writing the Tao program what to change. */
-export function ThrowUserInput(
-  messageForUser: string,
+/** createUserInputError constructs a caller-correctable failure with its diagnostic context. */
+export function createUserInputError(
+  message: string,
   details?: Values.ErrorDetails,
   opts?: { cause?: unknown },
-): never {
-  throw new Values.UserInputError(messageForUser, details, opts)
+): Values.TaoError {
+  return new Values.UserInputError(message, details, opts)
 }
 
 /** ThrowShouldNeverHappen throws an internal Tao error.

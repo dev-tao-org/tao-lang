@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import { FileLock, FS, Path } from '@shared/os'
 import { requireSetup } from '../SetupRequired'
 import { rejectCommitConflict, resolveDependencyGraph } from './DependencyGraph'
@@ -87,7 +87,7 @@ export async function prepareSourceDependency(
   const requirements = await options.readRequirements(owner)
   const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
   if (requirement === undefined) {
-    Errors.ThrowUserInput(`Project ${owner} has no declared dependency alias ${alias}.`)
+    UserInput.fail(`Project ${owner} has no declared dependency alias ${alias}.`)
   }
   const path = LockFile.resolveDependencyLockPath(projectRoot)
   const storedLock = LockFile.materializeLocations(

@@ -1,4 +1,5 @@
 import { Errors, Sort, Try } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
 import * as FS from '../FS'
 
@@ -28,7 +29,7 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
       },
     })
     if (existing && !existing.isFile()) {
-      Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
+      UserInput.fail(`Generated metadata must be a regular file: ${path}`)
     }
     if (!existing) {
       await createReadOnlyFile(canonical, contents)
@@ -85,10 +86,10 @@ async function createReadOnlyFile(path: string, contents: string): Promise<void>
       }
       const info = await Native.lstat(path)
       if (!info.isFile()) {
-        Errors.ThrowUserInput(`Generated metadata must be a regular file: ${path}`)
+        UserInput.fail(`Generated metadata must be a regular file: ${path}`)
       }
       if (await Native.readFile(path, 'utf8') !== contents) {
-        Errors.ThrowUserInput(
+        UserInput.fail(
           `Generated metadata was created concurrently with different contents: ${path}. Retry the command.`,
         )
       }

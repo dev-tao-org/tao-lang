@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
+import { NewlineCharacter, Regxs, Time, Try, UserInput } from '@shared'
 import { DevelopmentStorage, FS, Path } from '@shared/os'
 import type { PreviewReport } from './ReportContract'
 
@@ -13,9 +13,10 @@ export function describeTimingLabel(label?: string): string {
   if (label === undefined) {
     return 'Developer'
   }
-  if (!label.trim() || Regxs.RemotePathControlCharacterRegx.test(label)) {
-    Errors.ThrowUserInput('Use a nonempty, single-line timing label.')
-  }
+  UserInput.require(
+    !(!label.trim() || Regxs.RemotePathControlCharacterRegx.test(label)),
+    'Use a nonempty, single-line timing label.',
+  )
   return label.trim()
 }
 

@@ -1,5 +1,5 @@
 import { Json } from '@shared'
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import { Files, FS, Path, Platform, Storage } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { isNpmPackageName } from './NpmPackageName'
@@ -39,9 +39,10 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
   if (!hasPackages || receipt !== undefined && receipt !== fingerprint) {
     await confirmConsumerInstall(directory, ui)
     await installConsumerDependencies(manifest)
-    if (!names.every(name => hasInstalledPackage(directory, name))) {
-      Errors.ThrowUserInput(`The install did not prepare all declared packages in ${directory}.`)
-    }
+    UserInput.require(
+      names.every(name => hasInstalledPackage(directory, name)),
+      `The install did not prepare all declared packages in ${directory}.`,
+    )
   } else {
     await refreshLocalPackages(manifest, ui)
   }
@@ -50,18 +51,12 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
 
 async function confirmConsumerInstall(directory: string, ui: WorkflowUI): Promise<void> {
   const message = `The TypeScript consumer at ${directory} needs dependency setup.`
-  if (!await ui.confirm({ entry: directory, message })) {
-    Errors.ThrowUserInput('Dependency setup was declined.')
-  }
-  if (ui.cancelled?.()) {
-    Errors.ThrowUserInput('Workflow cancelled.')
-  }
+  UserInput.require(await ui.confirm({ entry: directory, message }), 'Dependency setup was declined.')
+  UserInput.require(!ui.cancelled?.(), 'Workflow cancelled.')
 }
 
 function hasInstalledPackage(directory: string, name: string): boolean {
-  if (!isNpmPackageName(name)) {
-    Errors.ThrowUserInput(`Invalid consumer dependency name: ${name}`)
-  }
+  UserInput.require(isNpmPackageName(name), `Invalid consumer dependency name: ${name}`)
   return FS.existsSync(Path.join(directory, 'node_modules', name, 'package.json'))
 }
 

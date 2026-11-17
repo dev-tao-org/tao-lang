@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Errors, S, Timings, Try } from '@shared'
+import { S, Timings, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
@@ -63,9 +63,7 @@ async function createRecoveryWorkspace(root: string) {
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
     compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => {
-      if (mode === 'Invalid') {
-        Errors.ThrowUserInput('Deliberate preview build failure')
-      }
+      UserInput.require(mode !== 'Invalid', 'Deliberate preview build failure')
       return { 'App.tsx': createRecoveryApp(options.revision, mode) }
     }),
   })
@@ -76,7 +74,7 @@ async function createRecoveryWorkspace(root: string) {
       mode = next
       const result = await workspace.update(source.replace('Hello World', next))
       if (result.status !== 'published') {
-        Errors.ThrowUserInput(`Recovery fixture publication was ${result.status}.`)
+        UserInput.fail(`Recovery fixture publication was ${result.status}.`)
       }
       return result.revision
     },
@@ -109,11 +107,11 @@ async function observePreviewPublications(page: HeadlessBrowser.Page): Promise<v
 
 function createRecoveryApp(revision: string, mode: RecoveryMode): string {
   const render = mode === 'Broken'
-    ? "Errors.ThrowUserInput('Deliberate preview render failure');"
+    ? "UserInput.fail('Deliberate preview render failure');"
     : `return React.createElement('span', { 'data-testid': 'recovery-label' }, '${mode}');`
   return S`
     import React from '@runtime/client/Bridge_react/Bridge_react';
-    import { Errors } from '@shared';
+    import { UserInput } from '@shared';
     import * as TR from '@tao/runtime/generated';
     TR.ModuleApplied('${revision}');
     function RecoveryStage() {

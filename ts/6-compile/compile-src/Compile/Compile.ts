@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, Timings } from '@shared'
+import { Timings, UserInput } from '@shared'
 import * as SourceValidation from '@source-validation'
 import * as Typecheck from '@typecheck'
 
@@ -40,9 +40,7 @@ const generate = Timings.measure('compiler.generate', function(
 
 function linkSingleFile(document: AST.Document): Typecheck.LinkedProgram {
   const hasImports = AST.HasImportStatements(document)
-  if (hasImports) {
-    Errors.ThrowUserInput('Compile a Tao file with use statements through its linked program.')
-  }
+  UserInput.require(!hasImports, 'Compile a Tao file with use statements through its linked program.')
   const path = '<memory>'
   SourceValidation.assertValidStatements(document, path)
   const source: Typecheck.SourceModule = { path, document, imports: [], siblings: [] }

@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, S } from '@shared'
+import { NewlineCharacter, S, UserInput } from '@shared'
 import { Env, type HeadlessBrowser } from '@shared/os'
 import * as Render from './PreviewRenderSteps'
 import type { PreviewScenario } from './PreviewScenarios'
@@ -37,11 +37,9 @@ export function readPreviewMeasurement(options: PreviewRunOptions = {}): Preview
   const editCount = options.editCount ?? readCount('TAO_PREVIEW_EDIT_COUNT', DefaultPreviewEditCount)
   const frameCount = options.frameCount ?? readCount('TAO_PREVIEW_FRAME_COUNT', 2)
   if (!isValidEditCount(editCount)) {
-    Errors.ThrowUserInput(`Preview edit count must be a positive multiple of ${PreviewCycleSize}.`)
+    UserInput.fail(`Preview edit count must be a positive multiple of ${PreviewCycleSize}.`)
   }
-  if (frameCount !== 1 && frameCount !== 2) {
-    Errors.ThrowUserInput('Preview frame count must be one or two.')
-  }
+  UserInput.require(!(frameCount !== 1 && frameCount !== 2), 'Preview frame count must be one or two.')
   return {
     editCount,
     frameCount,

@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { FS, Repo } from '@shared/os'
 import { assertNewWorkspaceTree } from '../../cli-checks/check'
 import { workspaceFormat } from '../../cli-checks/workspace-format'
@@ -26,14 +26,12 @@ export default registerCommand({
       await workspaceFormat('fmt', Repo.getWorkspaceRoot(), { excludedPaths: excludedFiles })
       return
     }
-    if (options.exclude?.length) {
-      Errors.ThrowUserInput('--exclude applies to repository fixes without named Tao source files.')
-    }
+    UserInput.require(!options.exclude?.length, '--exclude applies to repository fixes without named Tao source files.')
     for (const path of paths) {
       const absolute = Repo.resolvePath(path)
       Repo.assertNewWorkspacePath(absolute)
       if (!path.endsWith('.tao') || !FS.statSync(absolute).isFile()) {
-        Errors.ThrowUserInput(`Fixing requires a Tao source file: ${path}`)
+        UserInput.fail(`Fixing requires a Tao source file: ${path}`)
       }
       await updateTaoSource(absolute, 'fix')
     }

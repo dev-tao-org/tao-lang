@@ -1,6 +1,7 @@
 import z from '../bridges/Bridge_zod'
 import * as Errors from './Errors'
 import { Try } from './TryCatch'
+import * as UserInput from './UserInput'
 
 export * from '../bridges/Bridge_zod'
 
@@ -34,7 +35,7 @@ function throwSchemaFailure(sourceName: string, cause: unknown): never {
   const detail = isSchemaError(cause)
     ? cause.issues.map(issue => `${formatPath(issue.path)} ${issue.message}`).join('; ')
     : 'validation failed'
-  Errors.ThrowUserInput(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
+  UserInput.fail(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
 }
 
 function formatPath(path: readonly PropertyKey[]): string {

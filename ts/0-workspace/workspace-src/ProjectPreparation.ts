@@ -5,7 +5,7 @@ import Exec from '@shared/os/exec'
 import * as SourceValidation from '@source-validation'
 import type * as Typecheck from '@typecheck'
 
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import { FileLock, FS, Path, Platform, Storage } from '@shared/os'
 
 import * as LockFile from './dependencies/LockFile'
@@ -45,18 +45,14 @@ export async function prepareProject(
 ): Promise<void> {
   const project = await discoverProject(entry)
   if (!project) {
-    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   await ensureProjectMetadata(project.root)
   const lifecycle = await Lifecycle.acquireProjectLifecycle(project.root)
-  if (!lifecycle) {
-    Errors.ThrowUserInput('Project maintenance is active. Retry dependency preparation when it finishes.')
-  }
+  UserInput.require(!!lifecycle, 'Project maintenance is active. Retry dependency preparation when it finishes.')
   return await Try(async () => {
     const lock = await FileLock.tryAcquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
-    if (!lock) {
-      Errors.ThrowUserInput('Another dependency preparation is running for this project. Retry after it finishes.')
-    }
+    UserInput.require(!!lock, 'Another dependency preparation is running for this project. Retry after it finishes.')
     return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
   }, { finally: lifecycle.release })
 }
@@ -68,7 +64,7 @@ export async function inspectProjectPreparation(
 ): Promise<void> {
   const project = await discoverProject(entry)
   if (!project) {
-    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   const input = await loadProjectManagedInput(entry, options)
   requireReachableManagedModule(input, options.moduleRoot)
@@ -82,7 +78,7 @@ export async function inspectProjectPreparation(
   await ManagedModules.readManagedModules(input)
   const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
-    Errors.ThrowUserInput(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
+    UserInput.fail(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
   }
 }
 
@@ -145,7 +141,7 @@ function requireReachableManagedModule(input: OptionalManagedInput, moduleRoot: 
   }
   const reachable = input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(moduleRoot))
   if (!reachable) {
-    Errors.ThrowUserInput(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
+    UserInput.fail(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
   }
 }
 
@@ -164,7 +160,7 @@ async function loadProjectManagedInput(
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
   if (!project) {
-    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   const source = await readPreparationEntry(entry)
   const dependencies = new ProjectDependencies(
@@ -214,9 +210,7 @@ async function prepareEntrySources(
   services: DependencyStoreOptions,
 ): Promise<Typecheck.SourceModule[]> {
   const lock = await FileLock.tryAcquire(Path.join(root, '.tao/locks/dependencies.lock'))
-  if (!lock) {
-    Errors.ThrowUserInput('Another source dependency setup is running; retry after it finishes.')
-  }
+  UserInput.require(!!lock, 'Another source dependency setup is running; retry after it finishes.')
   const resolutions = new Map<string, Promise<{ root: string }>>()
   const resolvedPins = new Map<string, string>()
   return await Try(() =>
@@ -247,7 +241,7 @@ async function readPreparationEntry(path: string): Promise<PreparationEntry> {
 function parsePreparationEntry(path: string, text: string, parser: Grammar.Parser): AST.Document {
   const document = AST.transform(parser.parse(text))
   if (document === undefined) {
-    Errors.ThrowUserInput(`Cannot prepare dependencies of invalid source ${path}.`)
+    UserInput.fail(`Cannot prepare dependencies of invalid source ${path}.`)
   }
   return document
 }

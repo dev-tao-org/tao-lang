@@ -1,5 +1,28 @@
 # Local State and Data Drafts WIP
 
+Use local state to retain a text value for the life of a view instance.
+
+```tao
+use tao@ui Button
+
+view SaveButton {
+  state Caption = "Save"
+  render Button(Caption) {
+    on press -> set Caption = "Saved"
+  }
+}
+```
+
+#### `state Caption = "Save"`
+
+Declare text state inside a view before `render`. Tao infers `text` from the initial value; `state Caption is text = "Save"` says the same thing explicitly. Each instance initializes its own state when mounted and retains it across renders, even when an input used to initialize it later changes.
+
+#### `set Caption = "Saved"`
+
+Use `set` inside an [action](Actions%20and%20Results.md) to replace the nearest visible state binding. Setting an equal text value does not notify dependent views of a change. Unmounting a view discards its local state.
+
+#### Planned detached drafts
+
 The agreed future design uses detached drafts to edit datasource values before explicitly saving them.
 
 ```tao
@@ -52,6 +75,6 @@ Signing out clears all local app state, including persisted state and drafts. Un
 
 App sign-out also signs out of the connected provider. The provider handles clearing its own local state through its logout lifecycle; Tao clears the app state and drafts it owns. Tao does not introduce a separate provider queue-cleanup policy.
 
-#### Replacement
+#### Draft submission inputs
 
-`set` replaces a slot's value. To submit a change, the operation captures the inputs it needs. See [Data Access and Validation](Data%20Access%20and%20Validation.md#revision-checks) for revision rejection. Language-level retry is deferred in [Advanced Action Execution](../Roadmap/Advanced%20Action%20Execution.md#retry-directions-retained-for-later-implementation).
+To submit a change, the operation captures the inputs it needs. See [Data Access and Validation](Data%20Access%20and%20Validation.md#revision-checks) for revision rejection. Language-level retry is deferred in [Advanced Action Execution](../Roadmap/Advanced%20Action%20Execution.md#retry-directions-retained-for-later-implementation).

@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, NewlineCharacter, Try, UserInput } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { type TestFileTiming, withTestTimings } from '../../cli-checks/slow-tests'
 import * as TestBalance from './TestBalance'
@@ -50,7 +50,7 @@ export async function runTypeScriptTests(
   assertTestRunActive(signal)
   const failures = results.filter((failure): failure is string => typeof failure === 'string')
   if (failures.length > 0) {
-    Errors.ThrowUserInput(`TypeScript shards failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
+    UserInput.fail(`TypeScript shards failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
   if (cachePath && files) {
     await rememberShardTimings(cachePath, files, results.flatMap(result => typeof result === 'string' ? [] : result))

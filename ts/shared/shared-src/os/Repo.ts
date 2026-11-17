@@ -1,4 +1,5 @@
 import { Errors, NullCharacter } from '../universal/universal'
+import * as UserInput from '../universal/UserInput'
 import * as FS from './FS'
 import * as Path from './Path'
 
@@ -55,12 +56,13 @@ export function assertNewWorkspacePath(path: string, root = getWorkspaceRoot()):
   const canonical = FS.realpathSync(existing)
   const legacyRoot = resolvePath('.x-tao-old-v1')
   const legacy = FS.existsSync(legacyRoot) ? FS.realpathSync(legacyRoot) : legacyRoot
-  if (Path.isWithin(legacyRoot, absolute) || Path.isWithin(legacy, canonical)) {
-    Errors.ThrowUserInput('Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.')
-  }
+  UserInput.require(
+    !(Path.isWithin(legacyRoot, absolute) || Path.isWithin(legacy, canonical)),
+    'Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.',
+  )
   const canonicalRoot = FS.realpathSync(root)
   if (!Path.isWithin(root, absolute) || !Path.isWithin(canonicalRoot, canonical)) {
-    Errors.ThrowUserInput(`Requested paths must remain inside ${root}: ${path}`)
+    UserInput.fail(`Requested paths must remain inside ${root}: ${path}`)
   }
 }
 

@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors, Lists, Regxs, Sort } from '@shared'
+import { Lists, Regxs, Sort, UserInput } from '@shared'
 import { Files, FS } from '@shared/os'
 
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
@@ -35,5 +35,5 @@ async function findFormatFiles(path: string): Promise<string[]> {
       return [path]
     }
   }
-  return Errors.ThrowUserInput(`Expected a .tao file or directory: ${path}`)
+  return UserInput.fail(`Expected a .tao file or directory: ${path}`)
 }

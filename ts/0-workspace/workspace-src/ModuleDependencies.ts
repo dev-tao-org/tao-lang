@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
-import { Sort } from '@shared'
+import { Sort, UserInput } from '@shared'
 import { Json } from '@shared'
 import Exec from '@shared/os/exec'
 
@@ -43,7 +43,7 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
   if (requested) {
     const path = Path.resolve(requested)
     if (!await sourceIsInsideProject(path, projectRoot)) {
-      Errors.ThrowUserInput(`Preparation entry must belong to ${projectRoot}: ${path}`)
+      UserInput.fail(`Preparation entry must belong to ${projectRoot}: ${path}`)
     }
     return path
   }
@@ -53,13 +53,13 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
     return apps[0]!
   }
   if (apps.length > 1) {
-    Errors.ThrowUserInput(`Multiple Tao app entries found; specify one: ${apps.join(', ')}`)
+    UserInput.fail(`Multiple Tao app entries found; specify one: ${apps.join(', ')}`)
   }
   const rootSources = sources.filter(path => Path.dirname(path) === projectRoot)
   if (rootSources.length === 1) {
     return rootSources[0]!
   }
-  Errors.ThrowUserInput(`No unique Tao app entry was found; run tao setup <entry>.`)
+  UserInput.fail(`No unique Tao app entry was found; run tao setup <entry>.`)
 }
 
 /** listDependencyWork describes authored source and npm requirements before preparation. */
@@ -129,12 +129,12 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
   const result = await Exec.capture('bun', ['info', packageName, 'version', '--json'], { check: false, cwd, addEnv })
   if (result.status !== 0 || result.signal !== null) {
-    Errors.ThrowUserInput(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
+    UserInput.fail(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
   }
   const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(result.stdout.trim()))
   const version = resolveNpmVersionValue(value)
   if (!version) {
-    Errors.ThrowUserInput(`Bun returned no exact version for ${packageName}.`)
+    UserInput.fail(`Bun returned no exact version for ${packageName}.`)
   }
   return version
 }
@@ -163,14 +163,14 @@ function hasStringVersion(value: object): value is { version: string } {
 
 async function resolveModule(projectRoot: string, moduleName: string): Promise<string> {
   if (!Regxs.ModuleNameRegx.test(moduleName)) {
-    Errors.ThrowUserInput(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
+    UserInput.fail(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
   const matches = await findNamedPackageDirectories(projectRoot, moduleName)
   if (matches.length === 0) {
-    Errors.ThrowUserInput(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
+    UserInput.fail(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
   }
   if (matches.length > 1) {
-    Errors.ThrowUserInput(`Module ${moduleName} is ambiguous: ${matches.join(', ')}`)
+    UserInput.fail(`Module ${moduleName} is ambiguous: ${matches.join(', ')}`)
   }
   return matches[0]!
 }
@@ -181,7 +181,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
   const packageName = index > 0 ? spec.slice(0, index) : spec
   const version = index > 0 ? spec.slice(index + 1) : undefined
   if (!isNpmPackageName(packageName)) {
-    Errors.ThrowUserInput(`Invalid npm package name: ${packageName}`)
+    UserInput.fail(`Invalid npm package name: ${packageName}`)
   }
   if (version) {
     validateExactVersion(version)
@@ -191,7 +191,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
 
 function validateExactVersion(version: string): void {
   if (valid(version) !== version) {
-    Errors.ThrowUserInput(`Expected an exact semantic version; received ${version}.`)
+    UserInput.fail(`Expected an exact semantic version; received ${version}.`)
   }
 }
 
@@ -244,7 +244,7 @@ function collectNpmRequirementSpans(
 ): NpmRequirementOccurrence[] {
   const document = AST.transform(parser.parse(source))
   if (!document) {
-    Errors.ThrowUserInput(`Cannot add a requirement to invalid Tao source: ${path}`)
+    UserInput.fail(`Cannot add a requirement to invalid Tao source: ${path}`)
   }
   return AST.GetDeclarations(document).flatMap(declaration => {
     if (!isNpmRequirement(declaration) || declaration.identifier !== packageName) {

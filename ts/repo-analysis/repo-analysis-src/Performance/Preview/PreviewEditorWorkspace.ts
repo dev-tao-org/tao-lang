@@ -1,4 +1,4 @@
-import { Errors, Json, Schema, Time, Try } from '@shared'
+import { Errors, Json, Schema, Time, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { Http } from '@shared/web'
 import type * as Workspace from '@workspace'
@@ -100,15 +100,13 @@ export class PreviewEditorWorkspace {
 
   private resolveFile(path: string): string {
     if (!this.files.includes(path)) {
-      Errors.ThrowUserInput(`Unknown performance source file: ${path}`)
+      UserInput.fail(`Unknown performance source file: ${path}`)
     }
     return Path.join(this.directory, path)
   }
 
   private enqueue<Result>(run: () => Promise<Result>): Promise<Result> {
-    if (this.closed) {
-      Errors.ThrowUserInput('The performance editor is closed.')
-    }
+    UserInput.require(!this.closed, 'The performance editor is closed.')
     const pending = this.tail.then(run)
     this.tail = pending.then(() => undefined, () => undefined)
     return pending

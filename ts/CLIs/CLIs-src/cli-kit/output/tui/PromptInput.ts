@@ -1,4 +1,4 @@
-import { ControlCCharacter, Errors, Try } from '@shared'
+import { ControlCCharacter, Errors, Try, UserInput } from '@shared'
 import type { Ink } from '../../bridges/Bridge_ink'
 import type { OutputInputRequest } from '../Output'
 
@@ -42,9 +42,7 @@ export function createPaneInput(redraw: () => void): PaneInput {
 
   async function readInput(request: OutputInputRequest): Promise<string> {
     requireAvailableInput(input)
-    if (request.signal?.aborted) {
-      Errors.ThrowUserInput('Confirmation cancelled.')
-    }
+    UserInput.require(!request.signal?.aborted, 'Confirmation cancelled.')
     const result = Promise.withResolvers<string>()
     input = { request, value: '', resolve: result.resolve, reject: result.reject }
     const cancel = () => result.reject(new Error('Confirmation cancelled.'))

@@ -12,15 +12,15 @@ The Justfile defaults to this checkout's `../../tao`, resolved from the Justfile
 
 The library demonstrates the currently executable language surface through published components:
 
-| Example                        | Features                                                                                                                                              |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/tao/Library.tao`          | Named library exports, required text parameters, private nested views, React children and mount-local writable/computed values                        |
-| `src/tao/LanguageFeatures.tao` | Named and aliased imports, typed file lets, lexical shadowing, escaped text, aliased injection captures, standard input and a TypeScript foreign view |
-| `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                              |
-| `src/tao/ScopeExamples.tao`    | Folder and package visibility across files                                                                                                            |
-| `src/tao/@cards`               | Published package views, a preserved `details` subpath and an internal view with folder visibility                                                    |
-| `src/ts/Consumer.tsx`          | Ordinary package and subpath imports, React prop updates, children and independent component mounts                                                   |
+| Example                        | Features                                                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/tao/Library.tao`          | Named library exports, required text parameters, private nested views, React children and mount-local writable/computed values                             |
+| `src/tao/LanguageFeatures.tao` | Named and aliased imports, text and lexical scopes, TypeScript injections and foreign views, standard input, and view-local state with synchronous actions |
+| `src/tao/ValueSnapshots.tao`   | Runtime-owned list and record snapshots, equal computed results and ordered list updates                                                                   |
+| `src/tao/ScopeExamples.tao`    | Folder and package visibility across files                                                                                                                 |
+| `src/tao/@cards`               | Published package views, a preserved `details` subpath and an internal view with folder visibility                                                         |
+| `src/ts/Consumer.tsx`          | Ordinary package and subpath imports, React prop updates, children and independent component mounts                                                        |
 
-The browser journey asserts the rendered examples, edits the input, updates state and props, and unmounts one component while the other remains interactive.
+The browser journey edits the input and presses both kinds of Tao action handler. It confirms that a React prop change preserves local state until an action explicitly reads it, two mounts of the authored stateful view remain independent, and the second greeting stays interactive after the first unmounts.
 
 `tao init <directory> --library` remains the way to generate the smaller starter. Its separate static copy was removed from this repository; initializer acceptance still generates and tests a fresh project.

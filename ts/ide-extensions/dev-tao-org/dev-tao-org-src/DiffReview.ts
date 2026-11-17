@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 
 /** OptionalBranchName represents a branch that may not be selected or available. */
 export type OptionalBranchName = string | undefined
@@ -35,7 +35,7 @@ export async function chooseDiffBase(
     if (base && branches.includes(base)) {
       return base
     }
-    return Errors.ThrowUserInput(
+    return UserInput.fail(
       base
         ? `Review comparison branch "${base}" does not exist. Use Dev Tao: Change Diff Base to select an existing branch.`
         : 'This worktree has a detached HEAD. Use Dev Tao: Change Diff Base to select an existing branch.',

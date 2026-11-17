@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors, Regxs } from '@shared'
+import { Regxs, UserInput } from '@shared'
 import { Path, Repo } from '@shared/os'
 import { assertNewWorkspaceTree } from '../../cli-checks/check'
 import { registerCommand } from './_command-runner'
@@ -22,9 +22,10 @@ export default registerCommand({
 })
 
 function requireRegistryPin(dependency: string): void {
-  if (!Regxs.RegistryDependencyPinRegx.test(dependency)) {
-    Errors.ThrowUserInput('Specify a registry package with an exact version, such as zod@4.1.0.')
-  }
+  UserInput.require(
+    !!Regxs.RegistryDependencyPinRegx.test(dependency),
+    'Specify a registry package with an exact version, such as zod@4.1.0.',
+  )
 }
 
 async function requireWorkspacePackageDirectory(workspacePackage: string): Promise<string> {
@@ -36,7 +37,7 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   const manifests = RepoAnalysis.readWorkspaceManifestPaths(workspace)
   const manifest = manifests.find(candidate => Path.relative(directory, Path.dirname(candidate)) === '')
   if (!manifest) {
-    Errors.ThrowUserInput(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
+    UserInput.fail(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
   }
   return Path.dirname(manifest)
 }

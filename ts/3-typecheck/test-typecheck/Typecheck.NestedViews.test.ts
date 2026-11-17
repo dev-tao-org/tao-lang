@@ -40,14 +40,16 @@ Tests.test('nested view names share a scope while child scopes may shadow them',
   Tests.expect(() => linkModules('app/main.tao', [Fixtures.createSource('app/main.tao', [duplicateChildren])]))
     .toThrow('View Main in app/main.tao declares Card more than once in one scope')
 
+  const localCard = { ...Fixtures.createLetDefinition('Card'), value: Fixtures.createIdentifier('AlternateCard') }
   const shadowingChild = {
     ...Fixtures.createView('Main'),
     body: Fixtures.createViewBlock([
       render('Col'),
       {
         ...Fixtures.createView('Card'),
-        body: Fixtures.createViewBlock([Fixtures.createLetDefinition('Card'), render('Card')]),
+        body: Fixtures.createViewBlock([localCard, render('Card')]),
       },
+      Fixtures.createView('AlternateCard'),
     ]),
   }
   Tests.expect(() => linkModules('app/main.tao', [Fixtures.createSource('app/main.tao', [shadowingChild])])).not

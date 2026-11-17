@@ -1,6 +1,6 @@
 import * as CLIKit from '@cli-kit'
 import type * as RepoAnalysis from '@repo-analysis'
-import { Errors, NewlineCharacter, Time, Try } from '@shared'
+import { NewlineCharacter, Time, Try, UserInput } from '@shared'
 import { Artifacts, FS, Path, Repo } from '@shared/os'
 import { planTestExecution, type TestExecutionOptions } from '../dev-cli/testing/TestPlan'
 import { checkEditorTypeScript } from './editor-typescript'
@@ -22,7 +22,7 @@ export async function assertNewWorkspaceTree(root = Repo.getWorkspaceRoot()): Pr
       if (entry.isSymbolicLink()) {
         const target = FS.realpathSync(path)
         if (!Path.isWithin(workspace, target)) {
-          Errors.ThrowUserInput(`Workspace source links must remain inside ts/: ${path}`)
+          UserInput.fail(`Workspace source links must remain inside ts/: ${path}`)
         }
       } else if (entry.isDirectory()) {
         await visit(path)
@@ -83,7 +83,7 @@ export async function workspaceConformance(): Promise<void> {
   const elapsed = Math.round(Time.nowMs() - started)
   CLIKit.IO.print(`Checked source conformance: ${result.findings.length} issue(s) in ${elapsed}ms`)
   if (result.findings.length > 0) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       result.findings.map(({ file, line, message }) => `${file}${line === undefined ? '' : ':' + line}: ${message}`)
         .join(NewlineCharacter),
     )

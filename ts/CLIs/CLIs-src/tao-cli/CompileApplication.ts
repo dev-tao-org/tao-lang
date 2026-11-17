@@ -2,7 +2,7 @@ import type * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Workspace from '@workspace'
 
-import { Errors, Timings } from '@shared'
+import { Timings, UserInput } from '@shared'
 
 import { prepareNativeLocks } from '../cli-checks/native-lock-build'
 import { prepareRuntime } from '../cli-checks/runtime-build'
@@ -27,7 +27,7 @@ export async function publishCompiledLibrary(
 ): Promise<string> {
   const project = await Workspace.discoverProject(target.entry)
   if (!project) {
-    return Errors.ThrowUserInput(`No Tao project owns ${target.entry}.`)
+    return UserInput.fail(`No Tao project owns ${target.entry}.`)
   }
   await prepareRuntime()
   return await Workspace.withDependencySession(

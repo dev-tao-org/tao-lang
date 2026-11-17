@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import * as Tests from '@shared-tests'
 
-import { Errors, S } from '@shared'
+import { S, UserInput } from '@shared'
 import { Cancellation } from '@shared/web'
 import { runTests, type TestDriver } from '../workspace-src/testing/RunTests'
 
@@ -62,7 +62,7 @@ Tests.test('a failed assertion stops its journey, reports the source line and st
     createDriver: async () => ({
       ...recordingDriver(operations),
       async expectText() {
-        Errors.ThrowUserInput('Expected visible text "Missing"')
+        UserInput.fail('Expected visible text "Missing"')
       },
     }),
   })

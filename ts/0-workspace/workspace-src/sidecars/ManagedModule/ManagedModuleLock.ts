@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import { FileLock, FS, Path, Platform } from '@shared/os'
 import { findNearestProjectRoot } from '../../modules/Paths'
 
@@ -10,7 +10,7 @@ export async function withManagedModuleLock<Value>(
   const canonicalDirectory = FS.realpathSync(moduleDirectory)
   const ownerRoot = findNearestProjectRoot(canonicalDirectory)
   if (!ownerRoot) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Cannot lock managed module metadata outside a Tao project: ${canonicalDirectory}. Place the module in a project with a .tao directory.`,
     )
   }
@@ -19,7 +19,7 @@ export async function withManagedModuleLock<Value>(
   const lockPath = Path.join(lockDirectory, `module-${Platform.hashText(canonicalDirectory)}.lock`)
   const lock = await FileLock.tryAcquire(lockPath)
   if (!lock) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed module metadata is being updated or cleaned: ${moduleDirectory}. Retry after the other operation finishes.`,
     )
   }

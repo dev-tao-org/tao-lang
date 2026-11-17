@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { createReactiveEngine } from '../runtime-src/client/ReactiveEngine'
@@ -171,9 +171,7 @@ Tests.test('a failing queued observer does not strand other deliveries or subseq
   const source = engine.createWritable(0)
   const values: number[] = []
   source.observe(value => {
-    if (value === 1) {
-      Errors.ThrowUserInput('observer failed')
-    }
+    UserInput.require(value !== 1, 'observer failed')
   })
   source.observe(value => values.push(value))
   source.update(1)

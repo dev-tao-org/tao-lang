@@ -1,4 +1,4 @@
-import { Errors, Json, NullCharacter, Try } from '@shared'
+import { Json, NullCharacter, Try, UserInput } from '@shared'
 import type { GeneratedRevision, PublicationOutcome } from './PreviewProtocol'
 
 /** parseGeneratedRevision reads untrusted JSON for the existing revision owner to validate. */
@@ -35,13 +35,14 @@ export function createRevisionOwner(
 
 /** snapshotRevision validates and copies a complete generated namespace before admission. */
 export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision {
-  if (!hasValidRevisionIdentity(revision)) {
-    Errors.ThrowUserInput('Generated publication requires an identity and a nonnegative integer sequence.')
-  }
+  UserInput.require(
+    !!hasValidRevisionIdentity(revision),
+    'Generated publication requires an identity and a nonnegative integer sequence.',
+  )
   const files: MutableGeneratedSourceFiles = Object.create(null)
   for (const [path, text] of Object.entries(revision.files)) {
     if (!isSupportedGeneratedFile(path, text)) {
-      Errors.ThrowUserInput(`Unsupported generated source path: ${path}`)
+      UserInput.fail(`Unsupported generated source path: ${path}`)
     }
     files[path] = text
   }

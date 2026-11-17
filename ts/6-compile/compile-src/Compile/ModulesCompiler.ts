@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, Objects, S, Timings } from '@shared'
+import { Errors, NewlineCharacter, Objects, S, Timings, UserInput } from '@shared'
 import * as Shared from '@shared'
 import { Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
@@ -245,9 +245,7 @@ function selectApp(program: Typecheck.LinkedProgram, appName?: string): Selected
   }
   if (appName === undefined) {
     const apps = AST.GetAppDeclarations(entry.document)
-    if (apps.length !== 1) {
-      Errors.ThrowUserInput('Compile one app declaration per entry file.')
-    }
+    UserInput.require(apps.length === 1, 'Compile one app declaration per entry file.')
     return { source: entry.path, declaration: apps[0] }
   }
   const direct = AST.FindAppDeclaration(entry.document, appName)
@@ -256,9 +254,9 @@ function selectApp(program: Typecheck.LinkedProgram, appName?: string): Selected
   }
   const binding = entry.bindings.find(candidate => candidate.name === appName)
   if (binding === undefined) {
-    Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+    UserInput.fail(`Unknown Tao app: ${appName}.`)
   }
   const owner = program.modules.find(module => module.path === binding.source)
   const declaration = owner && AST.FindAppDeclaration(owner.document, binding.target)
-  return declaration ? { source: binding.source, declaration } : Errors.ThrowUserInput(`Unknown Tao app: ${appName}.`)
+  return declaration ? { source: binding.source, declaration } : UserInput.fail(`Unknown Tao app: ${appName}.`)
 }

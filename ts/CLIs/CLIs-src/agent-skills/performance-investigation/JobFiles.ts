@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Regxs, UserInput } from '@shared'
 
 /** JobFileName identifies the durable measurement manifest. */
 export const JobFileName = 'job.json'
@@ -17,7 +17,5 @@ export const createSampleName = (index: number): string => `sample-${index + 1}.
 
 /** requireSampleName rejects paths outside the job's local sample representation. */
 export function requireSampleName(name: string): void {
-  if (!Regxs.PerformanceJobSampleNameRegx.test(name)) {
-    Errors.ThrowUserInput('Unexpected sample path in job manifest.')
-  }
+  UserInput.require(!!Regxs.PerformanceJobSampleNameRegx.test(name), 'Unexpected sample path in job manifest.')
 }

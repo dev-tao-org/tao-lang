@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs, Sort, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Sort, Time, Try, UserInput } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { createAgeCipher } from '../../cli-kit/secret-age'
@@ -31,16 +31,14 @@ async function runSecrets(args: readonly string[], environment: SecretsEnvironme
     await decryptSecrets(environment)
   } else if (action === 'add') {
     const name = rest[0]
-    if (name === undefined) {
-      Errors.ThrowUserInput('Name the secret to add, as in ./dev secrets add ANTHROPIC_API_KEY.')
-    }
+    UserInput.require(name !== undefined, 'Name the secret to add, as in ./dev secrets add ANTHROPIC_API_KEY.')
     await addSecret(name, rest.slice(1).join(' ') || undefined, environment)
   } else if (action === 'list') {
     await listSecrets()
   } else if (action === 'setup') {
     await setupSecrets()
   } else {
-    Errors.ThrowUserInput(`Unknown secrets action '${action}'. Use no action to decrypt, or add, list, or setup.`)
+    UserInput.fail(`Unknown secrets action '${action}'. Use no action to decrypt, or add, list, or setup.`)
   }
 }
 
@@ -69,9 +67,10 @@ async function addSecret(
 ): Promise<void> {
   SecretStoreModule2.requireSecretName(name)
   const original = await readStore()
-  if (original.recipients.length === 0) {
-    Errors.ThrowUserInput('The secret store lists no recipients. Run ./dev secrets setup first.')
-  }
+  UserInput.require(
+    original.recipients.length !== 0,
+    'The secret store lists no recipients. Run ./dev secrets setup first.',
+  )
   const key = original.storeKey === undefined
     ? await createStoreKey(environment.cipher, original.recipients)
     : original.storeKey
@@ -80,17 +79,14 @@ async function addSecret(
   }
   IO.print(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.`)
   const value = await environment.promptSecret(`Value for ${name}:`)
-  if (value.trim() === '') {
-    Errors.ThrowUserInput('No value was entered, so nothing was stored.')
-  }
+  UserInput.require(value.trim() !== '', 'No value was entered, so nothing was stored.')
   const armor = await environment.cipher.encrypt(value, [key.recipient])
   await withStoreMutation(async () => {
     const current = await readStore()
-    if (hasConflictingSecretChange(original, current, name)) {
-      Errors.ThrowUserInput(
-        'The recipients, store key, or selected secret changed while adding. Run the command again.',
-      )
-    }
+    UserInput.require(
+      !hasConflictingSecretChange(original, current, name),
+      'The recipients, store key, or selected secret changed while adding. Run the command again.',
+    )
     const updated = SecretStoreModule2.withSecret({ ...current, storeKey: current.storeKey ?? key }, name, armor, {
       now: environment.now(),
       ...(note === undefined ? {} : { note }),
@@ -213,9 +209,10 @@ async function listSecrets(): Promise<void> {
 }
 
 async function setupSecrets(): Promise<void> {
-  if (Platform.systemInfo().os !== 'Darwin') {
-    Errors.ThrowUserInput('Secure Enclave secrets setup requires macOS with age-plugin-se.')
-  }
+  UserInput.require(
+    Platform.systemInfo().os === 'Darwin',
+    'Secure Enclave secrets setup requires macOS with age-plugin-se.',
+  )
   const identityPath = secretsIdentityPath()
   await FS.mkdir(Path.dirname(identityPath))
   const existed = FS.existsSync(identityPath)

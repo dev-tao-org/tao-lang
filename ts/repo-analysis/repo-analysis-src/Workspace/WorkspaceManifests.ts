@@ -1,4 +1,4 @@
-import { Errors, Json, Schema } from '@shared'
+import { Json, Schema, UserInput } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 
@@ -22,7 +22,7 @@ export function readWorkspaceManifestPaths(workspace: string): string[] {
 function toManifestGlob(pattern: string): string {
   const portable = Path.toPortablePath(pattern)
   if (Path.win32.parse(portable).root || portable.split('/').includes('..')) {
-    Errors.ThrowUserInput(`Workspace package globs must stay inside ts/: ${pattern}`)
+    UserInput.fail(`Workspace package globs must stay inside ts/: ${pattern}`)
   }
   return Path.posix.join(portable, ManifestFilename)
 }

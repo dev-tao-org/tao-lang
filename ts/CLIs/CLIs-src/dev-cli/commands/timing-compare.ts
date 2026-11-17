@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, NewlineCharacter } from '@shared'
+import { Errors, NewlineCharacter, UserInput } from '@shared'
 import { Path } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { readTimingRemote } from '../timing/TimingRemote'
@@ -50,9 +50,10 @@ export default registerCommand({
 })
 
 function requireAbsoluteCheckouts(paths: string[]): void {
-  if (paths.some(path => !Path.posix.isAbsolute(path))) {
-    Errors.ThrowUserInput('Use absolute baseline, candidate and tooling paths on the runner.')
-  }
+  UserInput.require(
+    !paths.some(path => !Path.posix.isAbsolute(path)),
+    'Use absolute baseline, candidate and tooling paths on the runner.',
+  )
 }
 
 function readBranchReport(text: string, startMarker: string, endMarker: string): string {

@@ -1,6 +1,36 @@
 # Actions and Results WIP
 
-The agreed MVP action inspection surface matches aggregate activity through `when ACTION` or first-match rendering through `pick ACTION`; the design below is not yet implemented.
+Actions run explicitly in response to an event or a `do` call.
+
+```tao
+use tao@ui Button, Col, Text
+
+view Editor {
+  state Message = "Before"
+
+  action Rename() {
+    set Message = "After"
+  }
+
+  render Col {
+    Text(Message)
+    Button("Rename") { on press Rename }
+    Button("Rename too") { on press -> do Rename() }
+  }
+}
+```
+
+#### `action Rename() { ... }`
+
+Declare an action in a view before `render`. It can read the view’s values, write visible state, and call other visible actions, including from a private nested view. A view instance owns its actions and state. Actions accept text parameters and run synchronously. `do Rename()` runs the action before the caller continues.
+
+#### `on press Rename`
+
+Bind a parameterless action to the standard `Button(Label)` to run it on press. `on press -> do Rename()` creates an anonymous action that calls `Rename` when pressed. Use `on press -> { ... }` for several statements. Registering a handler does not run it, and changes to values it reads do not trigger it.
+
+#### Planned action inspection
+
+The agreed MVP design below uses `when ACTION` to inspect aggregate activity and `pick ACTION` for first-match rendering. Inspection, returned results, failure handling and guards are not implemented.
 
 ```tao
 when Save {
@@ -33,28 +63,6 @@ pick Save {
 ```
 
 Here pending takes precedence over a previous failure, so the two buttons never render together. This selection does not change the underlying activity or acknowledge failures.
-
-#### Event actions
-
-In an action-expected event binding, `-> ...` is shorthand for an anonymous `action() { ... }`. An existing action can also be registered directly:
-
-```tao
-view Editor {
-   state Message = "Before"
-
-   action Rename() {
-      set Message = "After"
-   }
-
-   render Col {
-      Text(Message)
-      Button("Rename") { on press -> do Rename() }
-      Button("Rename directly") { on press Rename }
-   }
-}
-```
-
-Registration does not execute the action during rendering. The direct reference retains the existing action's identity; the anonymous wrapper has its own identity and delegates to that action when invoked. The registered action must satisfy the event's handler signature. In pure callback positions, arrows retain the pure-function rules in [Inline Functions](Inline%20Functions.md). These event forms are agreed future syntax.
 
 #### Returned values
 

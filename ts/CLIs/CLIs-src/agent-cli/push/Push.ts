@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors, Regxs } from '@shared'
+import { Regxs, UserInput } from '@shared'
 import { Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -9,9 +9,10 @@ export async function pushBranch(
   branch: string,
   options: { source?: string } = {},
 ): Promise<void> {
-  if (branch.toLowerCase() === 'main') {
-    Errors.ThrowUserInput('Agent pushes to main are prohibited. Use the separately authorized landing workflow.')
-  }
+  UserInput.require(
+    branch.toLowerCase() !== 'main',
+    'Agent pushes to main are prohibited. Use the separately authorized landing workflow.',
+  )
   const source = options.source ?? branch
   assertBareBranch(branch)
   assertBareBranch(source)
@@ -21,7 +22,7 @@ export async function pushBranch(
   const remoteList = await Exec.captureStdout('git', 'remote', { cwd })
   const remotes = remoteList.trim().split(Regxs.ExtensionLineEndingRegx).filter(Boolean)
   if (!remotes.includes(remote) || remote.startsWith('-')) {
-    Errors.ThrowUserInput(`Use a configured remote name, such as origin: ${remote}`)
+    UserInput.fail(`Use a configured remote name, such as origin: ${remote}`)
   }
   const commit = await Exec.captureStdout('git', ['rev-parse', '--verify', `refs/heads/${source}^{commit}`], { cwd })
   await CLIKit.runNonInteractiveCommand('git', [
@@ -40,7 +41,7 @@ export async function pushBranch(
 
 function assertBareBranch(branch: string): void {
   if (isRefspecOrOption(branch)) {
-    Errors.ThrowUserInput(`Name a local branch without options, force prefixes or refspecs: ${branch}`)
+    UserInput.fail(`Name a local branch without options, force prefixes or refspecs: ${branch}`)
   }
 }
 

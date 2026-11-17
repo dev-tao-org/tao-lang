@@ -1,6 +1,6 @@
 import type * as Runtime from '@runtime'
 import * as Expo from '@runtime/expo'
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
@@ -22,7 +22,7 @@ async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: s
   const target = Path.join(runtimeDirectory, 'node_modules')
   const existing = Try.WithDefault(undefined, () => FS.lstatSync(link))
   if (existing && !existing.isSymbolicLink()) {
-    Errors.ThrowUserInput(`Generated build dependency path is not a symbolic link: ${link}`)
+    UserInput.fail(`Generated build dependency path is not a symbolic link: ${link}`)
   }
   const relativeTarget = Path.relative(buildDirectory, target)
   await FS.replaceDirectoryLink(relativeTarget, link)

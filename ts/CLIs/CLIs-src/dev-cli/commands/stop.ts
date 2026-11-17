@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
 
@@ -9,9 +9,7 @@ export default registerCommand({
   description: 'Stop a repository service, preserving its data.',
   arguments: [{ name: 'service', required: true }],
   async action(service: string) {
-    if (service !== 'local-instantdb') {
-      Errors.ThrowUserInput('Supported service: local-instantdb.')
-    }
+    UserInput.require(service === 'local-instantdb', 'Supported service: local-instantdb.')
     await CLIKit.runNonInteractiveCommand(
       'docker',
       'compose --project-name tao-local-instantdb --file docker-compose.yml down',

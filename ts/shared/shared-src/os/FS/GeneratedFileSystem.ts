@@ -1,5 +1,6 @@
 import * as Objects from '../../universal/Objects'
-import { Errors, NullCharacter, Time } from '../../universal/universal'
+import { NullCharacter, Time } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import { createFsFromVolume, type IFs, Volume } from '../bridges/Bridge_memfs'
 import { Buffer as NodeBuffer } from '../bridges/Bridge_node/Bridge_node'
@@ -101,7 +102,7 @@ function createSnapshot(root: string, runtime: string, files: GeneratedSourceFil
   const stamp = new Date(Time.now())
   for (const [path, text] of Object.entries(files)) {
     if (isInvalidPath(path)) {
-      Errors.ThrowUserInput(`Unsupported generated source path: ${path}`)
+      UserInput.fail(`Unsupported generated source path: ${path}`)
     }
     const target = Node.join(root, path)
     candidate.mkdirSync(Node.dirname(target), { recursive: true })

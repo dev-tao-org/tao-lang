@@ -1,4 +1,4 @@
-import { Errors, S } from '@shared'
+import { S, UserInput } from '@shared'
 
 /** PreviewScenario is one named source edit in a preview button cycle. */
 export type PreviewScenario = {
@@ -33,7 +33,7 @@ export function requirePreviewScenario(
 ): PreviewScenario {
   const scenario = scenarios.find(item => item.name === name)
   if (!scenario) {
-    return Errors.ThrowUserInput('Unknown preview performance scenario: ' + String(name))
+    return UserInput.fail('Unknown preview performance scenario: ' + String(name))
   }
   return scenario
 }
@@ -51,7 +51,7 @@ function addPreviewDetail(source: string): string {
 
 function replaceOnce(source: string, from: string, to: string): string {
   if (!source.includes(from)) {
-    return Errors.ThrowUserInput('Preview edit did not match the current source: ' + from)
+    return UserInput.fail('Preview edit did not match the current source: ' + from)
   }
   return source.replace(from, to)
 }

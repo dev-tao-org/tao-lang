@@ -1,4 +1,4 @@
-import { Errors, Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import * as PackageTests from './PackageTests'
@@ -40,7 +40,7 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   const aliases = new Set<string>()
   for (const api of apis) {
     if (aliases.has(api.alias)) {
-      Errors.ThrowUserInput(`Public import alias is declared more than once: ${api.alias}`)
+      UserInput.fail(`Public import alias is declared more than once: ${api.alias}`)
     }
     aliases.add(api.alias)
     requirePublicApiFile(api)
@@ -48,9 +48,10 @@ export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
   const configPath = Path.join(root, 'ts/tsconfig.base.json')
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile).config
   const expected = deriveCompilerPaths(Path.dirname(configPath), apis)
-  if (!haveEqualCompilerPaths(config.compilerOptions.paths, expected)) {
-    Errors.ThrowUserInput('TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.')
-  }
+  UserInput.require(
+    !!haveEqualCompilerPaths(config.compilerOptions.paths, expected),
+    'TypeScript paths must match manifest-owned exact public APIs. Run ./agent fix.',
+  )
 }
 
 // Own the namespace and primary entities published by an exact package entrypoint.
@@ -107,7 +108,7 @@ function readManifestApis(filename: string): PackageApi[] {
   const source = FS.readFileSync(filename, 'utf8')
   const parsed = TypeScript.parseConfigFileTextToJson(filename, source)
   if (parsed.error) {
-    Errors.ThrowUserInput(`Cannot read public APIs from ${filename}`)
+    UserInput.fail(`Cannot read public APIs from ${filename}`)
   }
   const manifest = parsed.config as Partial<PackageApiManifest>
   const entries = manifest.tao?.publicApi
@@ -136,7 +137,7 @@ function requireExportMetadata(
 ): void {
   for (const key of Object.keys(exports ?? {})) {
     if (!Object.hasOwn(entries ?? {}, key)) {
-      Errors.ThrowUserInput(`Every export requires public API metadata: ${filename} ${key}`)
+      UserInput.fail(`Every export requires public API metadata: ${filename} ${key}`)
     }
   }
 }
@@ -151,7 +152,7 @@ function requirePublicApiMetadata(
   const validMetadata = isCanonicalApiMetadata(metadata)
   const wildcardApi = key.includes('*') || (validMetadata && metadata.alias.includes('*'))
   if (!exactTarget || !validMetadata || wildcardApi) {
-    Errors.ThrowUserInput(`Public APIs require exact file exports and canonical namespace metadata: ${filename} ${key}`)
+    UserInput.fail(`Public APIs require exact file exports and canonical namespace metadata: ${filename} ${key}`)
   }
 }
 
@@ -171,7 +172,7 @@ function isCanonicalApiMetadata(metadata: { alias: string; namespace: string }):
 
 function requirePublicApiFile(api: PackageApi): void {
   if (!FS.existsSync(api.filename) || !FS.statSync(api.filename).isFile()) {
-    Errors.ThrowUserInput(`Public API must point to an existing file: ${api.alias} -> ${api.filename}`)
+    UserInput.fail(`Public API must point to an existing file: ${api.alias} -> ${api.filename}`)
   }
 }
 

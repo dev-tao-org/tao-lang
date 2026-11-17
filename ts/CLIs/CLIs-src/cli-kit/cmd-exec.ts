@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Time, Try, UserInput } from '@shared'
 import { Process, Streams, Terminal } from '@shared/os'
 import Exec from '@shared/os/exec'
 import type { ChildProcess, ChildProcessInput, SpawnOptions } from '@shared/os/exec'
@@ -48,9 +48,7 @@ async function executeCommand(
   options: CommandInteraction.CommandRunOptions,
   mode: CommandInteraction.CommandInteractionMode,
 ): Promise<void> {
-  if (!command.trim()) {
-    Errors.ThrowUserInput('A command is required.')
-  }
+  UserInput.require(!!command.trim(), 'A command is required.')
   const argv = Exec.resolveCommandArgs(args)
   const label = [command, ...argv].join(' ')
   if (options.signal?.aborted) {

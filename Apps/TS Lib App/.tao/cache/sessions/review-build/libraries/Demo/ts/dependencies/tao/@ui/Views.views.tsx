@@ -42,3 +42,17 @@ export function TaoView_Input_482201fbc4bd(_Props: TR.ViewComponentProps) {
 
   return TR.finishViewRender(_Render, useTaoInjectionInput_482201fbc4bd(_Scope["Value"] as string));
 }
+
+function useTaoInjectionButton_482201fbc4bd(Label: string, Press: TR.ViewComponentProps['press']) {
+  return (
+        <Tao.Pressable accessibilityRole="button" onPress={Press}>
+          <Tao.Text>{Label}</Tao.Text>
+        </Tao.Pressable>
+      )
+}
+export function TaoView_Button_482201fbc4bd(_Props: TR.ViewComponentProps) {
+  const _Render = TR.beginViewRender(_Props);
+  const _Scope = _Render.scope as Omit<ModuleScope, "Label"> & { readonly "Label": string };
+
+  return TR.finishViewRender(_Render, useTaoInjectionButton_482201fbc4bd(_Scope["Label"] as string, _Render.press));
+}

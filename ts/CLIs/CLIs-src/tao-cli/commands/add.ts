@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
@@ -17,23 +17,20 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
   async action(moduleName: string, options: AddCommandOptions = {}) {
-    if (!options.npm) {
-      Errors.ThrowUserInput('tao add requires --npm <package>.')
-    }
+    UserInput.require(!!options.npm, 'tao add requires --npm <package>.')
     const caller = CLIKit.resolveCallerPath('.')
     const project = await Workspace.discoverProject(caller)
     if (!project) {
-      Errors.ThrowUserInput(`No Tao project was found from ${caller}. Run tao init <path>.`)
+      UserInput.fail(`No Tao project was found from ${caller}. Run tao init <path>.`)
     }
     await Workspace.withDependencySession(project.root, options.session, async () => {
-      if (
-        !options.yes && !await IO.askConfirm({
+      UserInput.require(
+        !(!options.yes && !await IO.askConfirm({
           message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
           defaultValue: false,
-        })
-      ) {
-        Errors.ThrowUserInput('Dependency addition was declined; rerun with --yes to proceed non-interactively.')
-      }
+        })),
+        'Dependency addition was declined; rerun with --yes to proceed non-interactively.',
+      )
       const added = await Workspace.addModuleNpmDependency(project.root, moduleName, options.npm!)
       IO.print(`Added npm:${added.packageName}@${added.version} to ${added.sourcePath}`)
       await Workspace.prepareProject(added.sourcePath)

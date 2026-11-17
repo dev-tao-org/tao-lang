@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import { Errors } from '@shared'
+import { Json, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { consumerMetroConfiguration, createConsumerBootstrap } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
@@ -23,13 +22,11 @@ export type ConsumerLibrary = { name: string; directory: string }
 export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
   const modules = Path.join(options.packageDirectory, 'node_modules')
   if (!FS.existsSync(Path.join(modules, 'expo'))) {
-    return Errors.ThrowUserInput(
-      `Install the authored package dependencies before running: ${options.packageDirectory}.`,
-    )
+    return UserInput.fail(`Install the authored package dependencies before running: ${options.packageDirectory}.`)
   }
   const entry = Path.resolve(options.packageDirectory, options.entry)
   if (!Path.isWithin(options.packageDirectory, entry) || !FS.existsSync(entry)) {
-    return Errors.ThrowUserInput(`tao.run.entry must name an existing component inside ${options.packageDirectory}.`)
+    return UserInput.fail(`tao.run.entry must name an existing component inside ${options.packageDirectory}.`)
   }
   const bootstrap = createConsumerBootstrap(Path.relative(options.directory, entry))
   await writeGeneratedHost(options.directory, {

@@ -1,5 +1,6 @@
 import * as Characters from '../universal/Characters'
 import { ControlCCharacter, Errors, Try } from '../universal/universal'
+import * as UserInput from '../universal/UserInput'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
 import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
 import * as Node from './bridges/Bridge_node/Bridge_node'
@@ -55,9 +56,7 @@ export async function askConfirm(
   options: ConfirmationOptions,
   terminal: ConfirmationTerminal = confirmationTerminal,
 ): Promise<boolean> {
-  if (options.signal?.aborted) {
-    Errors.ThrowUserInput('Confirmation cancelled.')
-  }
+  UserInput.require(!options.signal?.aborted, 'Confirmation cancelled.')
   if (!terminal.isInteractive()) {
     return options.defaultValue ?? false
   }
@@ -80,9 +79,7 @@ export async function askConfirm(
     }
   }, {
     catch(error) {
-      if (options.signal?.aborted) {
-        Errors.ThrowUserInput('Confirmation cancelled.')
-      }
+      UserInput.require(!options.signal?.aborted, 'Confirmation cancelled.')
       return Errors.Throw(error)
     },
     finally() {
@@ -94,9 +91,7 @@ export async function askConfirm(
 /** askSecret reads hidden input, submitting bracketed pastes as one value including embedded newlines. */
 export async function askSecret(prompt: string): Promise<string> {
   const input = Process.stdin
-  if (!input.isTTY) {
-    Errors.ThrowUserInput('Secret entry requires an interactive terminal.')
-  }
+  UserInput.require(!!input.isTTY, 'Secret entry requires an interactive terminal.')
   const wasRaw = input.isRaw
   const wasPaused = input.isPaused()
   const result = Promise.withResolvers<string>()

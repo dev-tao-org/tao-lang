@@ -8,6 +8,7 @@ export type Scope = {
   readonly "Col": TR.View;
   readonly "Row": TR.View;
   readonly "Input": TR.View;
+  readonly "Button": TR.View;
 };
 
 export type Imports = {
@@ -23,4 +24,5 @@ export function bindDeclarations(_Scope: Scope): void {
   TR.LetDeclaration(_Scope, "Col", TR.ViewDeclaration("Col", [], _Views.TaoView_Col_482201fbc4bd, _Scope));
   TR.LetDeclaration(_Scope, "Row", TR.ViewDeclaration("Row", [], _Views.TaoView_Row_482201fbc4bd, _Scope));
   TR.LetDeclaration(_Scope, "Input", TR.ViewDeclaration("Input", ["Value"], _Views.TaoView_Input_482201fbc4bd, _Scope));
+  TR.LetDeclaration(_Scope, "Button", TR.ViewDeclaration("Button", ["Label"], _Views.TaoView_Button_482201fbc4bd, _Scope));
 }

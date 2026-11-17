@@ -11,6 +11,7 @@ export type Scope = {
   readonly "EscapedCaption": string;
   readonly "LanguageFeatures": TR.View;
   readonly "ForeignGreeting": TR.View;
+  readonly "Button": ImportedScope0["Button"];
   readonly "Col": ImportedScope0["Col"];
   readonly "Input": ImportedScope0["Input"];
   readonly "Text": ImportedScope0["Text"];
@@ -23,6 +24,7 @@ export type Scope = {
 };
 
 export type Imports = {
+  readonly "Button": Pick<ImportedScope0, "Button">;
   readonly "Col": Pick<ImportedScope0, "Col">;
   readonly "Input": Pick<ImportedScope0, "Input">;
   readonly "Text": Pick<ImportedScope0, "Text">;
@@ -35,6 +37,7 @@ export type Imports = {
 };
 
 export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.Scope>>): void {
+  TR.AliasBinding(_Scope, "Button", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Button"]);
   TR.AliasBinding(_Scope, "Col", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Col"]);
   TR.AliasBinding(_Scope, "Input", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Input"]);
   TR.AliasBinding(_Scope, "Text", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Text"]);

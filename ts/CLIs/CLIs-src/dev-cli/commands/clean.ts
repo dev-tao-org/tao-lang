@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Artifacts, Files, FS, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 import { registerCommand } from './_command-runner'
@@ -12,9 +12,7 @@ export default registerCommand({
   arguments: [{ name: 'args', description: 'Optional --full or --partial flag.', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    if (!hasValidCleanArguments(args)) {
-      Errors.ThrowUserInput('Usage: clean [--full | --partial]')
-    }
+    UserInput.require(!!hasValidCleanArguments(args), 'Usage: clean [--full | --partial]')
     if (args.includes('--partial')) {
       const removed = await Artifacts.cleanPartial()
       IO.print(`Removed ${removed} temporary artifacts; retained caches, recent output, failures and active runs.`)

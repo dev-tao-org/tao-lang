@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Errors, NewlineCharacter, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import type * as Workspace from '@workspace'
@@ -41,7 +41,7 @@ Tests.test('compiled Tao custom-hook components refresh through Metro with commi
   }, {
     async catch(error) {
       const output = await expo?.output()
-      Errors.ThrowUserInput(
+      UserInput.fail(
         `Compiler-to-Metro refresh acceptance failed. ${
           output ? `${output.stdout}${NewlineCharacter}${output.stderr}` : ''
         } ${String(error)}`,

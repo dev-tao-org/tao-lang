@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter } from '@shared'
+import { NewlineCharacter, UserInput } from '@shared'
 import { Path, Platform } from '@shared/os'
 import type { ManagedGraphReference } from '../../dependencies/Types'
 import { requireSetup } from '../../SetupRequired'
@@ -38,14 +38,11 @@ export async function readManagedProfileLock(
   if (!profile && durable) {
     requireSetup('The installed npm lock is missing; setup restores it from the exact durable lock.')
   }
-  if (!profile || !durable) {
-    Errors.ThrowUserInput(
-      'Managed npm lock is missing; restore it and its SHA-256 file from version control, then retry preparation.',
-    )
-  }
-  if (profile !== durable) {
-    Errors.ThrowUserInput('Managed npm lock copies differ. Repair with: tao setup --repair.')
-  }
+  UserInput.require(
+    !(!profile || !durable),
+    'Managed npm lock is missing; restore it and its SHA-256 file from version control, then retry preparation.',
+  )
+  UserInput.require(profile === durable, 'Managed npm lock copies differ. Repair with: tao setup --repair.')
   return profile
 }
 
@@ -79,7 +76,7 @@ function validateDurableLock(
     (lock === undefined) !== (hash === undefined)
     || lock !== undefined && hash !== `${Platform.hashText(lock)}${NewlineCharacter}`
   ) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm durable lock is changed or incomplete for ${fingerprint}; restore it and its SHA-256 file from version control.`,
     )
   }
@@ -107,11 +104,10 @@ async function readReferencedLock(
 ): Promise<string | undefined> {
   const path = Path.resolve(input.directory, ...reference.lockPath.split('/'))
   const lock = await optionalText(path)
-  if (lock === undefined || Platform.hashText(lock) !== reference.lockHash) {
-    Errors.ThrowUserInput(
-      'Referenced managed npm graph lock is missing or changed; restore the source lock and .tao/store lock files from version control.',
-    )
-  }
+  UserInput.require(
+    !(lock === undefined || Platform.hashText(lock) !== reference.lockHash),
+    'Referenced managed npm graph lock is missing or changed; restore the source lock and .tao/store lock files from version control.',
+  )
   await validatePresentProfile(input, reference.fingerprint, reference.lockHash, lock)
   if (!graphContentsMatch(lock, requirements, input.runtimePins)) {
     if (reference.fingerprint === graphFingerprint) {
@@ -120,11 +116,10 @@ async function readReferencedLock(
     return undefined
   }
   if (!managedLockPolicyMatches(lock, input)) {
-    if (!repair || reference.fingerprint === graphFingerprint) {
-      Errors.ThrowUserInput(
-        'Managed npm runtime patch policy changed. Preserve locked package versions with: tao setup --repair.',
-      )
-    }
+    UserInput.require(
+      !(!repair || reference.fingerprint === graphFingerprint),
+      'Managed npm runtime patch policy changed. Preserve locked package versions with: tao setup --repair.',
+    )
     return repairManagedLockPolicy(lock, input)
   }
   return lock
@@ -138,11 +133,13 @@ async function validatePresentProfile(
 ): Promise<void> {
   const profile = Path.join(input.directory, '.tao', 'cache', 'managed-modules', fingerprint)
   const metadata = await optionalJson(Path.join(profile, '.tao-managed.json'))
-  if (metadata && (metadata.fingerprint !== fingerprint || metadata.lockHash !== lockHash)) {
-    Errors.ThrowUserInput('Referenced managed npm profile does not match its exact source lock reference.')
-  }
+  UserInput.require(
+    !(metadata && (metadata.fingerprint !== fingerprint || metadata.lockHash !== lockHash)),
+    'Referenced managed npm profile does not match its exact source lock reference.',
+  )
   const profileLock = await optionalText(Path.join(profile, 'bun.lock'))
-  if (profileLock !== undefined && profileLock !== lock) {
-    Errors.ThrowUserInput('Referenced managed npm profile lock differs from its exact source lock reference.')
-  }
+  UserInput.require(
+    !(profileLock !== undefined && profileLock !== lock),
+    'Referenced managed npm profile lock differs from its exact source lock reference.',
+  )
 }

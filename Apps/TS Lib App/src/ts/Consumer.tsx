@@ -18,14 +18,16 @@ export default function Consumer() {
       </Pressable>
       {mounted && (
         <View style={styles.instance} testID="instance-A">
-          <Greeting First={name} Second="Lovelace" />
+          <View testID="first-greeting">
+            <Greeting First={name} Second="Lovelace" />
+          </View>
           <Panel>
             <Text style={styles.label} testID="react-child">React child</Text>
           </Panel>
           <Caption Value="Published package" />
           <DetailedCard Value="Published subfolder" />
           <View testID="language-features">
-            <LanguageFeatures Name="Ada" />
+            <LanguageFeatures Name={name} />
             <ValueSnapshots />
           </View>
         </View>

@@ -1,4 +1,4 @@
-import { Errors, Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
@@ -20,7 +20,7 @@ export async function resolveRelativeImport(path: string, watch: (candidate: str
       return candidate
     }
   }
-  Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
+  UserInput.fail(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
 /** isScriptSource identifies TypeScript and JavaScript modules whose imports need capture. */

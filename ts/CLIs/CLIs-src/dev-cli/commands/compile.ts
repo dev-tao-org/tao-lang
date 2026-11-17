@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Errors, NewlineCharacter } from '@shared'
+import { NewlineCharacter, UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
 import { prepareCompiledApplication, publishCompiledLibrary } from '../../tao-cli/CompileApplication'
@@ -44,9 +44,7 @@ export default registerCommand({
 type EntryArgument = string | undefined
 
 async function compileExplicitLibrary(directory: string, argument: EntryArgument, options: CompileCommandOptions) {
-  if (!options.tsLib || !options.out) {
-    Errors.ThrowUserInput('Use --ts-lib <declaration> together with --out <directory>.')
-  }
+  UserInput.require(!(!options.tsLib || !options.out), 'Use --ts-lib <declaration> together with --out <directory>.')
   const entry = argument === undefined ? undefined : CLIKit.resolveCallerPath(argument)
   const target = await Workspace.resolveLibraryCompileTarget(directory, options.tsLib, entry)
   const output = CLIKit.resolveCallerPath(options.out)

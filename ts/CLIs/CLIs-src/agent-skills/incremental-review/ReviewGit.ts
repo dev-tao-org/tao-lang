@@ -1,4 +1,4 @@
-import { Errors, Json, Lists, NewlineCharacter, NullCharacter, Sort, Try } from '@shared'
+import { Json, Lists, NewlineCharacter, NullCharacter, Sort, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -13,7 +13,7 @@ export async function git(root: string, args: string[], options: GitOptions = {}
     stdin: options.input,
   })
   if (result.status !== 0 || result.signal !== null) {
-    Errors.ThrowUserInput(`Git ${args[0]} failed: ${result.stderr.trim() || result.stdout.trim()}`)
+    UserInput.fail(`Git ${args[0]} failed: ${result.stderr.trim() || result.stdout.trim()}`)
   }
   return result.stdout
 }
@@ -79,9 +79,7 @@ export async function indexHash(path: string): Promise<string> {
 type ReviewedRevisions = string | string[]
 /** expandFiles resolves literal selections, including tracked descendants deleted from disk. */
 export async function expandFiles(root: string, inputs: string[], reviewed?: ReviewedRevisions): Promise<string[]> {
-  if (!inputs.length) {
-    Errors.ThrowUserInput('Select at least one literal file or folder.')
-  }
+  UserInput.require(!!inputs.length, 'Select at least one literal file or folder.')
   const selections = inputs.map(path => safePath(root, path))
   const output = await git(root, ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...selections])
   let previous = ''
@@ -92,9 +90,7 @@ export async function expandFiles(root: string, inputs: string[], reviewed?: Rev
     ...Lists.unique((output + previous).split(NullCharacter).filter(path => path && !path.startsWith('.artifacts/'))),
   ]
     .sort(Sort.CompareStrings)
-  if (!files.length) {
-    Errors.ThrowUserInput('The literal selection contains no tracked or unignored files.')
-  }
+  UserInput.require(!!files.length, 'The literal selection contains no tracked or unignored files.')
   for (const file of files) {
     safePath(root, file)
     assertNoParentLink(root, file)
@@ -143,7 +139,7 @@ export async function assertSupportedTransforms(root: string, files: string[], i
   for (let offset = 0; offset + 2 < attributes.length; offset += 3) {
     const [path, attribute, value] = attributes.slice(offset, offset + 3)
     if (value !== 'unspecified' && value !== 'unset') {
-      Errors.ThrowUserInput(
+      UserInput.fail(
         `Unsupported Git content transform ${attribute}=${value} for ${path}. Disable that transform explicitly or defer this review selection.`,
       )
     }
@@ -170,7 +166,7 @@ function safePath(root: string, input: string): string {
   const isGitMetadata = path === '.git' || path.startsWith('.git/')
   const isArtifact = path.startsWith('.artifacts/')
   if (!Path.isWithin(root, absolute) || isGitMetadata || isArtifact) {
-    Errors.ThrowUserInput(`Selection must stay inside authored checkout paths: ${input}`)
+    UserInput.fail(`Selection must stay inside authored checkout paths: ${input}`)
   }
   return path || '.'
 }
@@ -180,7 +176,7 @@ function assertNoParentLink(root: string, path: string): void {
   while (directory !== root) {
     const stat = Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (stat?.isSymbolicLink()) {
-      Errors.ThrowUserInput(`Selection traverses a symlink: ${path}`)
+      UserInput.fail(`Selection traverses a symlink: ${path}`)
     }
     directory = Path.dirname(directory)
   }

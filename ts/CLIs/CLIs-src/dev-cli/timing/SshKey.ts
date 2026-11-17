@@ -1,6 +1,6 @@
 import * as CLIKit from '@cli-kit'
 import { IO } from '@cli-kit'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Regxs, Try, UserInput } from '@shared'
 import { BuildLock, FS, Path, Platform, Terminal } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
@@ -17,9 +17,10 @@ export async function setupSshKey(host: string, options: SshKeySetupOptions = {}
     IO.print(`Would set up SSH key ${identity} for ${host}, update SSH config and verify a fresh login.`)
     return
   }
-  if (Platform.systemInfo().os !== 'Darwin') {
-    Errors.ThrowUserInput('SSH key setup uses macOS Keychain. Run it on the controlling Mac.')
-  }
+  UserInput.require(
+    Platform.systemInfo().os === 'Darwin',
+    'SSH key setup uses macOS Keychain. Run it on the controlling Mac.',
+  )
   const directory = Path.dirname(identity)
   await FS.mkdirPrivate(directory)
   await BuildLock.withBuildLock(Path.join(directory, '.tao-ssh-setup.lock'), () => enrollKey(host, identity))
@@ -39,9 +40,7 @@ async function enrollKey(host: string, identity: string): Promise<void> {
 }
 
 async function copyKeyToHost(host: string, identity: string): Promise<void> {
-  if (!Terminal.isInteractive()) {
-    Errors.ThrowUserInput('Run just setup-ssh-key HOST in Terminal to enroll the key.')
-  }
+  UserInput.require(!!Terminal.isInteractive(), 'Run just setup-ssh-key HOST in Terminal to enroll the key.')
   await prepareKey(host, identity)
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', ['--apple-use-keychain', identity])
   IO.print(`Installing the public key on ${host}. SSH may ask for the remote login password once.`)
@@ -66,7 +65,7 @@ async function prepareKey(host: string, identity: string): Promise<void> {
   const privateExists = await FS.exists(identity)
   const publicExists = await FS.exists(publicKey)
   if (privateExists !== publicExists) {
-    Errors.ThrowUserInput(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
+    UserInput.fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
   }
   if (privateExists) {
     return
@@ -93,7 +92,7 @@ const FreshLoginArgs = [
 async function probeDedicatedKey(host: string, identity: string): Promise<boolean> {
   const publicKey = identity + PublicKeySuffix
   if (!await FS.exists(publicKey)) {
-    Errors.ThrowUserInput(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
+    UserInput.fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
   }
   const keyInfo = await Exec.captureStdout('/usr/bin/ssh-keygen', ['-E', 'sha256', '-lf', publicKey])
   const fingerprint = keyInfo.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]

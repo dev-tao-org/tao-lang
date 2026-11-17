@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, Source, Switch, Time, Try } from '@shared'
+import { Errors, Source, Switch, Time, Try, UserInput } from '@shared'
 import * as SourceValidation from '@source-validation'
 
 /** TestDriver runs one isolated app journey against a platform's visible UI. */
@@ -48,7 +48,7 @@ export async function runTests(document: AST.Document, options: TestOptions): Pr
     }
   }
   if (results.length === 0) {
-    Errors.ThrowUserInput(`No Tao test cases found in ${options.path}.`)
+    UserInput.fail(`No Tao test cases found in ${options.path}.`)
   }
   return results
 }
@@ -100,15 +100,15 @@ function assertActive(signal?: AbortSignal): void {
 function assertJourney(test: AST.TestDeclaration): void {
   const steps = AST.GetTestSteps(test)
   const first = steps[0]
-  if (!first || !AST.IsKind(first, 'RunStatement')) {
-    Errors.ThrowUserInput('An app test must start with run <app>.')
-  }
-  if (steps.slice(1).some(step => AST.IsKind(step, 'RunStatement'))) {
-    Errors.ThrowUserInput('Use a separate test case for another app launch.')
-  }
-  if (!steps.some(step => AST.IsKind(step, 'ExpectStatement') && hasExpectations(step))) {
-    Errors.ThrowUserInput('An app test must contain a visible expectation.')
-  }
+  UserInput.require(!(!first || !AST.IsKind(first, 'RunStatement')), 'An app test must start with run <app>.')
+  UserInput.require(
+    !steps.slice(1).some(step => AST.IsKind(step, 'RunStatement')),
+    'Use a separate test case for another app launch.',
+  )
+  UserInput.require(
+    !!steps.some(step => AST.IsKind(step, 'ExpectStatement') && hasExpectations(step)),
+    'An app test must contain a visible expectation.',
+  )
 }
 
 function runStep(step: AST.TestStep, driver: TestDriver): Promise<void> {
@@ -142,7 +142,7 @@ function expectValue(expectation: AST.Expectation, parentTag: OptionalRenderTag,
     TextExpectation: value => driver.expectText(value.value.value, parentTag),
     InputExpectation: value =>
       driver.expectInput(
-        value.target?.value ?? parentTag ?? Errors.ThrowUserInput('An input expectation needs a render tag.'),
+        value.target?.value ?? parentTag ?? UserInput.fail('An input expectation needs a render tag.'),
         value.value.value,
       ),
   })

@@ -1,7 +1,8 @@
-import { Errors, Objects } from '@shared'
+import { Objects, UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
+import type { PressHandler, PressRenderBlock } from './StateActions'
 
 /** View identifies a named component, its positional parameters and captured lexical scope. */
 export type View = {
@@ -19,6 +20,7 @@ export type ViewComponentProps = {
   readonly scope: RuntimeScope
   readonly children: readonly React.ReactNode[]
   readonly testID?: string
+  readonly press?: PressHandler
   readonly observer?: RuntimeObserver
 }
 
@@ -30,6 +32,7 @@ export type ViewRenderArguments = {
   readonly values: readonly unknown[]
   readonly children: readonly React.ReactNode[]
   readonly testID?: string
+  readonly press?: PressHandler
 }
 
 /** AppOptions configures the preview acknowledgement and runtime timings. */
@@ -73,6 +76,15 @@ export function ViewRenderArguments(
   return { values, testID, children }
 }
 
+/** ViewPressArguments carries a render block's press handler alongside ordinary view arguments. */
+export function ViewPressArguments(
+  values: readonly unknown[],
+  block: PressRenderBlock,
+  testID?: string,
+): ViewRenderArguments {
+  return { ...ViewRenderArguments(values, block.children, testID), press: block.press }
+}
+
 /** ViewRenderExpression creates an element for a named view resolved from a Tao scope. */
 export function ViewRenderExpression(
   candidate: unknown,
@@ -114,7 +126,8 @@ function ViewBody({ candidate, args, testID }: ViewBodyProps): React.ReactElemen
   const bindingStartedAt = observer?.now()
   const scope = bindValues(view, args)
   observe(observer, 'bind', bindingStartedAt)
-  const componentProps = { view, scope, children: args.children, testID: args.testID ?? testID, observer }
+  const testId = args.testID ?? testID
+  const componentProps = { view, scope, children: args.children, testID: testId, observer, press: args.press }
   return React.createElement(view.render, componentProps)
 }
 
@@ -129,7 +142,7 @@ function applyTestID(result: React.ReactNode, testID: OptionalTestID): React.Rea
 function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
   const missingIndex = view.parameters.findIndex((_parameter, index) => index >= args.values.length)
   if (missingIndex >= 0) {
-    Errors.ThrowUserInput(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
+    UserInput.fail(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
   }
   const scope = Scope(view.scope)
   for (const [index, parameter] of view.parameters.entries()) {
@@ -139,9 +152,7 @@ function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
 }
 
 function requireView(value: unknown): View {
-  if (!isView(value)) {
-    Errors.ThrowUserInput('Cannot render an unknown Tao view.')
-  }
+  UserInput.require(!!isView(value), 'Cannot render an unknown Tao view.')
   return value
 }
 

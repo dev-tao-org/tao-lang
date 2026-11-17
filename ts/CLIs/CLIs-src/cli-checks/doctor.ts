@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try, UserInput } from '@shared'
 import { Artifacts, FS, Platform, Repo } from '@shared/os'
 import Exec, { type CommandArgs } from '@shared/os/exec'
 
@@ -21,9 +21,7 @@ export async function doctorReport(fingerprintOnly = false): Promise<DoctorRepor
 
 /** assertDoctorReady raises the diagnosis after its report has been printed. */
 export function assertDoctorReady(status: Check['status']): void {
-  if (status === 'fail') {
-    Errors.ThrowUserInput('Doctor found required setup failures; resolve the FAIL entries above.')
-  }
+  UserInput.require(status !== 'fail', 'Doctor found required setup failures; resolve the FAIL entries above.')
 }
 
 type OptionalToolOutput = string | undefined

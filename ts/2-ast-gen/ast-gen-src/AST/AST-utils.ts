@@ -251,9 +251,14 @@ function isTestStep(node: AST.Statement): node is AST.TestStep {
 }
 
 function isViewDeclarationStatement(node: AST.Statement): node is AST.ViewDeclarationStatement {
-  return IsViewDeclaration(node) || IsViewRenderStatement(node) || IsLetDeclaration(node)
+  return IsViewRenderStatement(node) || AST.IsKind(node, [
+    'ViewDeclaration',
+    'LetDeclaration',
+    'StateDeclaration',
+    'ActionDeclaration',
+  ])
 }
 
 function isViewRenderBlockStatement(node: AST.Statement): node is AST.ViewRenderBlockStatement {
-  return IsViewRenderExpression(node) || IsLetDeclaration(node)
+  return AST.IsKind(node, ['ViewRenderExpression', 'LetDeclaration', 'PressBinding'])
 }

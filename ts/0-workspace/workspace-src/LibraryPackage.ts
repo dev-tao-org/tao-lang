@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
 import * as Runtime from '@runtime'
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Lists, Try, UserInput } from '@shared'
 import * as SourceValidation from '@source-validation'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
@@ -29,7 +29,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   const parser = Grammar.createParser()
   const document = AST.transform(parser.parse(await FS.readFile(entry, 'utf8')))
   if (!document) {
-    Errors.ThrowUserInput(`Invalid Tao library syntax: ${entry}.`)
+    UserInput.fail(`Invalid Tao library syntax: ${entry}.`)
   }
   SourceValidation.assertValidStatements(document, entry)
   const publication = Compile.requireLibraryPublication(document, request.target)
@@ -73,7 +73,7 @@ async function resolvePublishedPackageRoots(
   for (const name of Lists.unique(names)) {
     const candidates = await findNamedPackageDirectories(root, name)
     if (candidates.length !== 1) {
-      Errors.ThrowUserInput(`Published package ${name} must identify one local Tao package.`)
+      UserInput.fail(`Published package ${name} must identify one local Tao package.`)
     }
     packages.set(name, candidates[0]!)
   }
@@ -116,9 +116,7 @@ function collectLibraryDependencies(
     for (const { name, version } of collectModuleRequirements(module.document, module.path)) {
       const existing = peers[name] ?? dependencies.get(name)
       if (existing !== undefined && existing !== version) {
-        Errors.ThrowUserInput(
-          `Library dependencies request conflicting versions of ${name}: ${existing} and ${version}.`,
-        )
+        UserInput.fail(`Library dependencies request conflicting versions of ${name}: ${existing} and ${version}.`)
       }
       if (!peers[name]) {
         dependencies.set(name, version)
@@ -152,11 +150,12 @@ async function removeFailedLibraryOutput(output: string, buildError: unknown): P
 }
 
 function requireLibraryPackageRequest(request: LibraryPackageRequest): void {
-  if (!request.out || !request.name || !isNpmPackageName(request.name)) {
-    Errors.ThrowUserInput('Library compilation requires an output directory and a valid package name.')
-  }
+  UserInput.require(
+    !(!request.out || !request.name || !isNpmPackageName(request.name)),
+    'Library compilation requires an output directory and a valid package name.',
+  )
   const output = Path.resolve(request.out)
   if (FS.existsSync(output)) {
-    Errors.ThrowUserInput(`Library output already exists: ${output}. Choose a fresh output directory.`)
+    UserInput.fail(`Library output already exists: ${output}. Choose a fresh output directory.`)
   }
 }

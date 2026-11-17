@@ -1,9 +1,9 @@
 import * as AST from '@ast-gen'
 import * as Runtime from '@runtime'
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import type * as Typecheck from '@typecheck'
 
-import { Errors, Lists } from '@shared'
+import { Lists } from '@shared'
 import { Files, FS, Path } from '@shared/os'
 
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
@@ -239,7 +239,7 @@ async function validateGeneratedFiles(input: ManagedModules.ManagedModulesInput)
   const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
     const first = drift[0]!
-    Errors.ThrowUserInput(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)
+    UserInput.fail(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)
   }
 }
 

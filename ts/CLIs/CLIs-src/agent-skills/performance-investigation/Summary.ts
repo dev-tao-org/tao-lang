@@ -1,4 +1,4 @@
-import { Errors, Objects, Regxs } from '@shared'
+import { Objects, Regxs, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { JobFileName, requireSampleName } from './JobFiles'
 import { parsePreviewReport, type PreviewReport, requireReport } from './ReportContract'
@@ -33,9 +33,10 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
   const { job, reports } = await readCompletedJob(directory)
   const conditions = describeMeasurementConditions(reports[0])
   const sameConditions = reports.every(report => Objects.equal(describeMeasurementConditions(report), conditions))
-  if (!sameConditions) {
-    Errors.ThrowUserInput('Job conditions changed between sessions; split the comparison before interpreting timings.')
-  }
+  UserInput.require(
+    !!sameConditions,
+    'Job conditions changed between sessions; split the comparison before interpreting timings.',
+  )
   const groups = collectGroups(reports)
   const summaries = [...groups].map(([name, values]) => describeGroup(name, values))
   return {
@@ -54,13 +55,15 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
 export async function readCompletedJob(directory: string): Promise<{ job: MeasurementJob; reports: PreviewReport[] }> {
   const jobPath = Path.join(directory, JobFileName)
   const job = parseMeasurementJob(await FS.readFile(jobPath, 'utf8'), jobPath)
-  if (!isCompleteJob(job)) {
-    Errors.ThrowUserInput('Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.')
-  }
+  UserInput.require(
+    !!isCompleteJob(job),
+    'Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.',
+  )
   const reports = await Promise.all(job.samples.map(name => readReport(directory, name, job)))
-  if (new Set(reports.map(report => report.sessionId)).size !== reports.length) {
-    Errors.ThrowUserInput('Duplicate session identities cannot count as independent measurements.')
-  }
+  UserInput.require(
+    new Set(reports.map(report => report.sessionId)).size === reports.length,
+    'Duplicate session identities cannot count as independent measurements.',
+  )
   return { job, reports }
 }
 

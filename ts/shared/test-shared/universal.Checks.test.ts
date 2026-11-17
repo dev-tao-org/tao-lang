@@ -49,6 +49,35 @@ Tests.test('malformed boolean-check arguments fail internally without touching o
   Tests.expect(propertyReads).toBe(0)
 })
 
+Tests.test('unconditional input failures retain details and cause through the Tao error boundary', () => {
+  const details = { field: 'Name' }
+  const cause = new Error('Rejected by provider')
+  Tests.throws(() => UserInput.fail('Provide a valid name.', details, { cause }), thrown => {
+    Tests.expect(Errors.isTaoError(thrown)).toBe(true)
+    Tests.expect(thrown).toMatchObject({ name: 'UserInputError', message: 'Provide a valid name.' })
+    const error = thrown as Errors.TaoError
+    Tests.expect(error.details).toBe(details)
+    Tests.expect(error.cause).toBe(cause)
+    return true
+  })
+})
+
+Tests.test('unconditional input failures reject nontext messages without inspecting them', () => {
+  let reads = 0
+  const message = new Proxy({}, {
+    get() {
+      reads++
+      return undefined
+    },
+  })
+  const failUnchecked = UserInput.fail as (message: unknown) => never
+  Tests.throws(
+    () => failUnchecked(message),
+    error => expectCheckError(error, 'UnexpectedBehaviorError', 'An input failure requires a string message.'),
+  )
+  Tests.expect(reads).toBe(0)
+})
+
 type CheckArguments = Parameters<UncheckedCheck>
 type CheckErrorName = 'UnexpectedBehaviorError' | 'UserInputError'
 

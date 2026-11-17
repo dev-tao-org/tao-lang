@@ -7,7 +7,7 @@ import type * as Expo from '@runtime/expo'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
 
-import { Errors, Lists, Sort, Time, Timings, type TimingSample } from '@shared'
+import { Errors, Lists, Sort, Time, Timings, type TimingSample, UserInput } from '@shared'
 import { Path } from '@shared/os'
 
 import { prepareBuildTypeScript } from '../BuildTypeScript'
@@ -258,9 +258,10 @@ class WorkspaceSession {
     const next = [...directories].sort(Sort.CompareStrings)
     const unchanged = next.length === this.snapshotDirectories.length
       && next.every((path, index) => path === this.snapshotDirectories[index])
-    if (this.application?.publishGenerated && !unchanged) {
-      Errors.ThrowUserInput('Sidecar snapshot changed. Restart the preview session to load its new files.')
-    }
+    UserInput.require(
+      !(this.application?.publishGenerated && !unchanged),
+      'Sidecar snapshot changed. Restart the preview session to load its new files.',
+    )
     this.snapshotDirectories = next
   }
 

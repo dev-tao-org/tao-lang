@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, NullCharacter, Try } from '@shared'
+import { NewlineCharacter, NullCharacter, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { captureGit } from './Git'
 
@@ -36,7 +36,7 @@ export async function assertNoContentTransforms(root: string, files: string[], c
   for (let offset = 0; offset + 2 < attributes.length; offset += 3) {
     const [path, attribute, value] = attributes.slice(offset, offset + 3)
     if (value !== 'unspecified' && value !== 'unset') {
-      Errors.ThrowUserInput(`Snapshot cannot preserve Git transform ${attribute}=${value} for ${path}.`)
+      UserInput.fail(`Snapshot cannot preserve Git transform ${attribute}=${value} for ${path}.`)
     }
   }
 }
@@ -49,7 +49,7 @@ export async function assertRegisteredGitlinks(root: string, tree: string, env: 
   }
   await Try(() => captureGit(root, ['submodule', 'status', '--', ...links.map(entry => entry.path)], { env }), {
     catch() {
-      Errors.ThrowUserInput('An undeclared embedded Git repository cannot be snapshotted; capture it separately.')
+      UserInput.fail('An undeclared embedded Git repository cannot be snapshotted; capture it separately.')
     },
   })
   const dirty = await captureGit(root, [
@@ -59,9 +59,7 @@ export async function assertRegisteredGitlinks(root: string, tree: string, env: 
     '--recursive',
     'git --no-optional-locks status --porcelain=v1 -uall',
   ], { env })
-  if (dirty) {
-    Errors.ThrowUserInput('A submodule has saved changes; snapshot it separately before measuring the parent.')
-  }
+  UserInput.require(!dirty, 'A submodule has saved changes; snapshot it separately before measuring the parent.')
 }
 
 /** assertMaterializedTree verifies raw bytes, symlinks and executable modes independently of Git status. */
@@ -76,7 +74,7 @@ export async function assertMaterializedTree(root: string, entries: TreeEntry[])
       : hashes.get(entry.path)!
     const matchingType = stat.isSymbolicLink() === symbolic && hasExpectedMode(entry, stat.mode)
     if (hash.trim() !== entry.hash || !matchingType) {
-      Errors.ThrowUserInput(`Saved source differs from the captured Git tree: ${entry.path}.`)
+      UserInput.fail(`Saved source differs from the captured Git tree: ${entry.path}.`)
     }
   }
 }
@@ -95,9 +93,7 @@ async function readRegularFileHashes(root: string, entries: TreeEntry[]): Promis
     const paths = batch.map(entry => entry.path)
     const output = await captureGit(root, ['hash-object', '--no-filters', '--', ...paths])
     const values = output.trim().split(NewlineCharacter)
-    if (values.length !== batch.length) {
-      Errors.ThrowUserInput('Git did not return one raw content hash per source file.')
-    }
+    UserInput.require(values.length === batch.length, 'Git did not return one raw content hash per source file.')
     batch.forEach((entry, index) => hashes.set(entry.path, values[index]))
   }
   return hashes
