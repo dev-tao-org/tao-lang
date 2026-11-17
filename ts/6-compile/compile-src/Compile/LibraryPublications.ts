@@ -33,7 +33,7 @@ export function publishedViewBinding(view: PublishedView): string {
 export function requireLibraryPublication(document: AST.Document, target?: string): AST.PublishDeclaration {
   const libraries = AST.GetTypeScriptLibraryDeclarations(document, target)
   if (libraries.length !== 1) {
-    UserInput.fail(target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.')
+    UserInput.Fail(target ? `Unknown or ambiguous Tao library: ${target}.` : 'Select one ts-library declaration.')
   }
   const publication = AST.FindLibraryPublication(libraries[0]!)
   return publication ?? Errors.ThrowShouldNeverHappen('A validated ts-library declaration has no publish block.')
@@ -63,7 +63,7 @@ function collectRootView(
 ): PublishedView {
   const binding = entry.bindings.find(binding => binding.name === name)
   if (binding && binding.name !== binding.target) {
-    UserInput.fail(`Publish ${binding.target} by its declaration name.`)
+    UserInput.Fail(`Publish ${binding.target} by its declaration name.`)
   }
   const source = binding?.source ?? entry.path
   const owner = program.modules.find(module => module.path === source)!
@@ -78,11 +78,11 @@ function collectPackageViews(
 ): PublishedView[] {
   const root = publication.packageRoots.get(name)
   if (root === undefined) {
-    UserInput.fail(`Published package ${name} is not a local Tao package.`)
+    UserInput.Fail(`Published package ${name} is not a local Tao package.`)
   }
   const views = program.modules.flatMap(module => packageViews(module, root, name, publication.ownSources))
   if (views.length === 0) {
-    UserInput.fail(`Published package ${name} has no package-visible declarations.`)
+    UserInput.Fail(`Published package ${name} has no package-visible declarations.`)
   }
   return views
 }
@@ -115,13 +115,13 @@ function requirePublishedView(
   ownSources: ReadonlySet<string>,
 ): PublishedView {
   if (!ownSources.has(owner.path)) {
-    UserInput.fail(`Cannot publish dependency definition ${name}.`)
+    UserInput.Fail(`Cannot publish dependency definition ${name}.`)
   }
   if (!declaration || declaration.visibility !== 'package') {
-    UserInput.fail(`Published definition ${name} must be an own-project package-visible declaration.`)
+    UserInput.Fail(`Published definition ${name} must be an own-project package-visible declaration.`)
   }
   if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
-    UserInput.fail(`TypeScript library publication ${name} supports only views with text parameters.`)
+    UserInput.Fail(`TypeScript library publication ${name} supports only views with text parameters.`)
   }
   return { subpath, name, source: owner.path, declaration }
 }
@@ -133,7 +133,7 @@ function assertUniquePublications(views: readonly PublishedView[]): void {
     const address = publishedViewKey(view)
     const declaration = Typecheck.createModuleMemberKey(view.source, view.name)
     if (addresses.has(address) || declarations.has(declaration)) {
-      UserInput.fail(`Duplicate published TypeScript export: ${address}.`)
+      UserInput.Fail(`Duplicate published TypeScript export: ${address}.`)
     }
     addresses.add(address)
     declarations.add(declaration)

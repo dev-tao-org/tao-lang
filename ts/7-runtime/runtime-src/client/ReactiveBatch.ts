@@ -7,7 +7,7 @@ export function runSynchronousReactiveBatch<T>(perform: () => T): T {
   Preact.batch(() => {
     result = perform()
   })
-  UserInput.require(!isThenable(result), 'Reactive batches must finish synchronously; do not return a Promise.')
+  UserInput.Require(!isThenable(result), 'Reactive batches must finish synchronously; do not return a Promise.')
   return result
 }
 

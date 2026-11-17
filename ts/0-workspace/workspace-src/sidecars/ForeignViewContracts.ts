@@ -28,15 +28,15 @@ export async function checkForeignViewContract(
   executor: ContractExecutor,
 ): Promise<string> {
   if (!Regxs.JavaScriptIdentifierRegx.test(contract.name)) {
-    UserInput.fail(`Invalid foreign view export name: ${contract.name}`)
+    UserInput.Fail(`Invalid foreign view export name: ${contract.name}`)
   }
   const exportRelativePath = Path.relative(contract.directory, contract.exportFile)
   if (!Path.isWithin(contract.directory, contract.exportFile)) {
-    UserInput.fail(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
+    UserInput.Fail(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
   }
   for (const name of Object.keys(contract.parameters)) {
     if (!Regxs.JavaScriptIdentifierRegx.test(name)) {
-      UserInput.fail(`Invalid foreign view parameter name: ${name}`)
+      UserInput.Fail(`Invalid foreign view parameter name: ${name}`)
     }
   }
   const file = Path.join(contract.directory, `.tao-${contract.name}.contract.ts`)
@@ -54,7 +54,7 @@ export async function checkForeignViewContract(
     Path.join(contract.directory, 'tsconfig.json'),
   ], contract.directory)
   if (result.status !== 0) {
-    UserInput.fail(
+    UserInput.Fail(
       `Foreign view ${contract.name} does not satisfy its declared props contract. ${result.stderr || result.stdout}`,
     )
   }
@@ -65,7 +65,7 @@ async function writeOwnedContract(path: string, contents: string): Promise<void>
   const marker = `${path}.tao-managed`
   const ownership = await Try.WithDefault(undefined, () => FS.readFile(marker, 'utf8'))
   if (await FS.exists(path) && ownership !== ForeignViewContractOwnership) {
-    UserInput.fail(`Foreign view contract path is already owned: ${path}`)
+    UserInput.Fail(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {
     await Files.writeReadOnly(marker, ForeignViewContractOwnership)

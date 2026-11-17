@@ -35,7 +35,7 @@ function throwSchemaFailure(sourceName: string, cause: unknown): never {
   const detail = isSchemaError(cause)
     ? cause.issues.map(issue => `${formatPath(issue.path)} ${issue.message}`).join('; ')
     : 'validation failed'
-  UserInput.fail(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
+  UserInput.Fail(`${sourceName} did not match its schema: ${detail}`, undefined, { cause })
 }
 
 function formatPath(path: readonly PropertyKey[]): string {

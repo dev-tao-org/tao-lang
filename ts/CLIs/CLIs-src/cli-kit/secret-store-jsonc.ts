@@ -15,7 +15,7 @@ function visit(node: TypeScript.Node): void {
       }
       const name = property.name.text
       if (name === '__proto__' || names.has(name)) {
-        UserInput.fail(`The secret store contains a duplicate or reserved key: ${name}`)
+        UserInput.Fail(`The secret store contains a duplicate or reserved key: ${name}`)
       }
       names.add(name)
     }

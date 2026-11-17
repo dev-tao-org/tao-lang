@@ -11,7 +11,7 @@ function verifyInvariantNarrowing(value: OptionalText): number {
 }
 
 function verifyUserInputNarrowing(value: OptionalText): number {
-  UserInput.require(value !== undefined, 'Provide a value.')
+  UserInput.Require(value !== undefined, 'Provide a value.')
   return value.length
 }
 
@@ -19,15 +19,15 @@ function verifyRejectedArguments(promise: Promise<boolean>): void {
   // @ts-expect-error A Promise is not an explicit boolean condition.
   Invariant(promise, 'A value must be available.')
   // @ts-expect-error A Promise is not an explicit boolean condition.
-  UserInput.require(promise, 'Provide a value.')
+  UserInput.Require(promise, 'Provide a value.')
   // @ts-expect-error A truthy number is not a boolean condition.
   Invariant(1, 'A value must be available.')
   // @ts-expect-error A truthy number is not a boolean condition.
-  UserInput.require(1, 'Provide a value.')
+  UserInput.Require(1, 'Provide a value.')
   // @ts-expect-error Messages must be strings even when the condition passes.
   Invariant(true, 1)
   // @ts-expect-error Messages must be strings even when the condition passes.
-  UserInput.require(true, 1)
+  UserInput.Require(true, 1)
 }
 
 void [verifyInvariantNarrowing, verifyUserInputNarrowing, verifyRejectedArguments]

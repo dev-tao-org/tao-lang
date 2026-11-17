@@ -33,7 +33,7 @@ type PreviewFrameCount = Performance.PreviewFrameCount
 /** parsePreviewReport validates the raw preview measurement before workload and provenance checks. */
 export function parsePreviewReport(source: string, path: string): PreviewReport {
   return Try(() => Json.Parse(source, { schema: previewReportSchema }), {
-    catch: () => UserInput.fail(`Invalid preview report at ${path}. Use the tooling that recorded this job.`),
+    catch: () => UserInput.Fail(`Invalid preview report at ${path}. Use the tooling that recorded this job.`),
   })
 }
 
@@ -73,25 +73,25 @@ const previewReportSchema = Schema.looseObject({
 
 /** requireReport verifies source, workload completeness and measurement conditions before accepting timings. */
 export function requireReport(report: PreviewReport, job: MeasurementJob): void {
-  UserInput.require(
+  UserInput.Require(
     !!hasExpectedIdentity(report, job),
     'Sample source, fixture, session or schema differs from its job.',
   )
-  UserInput.require(
+  UserInput.Require(
     !!hasExpectedWorkload(report, job),
     'Sample workload is incomplete or differs from the configured measurement.',
   )
-  UserInput.require(
+  UserInput.Require(
     !(!report.opening || report.opening.reopenMs?.length !== Performance.PreviewReopenCount),
     'Sample is missing the first preview open or successive warm opens.',
   )
-  UserInput.require(
+  UserInput.Require(
     !!report.results.every(result => result.work && Number.isInteger(result.work.modulesEmitted)),
     'Sample is missing module work observations.',
   )
   const durations = [report.startupMs, report.opening.firstMs, ...report.opening.reopenMs]
   durations.push(...report.results.map(result => result.parentClickToLastAppliedMs))
-  UserInput.require(
+  UserInput.Require(
     !durations.some(duration => !Number.isFinite(duration) || duration < 0),
     'Sample contains a missing or invalid measured duration.',
   )
@@ -129,7 +129,7 @@ function hasExpectedSettings(report: PreviewReport, settings: Performance.Previe
   if (!report.measurement || !Array.isArray(report.frameSizes)) {
     return false
   }
-  UserInput.require(
+  UserInput.Require(
     report.measurement.protocol === Performance.PreviewMeasurementProtocol,
     'Preview measurement protocol differs. Use tooling from the revision that recorded this job.',
   )

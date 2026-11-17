@@ -31,14 +31,14 @@ async function runSecrets(args: readonly string[], environment: SecretsEnvironme
     await decryptSecrets(environment)
   } else if (action === 'add') {
     const name = rest[0]
-    UserInput.require(name !== undefined, 'Name the secret to add, as in ./dev secrets add ANTHROPIC_API_KEY.')
+    UserInput.Require(name !== undefined, 'Name the secret to add, as in ./dev secrets add ANTHROPIC_API_KEY.')
     await addSecret(name, rest.slice(1).join(' ') || undefined, environment)
   } else if (action === 'list') {
     await listSecrets()
   } else if (action === 'setup') {
     await setupSecrets()
   } else {
-    UserInput.fail(`Unknown secrets action '${action}'. Use no action to decrypt, or add, list, or setup.`)
+    UserInput.Fail(`Unknown secrets action '${action}'. Use no action to decrypt, or add, list, or setup.`)
   }
 }
 
@@ -67,7 +67,7 @@ async function addSecret(
 ): Promise<void> {
   SecretStoreModule2.requireSecretName(name)
   const original = await readStore()
-  UserInput.require(
+  UserInput.Require(
     original.recipients.length !== 0,
     'The secret store lists no recipients. Run ./dev secrets setup first.',
   )
@@ -79,11 +79,11 @@ async function addSecret(
   }
   IO.print(`Enter the exact value for ${name} in the hidden prompt. It will not be echoed.`)
   const value = await environment.promptSecret(`Value for ${name}:`)
-  UserInput.require(value.trim() !== '', 'No value was entered, so nothing was stored.')
+  UserInput.Require(value.trim() !== '', 'No value was entered, so nothing was stored.')
   const armor = await environment.cipher.encrypt(value, [key.recipient])
   await withStoreMutation(async () => {
     const current = await readStore()
-    UserInput.require(
+    UserInput.Require(
       !hasConflictingSecretChange(original, current, name),
       'The recipients, store key, or selected secret changed while adding. Run the command again.',
     )
@@ -209,7 +209,7 @@ async function listSecrets(): Promise<void> {
 }
 
 async function setupSecrets(): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     Platform.systemInfo().os === 'Darwin',
     'Secure Enclave secrets setup requires macOS with age-plugin-se.',
   )

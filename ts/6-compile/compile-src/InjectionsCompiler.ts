@@ -40,11 +40,11 @@ function compileContextCapture(
   if (reference.value === 'children' || reference.value === 'press') {
     return RuntimeEmitter.InjectionCapture(node, reference.value, `${names.render}.${reference.value}`)
   }
-  return UserInput.fail(`Unsupported injection context @@${reference.value}.`)
+  return UserInput.Fail(`Unsupported injection context @@${reference.value}.`)
 }
 
 function assertCaptureName(name: string): void {
   if (name === 'TR' || name === 'Tao') {
-    UserInput.fail(`Injection capture name ${name} conflicts with generated JavaScript.`)
+    UserInput.Fail(`Injection capture name ${name} conflicts with generated JavaScript.`)
   }
 }

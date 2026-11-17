@@ -19,7 +19,7 @@ function serializeValue(value: unknown, ancestors: Set<object>): string {
     requireFiniteNumber(value)
     return Print(value)
   }
-  UserInput.require(typeof value === 'object', 'Canonical JSON requires JSON data without unsupported values.')
+  UserInput.Require(typeof value === 'object', 'Canonical JSON requires JSON data without unsupported values.')
   requireAcyclic(value, ancestors)
   ancestors.add(value)
   const result = Array.isArray(value) ? serializeArray(value, ancestors) : serializeRecord(value, ancestors)
@@ -28,17 +28,17 @@ function serializeValue(value: unknown, ancestors: Set<object>): string {
 }
 
 function requireFiniteNumber(value: number): void {
-  UserInput.require(!!Number.isFinite(value), 'Canonical JSON requires finite numbers.')
+  UserInput.Require(!!Number.isFinite(value), 'Canonical JSON requires finite numbers.')
 }
 
 function requireAcyclic(value: object, ancestors: Set<object>): void {
-  UserInput.require(!ancestors.has(value), 'Canonical JSON cannot serialize cycles.')
+  UserInput.Require(!ancestors.has(value), 'Canonical JSON cannot serialize cycles.')
 }
 
 function serializeArray(value: unknown[], ancestors: Set<object>): string {
   requirePrototype(value, Array.prototype)
   const keys = Reflect.ownKeys(value)
-  UserInput.require(keys.length === value.length + 1, 'Canonical JSON requires dense arrays without extra properties.')
+  UserInput.Require(keys.length === value.length + 1, 'Canonical JSON requires dense arrays without extra properties.')
   const values: string[] = []
   for (let index = 0; index < value.length; index++) {
     values.push(serializeValue(requireDataProperty(value, String(index)), ancestors))
@@ -58,7 +58,7 @@ function serializeRecord(value: object, ancestors: Set<object>): string {
 }
 
 function requirePrototype(value: object, expected: object): void {
-  UserInput.require(
+  UserInput.Require(
     Object.getPrototypeOf(value) === expected,
     'Canonical JSON requires plain records and arrays without custom prototypes.',
   )
@@ -67,13 +67,13 @@ function requirePrototype(value: object, expected: object): void {
 type PropertyKey = string | symbol
 
 function requireStringKey(key: PropertyKey): string {
-  UserInput.require(typeof key === 'string', 'Canonical JSON cannot serialize symbol keys.')
+  UserInput.Require(typeof key === 'string', 'Canonical JSON cannot serialize symbol keys.')
   return key
 }
 
 function requireDataProperty(value: object, name: string): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(value, name)
-  UserInput.require(
+  UserInput.Require(
     !(!descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')),
     'Canonical JSON requires enumerable data properties without holes or accessors.',
   )

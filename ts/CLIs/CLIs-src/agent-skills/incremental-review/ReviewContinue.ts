@@ -12,7 +12,7 @@ export async function continueReview(
   worktree?: string,
 ): Promise<ReviewSession> {
   const previousRoot = (await git(Path.resolve(from), ['rev-parse', '--show-toplevel'])).trim()
-  UserInput.require(previousRoot !== root, 'Continue requires a different implementation checkout.')
+  UserInput.Require(previousRoot !== root, 'Continue requires a different implementation checkout.')
   await requireSameRepository(root, previousRoot)
   return await ReviewSessionModule2.withReviewLock(previousRoot, async () => {
     const previous = await ReviewSessionModule2.loadSession(previousRoot)
@@ -39,7 +39,7 @@ export async function continueReview(
 
 async function requireSameRepository(root: string, previousRoot: string): Promise<void> {
   const args = ['rev-parse', '--path-format=absolute', '--git-common-dir']
-  UserInput.require(
+  UserInput.Require(
     (await git(root, args)).trim() === (await git(previousRoot, args)).trim(),
     'Continue requires implementation checkouts from the same Git repository.',
   )
@@ -49,11 +49,11 @@ async function requireEmptyHistory(session: ReviewSession): Promise<void> {
   const parent = Path.dirname(session.directory)
   for (const entry of await FS.readdir(parent)) {
     if (entry !== 'active') {
-      UserInput.fail(`Destination review history already exists: ${Path.join(parent, entry)}`)
+      UserInput.Fail(`Destination review history already exists: ${Path.join(parent, entry)}`)
     }
   }
   const active = (await FS.readdir(session.directory)).filter(entry => entry !== 'operation.lock')
-  UserInput.require(!active.length, 'Destination review state already exists; preserve it before continuing.')
+  UserInput.Require(!active.length, 'Destination review state already exists; preserve it before continuing.')
 }
 
 async function retainHistory(previous: ReviewSession, session: ReviewSession): Promise<void> {

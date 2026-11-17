@@ -40,7 +40,7 @@ const generate = Timings.measure('compiler.generate', function(
 
 function linkSingleFile(document: AST.Document): Typecheck.LinkedProgram {
   const hasImports = AST.HasImportStatements(document)
-  UserInput.require(!hasImports, 'Compile a Tao file with use statements through its linked program.')
+  UserInput.Require(!hasImports, 'Compile a Tao file with use statements through its linked program.')
   const path = '<memory>'
   SourceValidation.assertValidStatements(document, path)
   const source: Typecheck.SourceModule = { path, document, imports: [], siblings: [] }

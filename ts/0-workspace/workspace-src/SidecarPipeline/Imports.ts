@@ -20,7 +20,7 @@ export async function resolveRelativeImport(path: string, watch: (candidate: str
       return candidate
     }
   }
-  UserInput.fail(`Cannot resolve foreign view sidecar import: ${path}`)
+  UserInput.Fail(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
 /** isScriptSource identifies TypeScript and JavaScript modules whose imports need capture. */

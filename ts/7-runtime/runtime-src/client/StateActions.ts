@@ -23,7 +23,7 @@ export function useStateDeclaration(scope: Scope, name: string, initialize: () =
 /** SetStatement replaces the value of the nearest writable binding. */
 export function SetStatement(scope: Scope, name: string, value: unknown): void {
   if (!hasScopeBinding(scope, name) || !Reflect.set(scope, name, value)) {
-    UserInput.fail(`Cannot set "${name}": it is not writable state.`)
+    UserInput.Fail(`Cannot set "${name}": it is not writable state.`)
   }
 }
 
@@ -93,11 +93,11 @@ function bindActionArguments(parent: Scope, parameters: readonly string[], value
 }
 
 function requireAction(candidate: unknown): Action {
-  UserInput.require(typeof candidate === 'function', 'Expected a Tao action.')
+  UserInput.Require(typeof candidate === 'function', 'Expected a Tao action.')
   return candidate as Action
 }
 
 function requireText(value: unknown): string {
-  UserInput.require(typeof value === 'string', 'Expected a text value.')
+  UserInput.Require(typeof value === 'string', 'Expected a text value.')
   return value
 }

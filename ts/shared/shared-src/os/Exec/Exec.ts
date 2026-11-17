@@ -171,7 +171,7 @@ function resolveCommand<Options extends CommandOptions>(
   command: Command,
   [argsOrOptions, explicitOptions]: CommandParameters<Options>,
 ) {
-  UserInput.require(!(typeof command !== 'string' || !command.trim()), 'A command is required.')
+  UserInput.Require(!(typeof command !== 'string' || !command.trim()), 'A command is required.')
   const hasArgs = isCommandArgs(argsOrOptions)
   const args = hasArgs ? resolveCommandArgs(argsOrOptions) : []
   const options = hasArgs ? explicitOptions : argsOrOptions

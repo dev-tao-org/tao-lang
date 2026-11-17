@@ -46,16 +46,16 @@ and types without creating aggregate wrapper objects.
 
 Import `Invariant` and `UserInput` from `@shared`. Use `Invariant(condition, message)` for
 conditions guaranteed by Tao or an established upstream contract. Use
-`UserInput.require(condition, message)` when a caller can correct the input. Domain functions
+`UserInput.Require(condition, message)` when a caller can correct the input. Domain functions
 such as `requireRunPort` own the validity rules and write the diagnostic message.
 
 Both checks require a primitive boolean and a string, narrow the checked expression in
 TypeScript, and return `undefined` on success. They run synchronously in every build.
-`Invariant` throws `UnexpectedBehaviorError` on failure and `UserInput.require` throws
+`Invariant` throws `UnexpectedBehaviorError` on failure and `UserInput.Require` throws
 `UserInputError`. Malformed calls throw a fixed `UnexpectedBehaviorError` without inspecting
 or attaching the arguments.
 
-Use `UserInput.fail(message, details?, { cause }?)` for unconditional caller-correctable failures;
+Use `UserInput.Fail(message, details?, { cause }?)` for unconditional caller-correctable failures;
 it preserves diagnostic details and causes. Use `Errors.ThrowX` for other error categories and the existing structured error boundary
 for collected diagnostics. Use schema decoding to validate and type unknown data. Put a check
 before the operation it protects. Argument evaluation and earlier effects happen before it runs.

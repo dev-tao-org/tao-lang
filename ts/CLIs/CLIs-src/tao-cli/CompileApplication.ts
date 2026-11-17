@@ -27,7 +27,7 @@ export async function publishCompiledLibrary(
 ): Promise<string> {
   const project = await Workspace.discoverProject(target.entry)
   if (!project) {
-    return UserInput.fail(`No Tao project owns ${target.entry}.`)
+    return UserInput.Fail(`No Tao project owns ${target.entry}.`)
   }
   await prepareRuntime()
   return await Workspace.withDependencySession(

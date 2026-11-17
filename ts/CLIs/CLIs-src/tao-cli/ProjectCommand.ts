@@ -17,12 +17,12 @@ async function findOwningProjectRoots(paths: readonly string[]): Promise<string[
   for (const path of paths) {
     const project = await Workspace.discoverProject(path)
     if (!project) {
-      UserInput.fail(`No Tao project owns ${path}. Run tao init <path>.`)
+      UserInput.Fail(`No Tao project owns ${path}. Run tao init <path>.`)
     }
     validateProjectPath(path, project.root)
     roots.add(Path.resolve(project.root))
   }
-  UserInput.require(roots.size !== 0, 'A project-scoped command requires at least one path.')
+  UserInput.Require(roots.size !== 0, 'A project-scoped command requires at least one path.')
   return [...roots].sort(Sort.CompareStrings)
 }
 
@@ -33,7 +33,7 @@ function validateProjectPath(path: string, projectRoot: string): void {
   const root = FS.realpathSync(projectRoot)
   const physical = FS.realpathSync(path)
   if (!Path.isWithin(root, physical)) {
-    UserInput.fail(`Project command path escapes its Tao project: ${path}`)
+    UserInput.Fail(`Project command path escapes its Tao project: ${path}`)
   }
 }
 

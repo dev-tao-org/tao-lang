@@ -17,5 +17,5 @@ export const createSampleName = (index: number): string => `sample-${index + 1}.
 
 /** requireSampleName rejects paths outside the job's local sample representation. */
 export function requireSampleName(name: string): void {
-  UserInput.require(!!Regxs.PerformanceJobSampleNameRegx.test(name), 'Unexpected sample path in job manifest.')
+  UserInput.Require(!!Regxs.PerformanceJobSampleNameRegx.test(name), 'Unexpected sample path in job manifest.')
 }

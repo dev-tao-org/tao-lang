@@ -4,8 +4,8 @@ import { Json, NewlineCharacter, Sort, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 
-import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
+import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import { SidecarAssetDeclarations } from '../sidecars/SidecarAssets'
 import * as SnapshotIntegrity from './SnapshotIntegrity'
 
@@ -105,14 +105,14 @@ async function cachedSnapshotMatches(
 
 async function enforceSnapshotLimit(snapshotDirectory: string, maximum: number): Promise<void> {
   if (!Number.isInteger(maximum) || maximum < 1) {
-    UserInput.fail(`Foreign view snapshot limit must be a positive integer: ${maximum}`)
+    UserInput.Fail(`Foreign view snapshot limit must be a positive integer: ${maximum}`)
   }
   await requireSnapshotCapacity(snapshotDirectory, maximum)
 }
 
 async function requireSnapshotCapacity(snapshotDirectory: string, maximum: number): Promise<void> {
   if (await countCompletedSnapshots(snapshotDirectory) >= maximum) {
-    UserInput.fail(
+    UserInput.Fail(
       `This preview session reached its limit of ${maximum} foreign view snapshots. Restart preview to reclaim sidecar snapshots.`,
     )
   }
@@ -225,7 +225,7 @@ async function validateModuleViews(
   for (const view of group.views) {
     const name = AST.GetViewName(view.declaration)
     if (view.declaration.parameters.some(parameter => parameter.type.value !== 'text')) {
-      UserInput.fail(`Foreign view ${name} parameters must all use text.`)
+      UserInput.Fail(`Foreign view ${name} parameters must all use text.`)
     }
     await checkForeignViewContract({
       directory: destination,

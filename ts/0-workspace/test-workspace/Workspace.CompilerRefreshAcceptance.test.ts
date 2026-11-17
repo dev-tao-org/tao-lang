@@ -41,7 +41,7 @@ Tests.test('compiled Tao custom-hook components refresh through Metro with commi
   }, {
     async catch(error) {
       const output = await expo?.output()
-      UserInput.fail(
+      UserInput.Fail(
         `Compiler-to-Metro refresh acceptance failed. ${
           output ? `${output.stdout}${NewlineCharacter}${output.stderr}` : ''
         } ${String(error)}`,

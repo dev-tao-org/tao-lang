@@ -1,8 +1,6 @@
 import { IO } from '@cli-kit'
-import { Json, UserInput } from '@shared'
-import { Objects } from '@shared'
-import { FS, Path, Repo } from '@shared/os'
-import { Process } from '@shared/os'
+import { Json, Objects, UserInput } from '@shared'
+import { FS, Path, Process, Repo } from '@shared/os'
 import { applyLearningProposal, findScan, preflightProposal } from './LearningPatches'
 import { runCandidateScan } from './LearningQueries'
 import { safeSourcePath, withLearningState } from './LearningStore'
@@ -33,7 +31,7 @@ export async function runLearning(args: string[]): Promise<ReviewLearningCommand
   }
   const options = parseOptions(args.slice(1))
   const root = Path.resolve(single(options, 'repo') ?? Repo.getWorkspaceRoot())
-  UserInput.require(FS.realpathSync(root) === root, 'Use a real checkout path without symbolic links.')
+  UserInput.Require(FS.realpathSync(root) === root, 'Use a real checkout path without symbolic links.')
   return await withLearningState(root, state => executeCommand(command, options, state))
 }
 
@@ -55,7 +53,7 @@ async function executeCommand(
   if (command === 'capture') {
     const correction = validateCorrection(state.root, await readLearningInput(required(options, 'input')))
     assertNewId(state.corrections, correction.id)
-    UserInput.require(
+    UserInput.Require(
       !(correction.supersedes && !state.corrections.some(record => record.id === correction.supersedes)),
       'supersedes must identify an existing correction.',
     )
@@ -66,7 +64,7 @@ async function executeCommand(
     const id = required(options, 'rule')
     const correction = state.corrections.find(record => record.id === id)
     if (!correction) {
-      UserInput.fail(`Unknown correction: ${id}`)
+      UserInput.Fail(`Unknown correction: ${id}`)
     }
     const files = requirePaths(state.root, options.get('files') ?? [], 'files')
     const scan = await runCandidateScan(state.root, correction, files)
@@ -112,19 +110,19 @@ async function executeQueueCommand(
     const id = required(options, 'proposal')
     const proposal = state.proposals.find(record => record.id === id)
     if (!proposal) {
-      UserInput.fail(`Unknown proposal: ${id}`)
+      UserInput.Fail(`Unknown proposal: ${id}`)
     }
     const protectedFiles = (options.get('protected-files') ?? []).map(file => safeSourcePath(state.root, file, true))
     await applyLearningProposal(state, proposal, protectedFiles)
     return { proposal: id, state: proposal.state, pendingHumanReview: true }
   }
-  UserInput.fail('Expected capture, scan, propose, apply, recover, status or checkpoint.')
+  UserInput.Fail('Expected capture, scan, propose, apply, recover, status or checkpoint.')
 }
 
 function assertNewId(records: { id: string }[], id: string): void {
   requireId(id)
   if (records.some(record => record.id === id)) {
-    UserInput.fail(`Identity already exists; history cannot be overwritten: ${id}`)
+    UserInput.Fail(`Identity already exists; history cannot be overwritten: ${id}`)
   }
 }
 
@@ -136,13 +134,13 @@ function parseOptions(args: string[]): Options {
     if (arg.startsWith('--')) {
       current = arg.slice(2)
       if (!known.includes(current) || options.has(current)) {
-        UserInput.fail(`Unknown or repeated option: ${arg}`)
+        UserInput.Fail(`Unknown or repeated option: ${arg}`)
       }
       options.set(current, [])
     } else if (current) {
       options.get(current)!.push(arg)
     } else {
-      UserInput.fail(`Expected a named option: ${arg}`)
+      UserInput.Fail(`Expected a named option: ${arg}`)
     }
   }
   return options
@@ -151,11 +149,11 @@ function parseOptions(args: string[]): Options {
 function single(options: Options, name: string): string | undefined {
   const values = options.get(name)
   if (values && values.length !== 1) {
-    UserInput.fail(`--${name} requires one value.`)
+    UserInput.Fail(`--${name} requires one value.`)
   }
   return values?.[0]
 }
 
 function required(options: Options, name: string): string {
-  return single(options, name) ?? UserInput.fail(`--${name} is required.`)
+  return single(options, name) ?? UserInput.Fail(`--${name} is required.`)
 }

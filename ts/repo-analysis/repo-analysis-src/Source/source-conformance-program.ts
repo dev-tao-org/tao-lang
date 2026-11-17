@@ -36,12 +36,12 @@ export function getEditableConformanceSources(
 function compilerOptions(configPath: string): TypeScript.CompilerOptions {
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
   if (config.error) {
-    UserInput.fail(TypeScript.flattenDiagnosticMessageText(config.error.messageText, NewlineCharacter))
+    UserInput.Fail(TypeScript.flattenDiagnosticMessageText(config.error.messageText, NewlineCharacter))
   }
   const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, Path.dirname(configPath))
   const errors = parsed.errors.filter(error => error.code !== 18003)
   if (errors.length > 0) {
-    UserInput.fail(
+    UserInput.Fail(
       errors.map(error => TypeScript.flattenDiagnosticMessageText(error.messageText, NewlineCharacter)).join(
         NewlineCharacter,
       ),

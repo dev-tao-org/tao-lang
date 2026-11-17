@@ -19,7 +19,7 @@ export async function publishBuild(
   if (!isCurrent()) {
     return
   }
-  UserInput.require(files['App.tsx'] !== undefined, 'Generated app build must contain App.tsx.')
+  UserInput.Require(files['App.tsx'] !== undefined, 'Generated app build must contain App.tsx.')
   onProgress?.('Preparing runtime resources and cached toolchain…')
   const runtime = await timings.run(prepareApplication, prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
@@ -91,9 +91,9 @@ const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', 
   if (outcome.status === 'error' || outcome.status === 'poisoned') {
     const message = outcome.message
     if (message === undefined) {
-      UserInput.fail(`Preview publication failed: ${outcome.status}`)
+      UserInput.Fail(`Preview publication failed: ${outcome.status}`)
     }
-    UserInput.fail(message)
+    UserInput.Fail(message)
   }
   return outcome
 })
@@ -161,7 +161,7 @@ function resolveGeneratedPath(directory: string, file: string): string {
   const root = Path.resolve(directory)
   const path = Path.resolve(root, file)
   if (path !== root && !Path.isWithin(root, path)) {
-    UserInput.fail(`Generated file path escapes the build directory: ${file}`)
+    UserInput.Fail(`Generated file path escapes the build directory: ${file}`)
   }
   return path
 }
@@ -190,7 +190,7 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
     }
   }
   const mirrored = await FS.readFile(Path.join(snapshot, 'App.tsx'), 'utf8')
-  UserInput.require(mirrored === files['App.tsx'], 'Generated app build changed while publishing.')
+  UserInput.Require(mirrored === files['App.tsx'], 'Generated app build changed while publishing.')
 })
 
 function hasGeneratedSourceFile(files: Expo.GeneratedRevision['files'], file: string): boolean {

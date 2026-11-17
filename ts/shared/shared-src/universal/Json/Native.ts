@@ -68,7 +68,7 @@ function parseSource(source: string, sourceName?: string): unknown {
     catch(cause) {
       const name = sourceName === undefined ? 'JSON input' : `JSON input from ${sourceName}`
       const message = Errors.isNativeError(cause) ? cause.message : 'syntax error'
-      UserInput.fail(`${name} is invalid: ${message}`, undefined, { cause })
+      UserInput.Fail(`${name} is invalid: ${message}`, undefined, { cause })
     },
   })
 }
@@ -77,7 +77,7 @@ function requireAcyclic(value: unknown, ancestors: Set<object>): void {
   if (value === null || typeof value !== 'object') {
     return
   }
-  UserInput.require(!ancestors.has(value), 'JSON serialization cannot encode cycles.')
+  UserInput.Require(!ancestors.has(value), 'JSON serialization cannot encode cycles.')
   ancestors.add(value)
   for (const key of Object.keys(value)) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key)

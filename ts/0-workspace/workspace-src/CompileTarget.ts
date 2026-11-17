@@ -29,7 +29,7 @@ export async function resolveCompileTarget(directory: string, argument?: string)
   ]
   const matches = declarations.filter(node => selected === undefined || node.name.value === selected)
   if (matches.length !== 1) {
-    UserInput.fail(`Select one Tao app or ts-library in ${entry}; found ${matches.length} matching targets.`)
+    UserInput.Fail(`Select one Tao app or ts-library in ${entry}; found ${matches.length} matching targets.`)
   }
   const declaration = matches[0]!
   return {
@@ -52,7 +52,7 @@ export async function resolveLibraryCompileTarget(
   const entry = explicitEntry ?? Path.resolve(directory, configuration!.entry)
   const document = await readCompileDocument(entry)
   if (AST.GetTypeScriptLibraryDeclarations(document, library).length !== 1) {
-    UserInput.fail(`Select one ts-library named ${library} in ${entry}.`)
+    UserInput.Fail(`Select one ts-library named ${library} in ${entry}.`)
   }
   const name = configuration?.name ?? library.toLowerCase()
   return { kind: 'library', entry, target: library, name }
@@ -60,10 +60,10 @@ export async function resolveLibraryCompileTarget(
 
 async function readCompileDocument(entry: string): Promise<AST.Document> {
   const document = AST.transform(Grammar.createParser().parse(await FS.readFile(entry, 'utf8')))
-  return document ?? UserInput.fail(`Invalid Tao source: ${entry}.`)
+  return document ?? UserInput.Fail(`Invalid Tao source: ${entry}.`)
 }
 
 async function requireCompileConfiguration(directory: string) {
   const manifest = await readTypeScriptProjectPackage(directory)
-  return manifest.compile ?? UserInput.fail('Configure tao.compile in the authored package.json.')
+  return manifest.compile ?? UserInput.Fail('Configure tao.compile in the authored package.json.')
 }

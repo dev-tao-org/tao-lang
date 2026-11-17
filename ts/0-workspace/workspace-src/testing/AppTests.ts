@@ -20,7 +20,7 @@ export async function runAppTests(
   const source = await FS.readFile(path, 'utf8')
   const document = AST.transform(Grammar.createParser().parse(source))
   if (document === undefined) {
-    UserInput.fail(`Invalid Tao test source: ${path}`)
+    UserInput.Fail(`Invalid Tao test source: ${path}`)
   }
   const createDriver = () => createAppTestDriver(path, source, openBrowser, Compile.compile, onProgress, signal)
   return await runTests(document, { path, source, onProgress, signal, createDriver })

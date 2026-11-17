@@ -17,7 +17,7 @@ export async function readRequestText(request: IncomingRequest, limit: number, l
     size += bytes.length
     if (size > limit) {
       request.destroy()
-      UserInput.fail(limitMessage)
+      UserInput.Fail(limitMessage)
     }
     chunks.push(bytes)
   }

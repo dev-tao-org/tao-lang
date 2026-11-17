@@ -9,7 +9,7 @@ export default registerCommand({
   description: 'Stop a repository service, preserving its data.',
   arguments: [{ name: 'service', required: true }],
   async action(service: string) {
-    UserInput.require(service === 'local-instantdb', 'Supported service: local-instantdb.')
+    UserInput.Require(service === 'local-instantdb', 'Supported service: local-instantdb.')
     await CLIKit.runNonInteractiveCommand(
       'docker',
       'compose --project-name tao-local-instantdb --file docker-compose.yml down',

@@ -48,7 +48,7 @@ async function formatRequestedTarget(mode: FormatMode, root: string, path: strin
   Repo.assertNewWorkspacePath(absolute, root)
   if (!FS.existsSync(absolute) || !FS.statSync(absolute).isFile()) {
     if (!Regxs.CliGlobTokenRegx.test(path)) {
-      UserInput.fail(`Formatting requires a file or glob: ${path}`)
+      UserInput.Fail(`Formatting requires a file or glob: ${path}`)
     }
     await formatDprintSelection(mode, root, path)
     return
@@ -105,12 +105,12 @@ function assertDprintSelection(root: string, output: string, exactPath?: string)
   const paths = output.endsWith(NewlineCharacter) ? output.slice(0, -1) : output
   for (const path of paths.split(NewlineCharacter)) {
     if (!Path.isAbsolute(path) || !Path.isWithin(canonicalRoot, path)) {
-      UserInput.fail(`dprint reported a path outside ${root}: ${path}`)
+      UserInput.Fail(`dprint reported a path outside ${root}: ${path}`)
     }
     const selectedPath = Path.resolve(root, Path.relative(canonicalRoot, path))
     Repo.assertNewWorkspacePath(selectedPath, root)
     if (canonicalExactPath !== undefined && FS.realpathSync(selectedPath) !== canonicalExactPath) {
-      UserInput.fail(`dprint selected another file for ${exactPath}: ${selectedPath}`)
+      UserInput.Fail(`dprint selected another file for ${exactPath}: ${selectedPath}`)
     }
   }
 }

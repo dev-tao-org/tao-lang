@@ -50,7 +50,7 @@ function applySourceFixes(
 ): Fix.FormatInput {
   const ast = timings.run(AST.transform, input.tree)
   if (!ast) {
-    UserInput.fail(`Fixing requires a complete Tao document: ${path}`)
+    UserInput.Fail(`Fixing requires a complete Tao document: ${path}`)
   }
   const result = timings.run(Fix.fix, { source: input.source, tree: input.tree, ast })
   if (result.text === input.source) {

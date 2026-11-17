@@ -3,8 +3,8 @@ import { NullCharacter, Time } from '../../universal/universal'
 import * as UserInput from '../../universal/UserInput'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import { createFsFromVolume, type IFs, Volume } from '../bridges/Bridge_memfs'
-import { Buffer as NodeBuffer } from '../bridges/Bridge_node/Bridge_node'
 import * as Node from '../bridges/Bridge_node/Bridge_node'
+import { Buffer as NodeBuffer } from '../bridges/Bridge_node/Bridge_node'
 import { installGeneratedReaders } from './GeneratedFileReaders'
 
 /** GeneratedSourceFiles maps generated paths to the source text stored in each file. */
@@ -102,7 +102,7 @@ function createSnapshot(root: string, runtime: string, files: GeneratedSourceFil
   const stamp = new Date(Time.now())
   for (const [path, text] of Object.entries(files)) {
     if (isInvalidPath(path)) {
-      UserInput.fail(`Unsupported generated source path: ${path}`)
+      UserInput.Fail(`Unsupported generated source path: ${path}`)
     }
     const target = Node.join(root, path)
     candidate.mkdirSync(Node.dirname(target), { recursive: true })

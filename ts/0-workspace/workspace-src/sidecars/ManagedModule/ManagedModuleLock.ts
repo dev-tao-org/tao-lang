@@ -10,7 +10,7 @@ export async function withManagedModuleLock<Value>(
   const canonicalDirectory = FS.realpathSync(moduleDirectory)
   const ownerRoot = findNearestProjectRoot(canonicalDirectory)
   if (!ownerRoot) {
-    UserInput.fail(
+    UserInput.Fail(
       `Cannot lock managed module metadata outside a Tao project: ${canonicalDirectory}. Place the module in a project with a .tao directory.`,
     )
   }
@@ -19,7 +19,7 @@ export async function withManagedModuleLock<Value>(
   const lockPath = Path.join(lockDirectory, `module-${Platform.hashText(canonicalDirectory)}.lock`)
   const lock = await FileLock.tryAcquire(lockPath)
   if (!lock) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed module metadata is being updated or cleaned: ${moduleDirectory}. Retry after the other operation finishes.`,
     )
   }

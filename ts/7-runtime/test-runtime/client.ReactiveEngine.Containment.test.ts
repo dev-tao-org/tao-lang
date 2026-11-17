@@ -55,7 +55,7 @@ Tests.test('a rejected promise return stops its observer and releases the writin
   const receive = (value: number) => {
     calls += 1
     if (value === 1) {
-      return Promise.resolve().then(() => UserInput.fail('late failure'))
+      return Promise.resolve().then(() => UserInput.Fail('late failure'))
     }
     return undefined
   }

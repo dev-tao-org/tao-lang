@@ -258,7 +258,7 @@ class WorkspaceSession {
     const next = [...directories].sort(Sort.CompareStrings)
     const unchanged = next.length === this.snapshotDirectories.length
       && next.every((path, index) => path === this.snapshotDirectories[index])
-    UserInput.require(
+    UserInput.Require(
       !(this.application?.publishGenerated && !unchanged),
       'Sidecar snapshot changed. Restart the preview session to load its new files.',
     )

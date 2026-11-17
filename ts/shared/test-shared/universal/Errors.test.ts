@@ -1,5 +1,5 @@
-import { Errors, UserInput } from '@shared'
 import * as Shared from '@shared'
+import { Errors, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 
 Tests.describe('Errors diagnostics', () => {
@@ -42,7 +42,7 @@ Tests.describe('Errors throwing helpers', () => {
     const cause = new Error('host')
     for (
       const [action, category, message] of [
-        [() => UserInput.fail('input', details), 'UserInputError', 'input'],
+        [() => UserInput.Fail('input', details), 'UserInputError', 'input'],
         [() => Errors.ThrowShouldNeverHappen('bug', { cause, details }), 'UnexpectedBehaviorError', 'bug'],
         [() => Errors.ThrowHostEnvironment('host', { cause, details }), 'HostEnvironmentError', 'host'],
       ] as const

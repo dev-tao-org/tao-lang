@@ -49,7 +49,7 @@ export async function publishAndMerge(
   requirePullRequestHead(pr, head)
   await io.command('gh', ['pr', 'checks', pr.url, '--required', '--watch', '--fail-fast'])
   requirePullRequestHead((await listPullRequests(io, branch, 'open'))[0], head)
-  UserInput.require(
+  UserInput.Require(
     await git(io, ['rev-parse', 'HEAD']) === head,
     'The local branch changed while checks were running; rerun land.',
   )
@@ -79,7 +79,7 @@ function matchesExpectedBranches(pr: PullRequest, branch: string): boolean {
 async function proveLanded(io: LandingIO, branch: string): Promise<LandingProof> {
   const proof = await inspectLanding(io, branch)
   if (!proof) {
-    UserInput.fail(`No authoritative merged pull request was found for ${branch}.`)
+    UserInput.Fail(`No authoritative merged pull request was found for ${branch}.`)
   }
   return proof
 }
@@ -99,7 +99,7 @@ async function reviewedPullRequest(io: LandingIO, branch: string, message: strin
   const title = message.split(NewlineCharacter)[0]
   const bodyPath = `.artifacts/merge/${branch}.body`
   await io.write(bodyPath, message.split(NewlineCharacter).slice(2).join(NewlineCharacter))
-  UserInput.require(!(existing.length > 1), 'More than one open pull request matches this branch.')
+  UserInput.Require(!(existing.length > 1), 'More than one open pull request matches this branch.')
   await io.command('gh', [
     'pr',
     existing.length ? 'edit' : 'create',

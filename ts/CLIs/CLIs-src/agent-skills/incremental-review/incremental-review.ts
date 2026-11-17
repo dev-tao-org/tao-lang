@@ -1,8 +1,6 @@
 import { IO } from '@cli-kit'
-import { Json, UserInput } from '@shared'
-import { Lists } from '@shared'
-import { FS, Path, Repo } from '@shared/os'
-import { Process } from '@shared/os'
+import { Json, Lists, UserInput } from '@shared'
+import { FS, Path, Process, Repo } from '@shared/os'
 import { acceptSelection, recoverAcceptance } from './ReviewAccept'
 import { continueReview } from './ReviewContinue'
 import { expandFiles, git, readJson, writeJson } from './ReviewGit'
@@ -98,7 +96,7 @@ async function runSessionCommand(
   if (command === 'note' || command === 'recheck') {
     return await runNoteCommand(command, options, session)
   }
-  UserInput.fail('Expected start, continue, rename, status, plan, accept, reopen, recheck, note or recover.')
+  UserInput.Fail('Expected start, continue, rename, status, plan, accept, reopen, recheck, note or recover.')
 }
 
 async function runNoteCommand(
@@ -111,7 +109,7 @@ async function runNoteCommand(
   } else {
     const files = await expandFiles(session.root, options.get('files') ?? [], session.reviewedBranch)
     const state = single(options, 'state') ?? 'pending'
-    UserInput.require(!!['pending', 'clear'].includes(state), '--state must be pending or clear.')
+    UserInput.Require(!!['pending', 'clear'].includes(state), '--state must be pending or clear.')
     session.recheck = state === 'clear'
       ? session.recheck.filter(path => !files.includes(path))
       : Lists.unique(session.recheck, files)
@@ -129,13 +127,13 @@ async function runSelectionCommand(
   const reviewed = single(options, 'reviewed-patch')
   const source = single(options, 'source-patch')
   const hasFileOrPatchOptions = options.has('files') || reviewed || source
-  UserInput.require(!(selectionFile && hasFileOrPatchOptions), 'Use either --selection or --files, not both.')
-  UserInput.require(!(source && !reviewed), '--source-patch requires --reviewed-patch against the reviewed baseline.')
+  UserInput.Require(!(selectionFile && hasFileOrPatchOptions), 'Use either --selection or --files, not both.')
+  UserInput.Require(!(source && !reviewed), '--source-patch requires --reviewed-patch against the reviewed baseline.')
   const selection = await resolveSelection(selectionFile, session, options, source, reviewed)
   if (command === 'plan') {
     const out = Path.resolve(required(options, 'out'))
     if (await FS.exists(out)) {
-      UserInput.fail(`Proposal destination already exists: ${out}`)
+      UserInput.Fail(`Proposal destination already exists: ${out}`)
     }
     await writeJson(out, selection)
     return {
@@ -186,13 +184,13 @@ function parseOptions(args: string[]): Options {
     if (arg.startsWith('--') && known.includes(arg.slice(2))) {
       current = arg.slice(2)
       if (options.has(current)) {
-        UserInput.fail(`Option repeated: ${arg}`)
+        UserInput.Fail(`Option repeated: ${arg}`)
       }
       options.set(current, [])
     } else if (current) {
       options.get(current)!.push(arg)
     } else {
-      UserInput.fail(`Expected a named option, received ${arg}.`)
+      UserInput.Fail(`Expected a named option, received ${arg}.`)
     }
   }
   return options
@@ -201,11 +199,11 @@ function parseOptions(args: string[]): Options {
 function single(options: Options, name: string): string | undefined {
   const values = options.get(name)
   if (values && values.length !== 1) {
-    UserInput.fail(`--${name} requires exactly one value.`)
+    UserInput.Fail(`--${name} requires exactly one value.`)
   }
   return values?.[0]
 }
 
 function required(options: Options, name: string): string {
-  return single(options, name) ?? UserInput.fail(`--${name} is required.`)
+  return single(options, name) ?? UserInput.Fail(`--${name} is required.`)
 }

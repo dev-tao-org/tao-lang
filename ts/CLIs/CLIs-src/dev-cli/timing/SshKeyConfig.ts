@@ -14,7 +14,7 @@ export async function installSshConfig(host: string, identity: string, configPat
   await Try(async () => {
     await FS.writeFile(pending, updated, { flag: 'wx', mode: 0o600 })
     await Exec.capture('/usr/bin/ssh', ['-G', '-F', pending, '--', host])
-    UserInput.require(
+    UserInput.Require(
       await readConfig(path) === original,
       'SSH config changed during setup. Run ssh-key-setup again to preserve those edits.',
     )
@@ -39,7 +39,7 @@ function withSshKeyEntry(config: string, host: string, identity: string): string
     return appendEntry(config, entry)
   }
   const endPosition = config.indexOf(end + NewlineCharacter, start)
-  UserInput.require(
+  UserInput.Require(
     !(endPosition < 0),
     'The Tao SSH config entry is incomplete. Restore its end marker before rerunning setup.',
   )

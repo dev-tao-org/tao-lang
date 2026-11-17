@@ -27,7 +27,7 @@ export default registerCommand({
 async function findFormatFiles(path: string): Promise<string[]> {
   if (FS.existsSync(path)) {
     const physical = FS.realpathSync(path)
-    UserInput.require(
+    UserInput.Require(
       !isExcludedFormatPath(path) && !isExcludedFormatPath(physical),
       `Cannot format generated or dependency source: ${path}`,
     )
@@ -40,7 +40,7 @@ async function findFormatFiles(path: string): Promise<string[]> {
       return [path]
     }
   }
-  return UserInput.fail(`Expected a .tao file or directory: ${path}`)
+  return UserInput.Fail(`Expected a .tao file or directory: ${path}`)
 }
 
 function isExcludedFormatPath(path: string): boolean {

@@ -57,7 +57,7 @@ Tests.test('orchestration injects its collector and records nested leaf spans', 
 Tests.test(
   'synchronous failures retain identity and complete failed spans',
   Timings.createTopLevelTimer(timings => {
-    const failure = Try(() => UserInput.fail('Invalid source'), { catch: error => error })
+    const failure = Try(() => UserInput.Fail('Invalid source'), { catch: error => error })
     Tests.expect(Try(() => timings.run(fail, failure), { catch: error => error })).toBe(failure)
     Tests.expect(timings.samples[0]?.status).toBe('failed')
   }),
@@ -68,7 +68,7 @@ Tests.test('async spans finish after settlement and retain failure identity', as
     const pending = timings.run(publish)
     Tests.expect(timings.samples).toEqual([])
     Tests.expect(await pending).toBe('saved')
-    const failure = Try(() => UserInput.fail('Publish failed'), { catch: error => error })
+    const failure = Try(() => UserInput.Fail('Publish failed'), { catch: error => error })
     Tests.expect(await Try(() => timings.run(failPublish, failure), { catch: error => error })).toBe(failure)
     Tests.expect(timings.samples.map(sample => sample.status)).toEqual(['succeeded', 'failed'])
   })()

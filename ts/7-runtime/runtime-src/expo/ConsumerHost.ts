@@ -22,7 +22,7 @@ export type ConsumerLibrary = { name: string; directory: string }
 export function resolveConsumerEntry(packageDirectory: string, specification: string): string {
   const entry = Path.resolve(packageDirectory, specification)
   const isInside = Path.isWithin(packageDirectory, entry)
-  UserInput.require(
+  UserInput.Require(
     isInside && FS.existsSync(entry) && FS.statSync(entry).isFile(),
     `tao.run.entry must name an existing component inside ${packageDirectory}.`,
   )
@@ -33,7 +33,7 @@ export function resolveConsumerEntry(packageDirectory: string, specification: st
 export async function createConsumerHost(options: ConsumerHostOptions): Promise<string> {
   const modules = Path.join(options.packageDirectory, 'node_modules')
   if (!FS.existsSync(Path.join(modules, 'expo'))) {
-    return UserInput.fail(`Install the authored package dependencies before running: ${options.packageDirectory}.`)
+    return UserInput.Fail(`Install the authored package dependencies before running: ${options.packageDirectory}.`)
   }
   const entry = resolveConsumerEntry(options.packageDirectory, options.entry)
   const bootstrap = createConsumerBootstrap(Path.relative(options.directory, entry))

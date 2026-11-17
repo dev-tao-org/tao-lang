@@ -239,7 +239,7 @@ async function validateGeneratedFiles(input: ManagedModules.ManagedModulesInput)
   const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
     const first = drift[0]!
-    UserInput.fail(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)
+    UserInput.Fail(`Generated dependency files changed: ${first.path}. Repair with: ${first.repair}.`)
   }
 }
 

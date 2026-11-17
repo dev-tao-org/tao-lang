@@ -100,13 +100,13 @@ export class PreviewEditorWorkspace {
 
   private resolveFile(path: string): string {
     if (!this.files.includes(path)) {
-      UserInput.fail(`Unknown performance source file: ${path}`)
+      UserInput.Fail(`Unknown performance source file: ${path}`)
     }
     return Path.join(this.directory, path)
   }
 
   private enqueue<Result>(run: () => Promise<Result>): Promise<Result> {
-    UserInput.require(!this.closed, 'The performance editor is closed.')
+    UserInput.Require(!this.closed, 'The performance editor is closed.')
     const pending = this.tail.then(run)
     this.tail = pending.then(() => undefined, () => undefined)
     return pending

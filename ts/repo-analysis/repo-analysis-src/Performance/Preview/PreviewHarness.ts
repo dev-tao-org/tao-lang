@@ -232,7 +232,7 @@ async function writeEditResponse(
   edits: EditState,
 ): Promise<Http.HttpResponse> {
   const receivedAtMs = Time.timestampMs()
-  const path = options.workspace.files.entryPath ?? UserInput.fail('Open an app before editing its source.')
+  const path = options.workspace.files.entryPath ?? UserInput.Fail('Open an app before editing its source.')
   const currentSource = await FS.readFile(path, 'utf8')
   const source = applyScenario(options.scenarios, scenarioName, currentSource, options.canonicalSource)
   if (edits.closed) {

@@ -6,42 +6,40 @@ import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
 
 export {
-  appendFileSync,
-  constants,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readlinkSync,
-  realpathSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from '../bridges/Bridge_node/Bridge_node'
-export { nativeFileSystem } from '../bridges/Bridge_node/Bridge_node'
-export {
   access,
+  appendFileSync,
   chmod,
+  constants,
   copyFile,
   cp,
+  existsSync,
   lstat,
+  lstatSync,
+  mkdirSync,
   mkdtemp,
+  mkdtempSync,
+  nativeFileSystem,
+  nativeFileSystemPromises,
   open,
   opendir,
   readdir,
   readFile,
+  readFileSync,
   readlink,
+  readlinkSync,
   realpath,
+  realpathSync,
   rename,
+  renameSync,
   rm,
   rmdir,
+  rmSync,
   stat,
+  statSync,
   symlink,
   writeFile,
+  writeFileSync,
 } from '../bridges/Bridge_node/Bridge_node'
-export { nativeFileSystemPromises } from '../bridges/Bridge_node/Bridge_node'
 
 type JsonReadFileOptions = { encoding?: BufferEncoding; flag?: string; signal?: AbortSignal }
 type JsonReadOptions<SchemaType extends z.ZodType> = Json.ParseOptions<SchemaType> & JsonReadFileOptions
@@ -151,7 +149,7 @@ export async function writeJson(
 ): Promise<void> {
   const contents = Json.Print(value, options) as OptionalJsonContents
   if (contents === undefined) {
-    UserInput.fail(`JSON value cannot be written to a file: ${path}`)
+    UserInput.Fail(`JSON value cannot be written to a file: ${path}`)
   }
   await Native.writeFile(path, contents, {
     encoding: options.encoding ?? 'utf8',

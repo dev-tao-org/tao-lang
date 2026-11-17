@@ -25,7 +25,7 @@ export default registerCommand({
     }
     const host = options.host ?? Env.get('TAO_TIMING_HOST')
     const repo = checkout ?? Env.get('TAO_TIMING_CHECKOUT')
-    UserInput.require(
+    UserInput.Require(
       !(!host || !repo),
       'Set TAO_TIMING_HOST and TAO_TIMING_CHECKOUT, or pass --host and a prepared runner checkout.',
     )
@@ -35,7 +35,7 @@ export default registerCommand({
 })
 
 async function runLocalDiagnostic(checkout: RunnerCheckout, options: TimingOptions): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     !(checkout !== undefined || options.host !== undefined),
     '--local measures the current checkout. Omit the runner checkout and --host.',
   )

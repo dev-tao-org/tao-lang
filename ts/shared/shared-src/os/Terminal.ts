@@ -2,9 +2,7 @@ import * as Characters from '../universal/Characters'
 import { ControlCCharacter, Errors, Try } from '../universal/universal'
 import * as UserInput from '../universal/UserInput'
 import * as WebHost from './bridges/Bridge_browser/Bridge_browser'
-import { Buffer as NodeBuffer } from './bridges/Bridge_node/Bridge_node'
 import * as Node from './bridges/Bridge_node/Bridge_node'
-import { emitKeypressEvents, type Readable, StringDecoder } from './bridges/Bridge_node/Bridge_node'
 import * as Process from './Process'
 
 /** stdout exposes the developer output stream. */
@@ -23,7 +21,7 @@ export function writeLine(message = ''): void {
   stdout.write(`${message}${Characters.NewlineCharacter}`)
 }
 
-type KeyInput = Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
+type KeyInput = Node.Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode(raw: boolean): void }
 /** listenForKeys reads immediate terminal keys and returns an idempotent input-state cleanup. */
 export function listenForKeys(receive: (key: string) => void, input: KeyInput = Process.stdin): () => void {
   if (!input.isTTY) {
@@ -33,7 +31,7 @@ export function listenForKeys(receive: (key: string) => void, input: KeyInput = 
   const wasFlowing = input.readableFlowing === true
   let listening = true
   const readKey = (_text: KeypressText, key: { sequence: string }) => receive(key.sequence)
-  emitKeypressEvents(input)
+  Node.emitKeypressEvents(input)
   input.on('keypress', readKey)
   input.setRawMode(true)
   input.resume()
@@ -56,7 +54,7 @@ export async function askConfirm(
   options: ConfirmationOptions,
   terminal: ConfirmationTerminal = confirmationTerminal,
 ): Promise<boolean> {
-  UserInput.require(!options.signal?.aborted, 'Confirmation cancelled.')
+  UserInput.Require(!options.signal?.aborted, 'Confirmation cancelled.')
   if (!terminal.isInteractive()) {
     return options.defaultValue ?? false
   }
@@ -79,7 +77,7 @@ export async function askConfirm(
     }
   }, {
     catch(error) {
-      UserInput.require(!options.signal?.aborted, 'Confirmation cancelled.')
+      UserInput.Require(!options.signal?.aborted, 'Confirmation cancelled.')
       return Errors.Throw(error)
     },
     finally() {
@@ -91,7 +89,7 @@ export async function askConfirm(
 /** askSecret reads hidden input, submitting bracketed pastes as one value including embedded newlines. */
 export async function askSecret(prompt: string): Promise<string> {
   const input = Process.stdin
-  UserInput.require(!!input.isTTY, 'Secret entry requires an interactive terminal.')
+  UserInput.Require(!!input.isTTY, 'Secret entry requires an interactive terminal.')
   const wasRaw = input.isRaw
   const wasPaused = input.isPaused()
   const result = Promise.withResolvers<string>()
@@ -122,7 +120,7 @@ export async function askSecret(prompt: string): Promise<string> {
 
 type KeypressText = string | undefined
 
-type SecretInput = { decoder: StringDecoder; value: string; pending: string; pasting: boolean }
+type SecretInput = { decoder: Node.StringDecoder; value: string; pending: string; pasting: boolean }
 
 type ResolveSecret = (value: string) => void
 type RejectSecret = (error: Error) => void
@@ -148,12 +146,12 @@ function confirmReadlineOptions(): Node.ReadLineOptions {
   }
 }
 
-function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: NodeBuffer) => void {
+function secretReader(resolve: ResolveSecret, reject: RejectSecret): (chunk: Node.Buffer) => void {
   const state: SecretInput = { decoder: new Node.StringDecoder('utf8'), value: '', pending: '', pasting: false }
   return chunk => readSecretChunk(state, chunk, resolve, reject)
 }
 
-function readSecretChunk(state: SecretInput, chunk: NodeBuffer, resolve: ResolveSecret, reject: RejectSecret): void {
+function readSecretChunk(state: SecretInput, chunk: Node.Buffer, resolve: ResolveSecret, reject: RejectSecret): void {
   state.pending += state.decoder.write(chunk)
   while (state.pending) {
     const marker = state.pasting ? (Characters.EscapeCharacter + '[201~') : (Characters.EscapeCharacter + '[200~')

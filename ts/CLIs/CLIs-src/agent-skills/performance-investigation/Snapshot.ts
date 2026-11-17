@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { NewlineCharacter, NullCharacter, Time, Try } from '@shared'
+import { Json, NewlineCharacter, NullCharacter, Time, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
 import * as SourceTree from './SourceTree'
@@ -37,7 +36,7 @@ export async function createSnapshot(root: string, ref?: string): Promise<Perfor
     const tree = ref
       ? (await captureGit(root, ['rev-parse', `${base}^{tree}`])).trim()
       : await snapshotSavedTree(root, base, env)
-    UserInput.require(
+    UserInput.Require(
       !(!ref && tree !== await snapshotSavedTree(root, base, env)),
       'Source changed during snapshot capture; retry after the save completes.',
     )
@@ -118,7 +117,7 @@ async function assertCleanSubmodules(root: string): Promise<void> {
     '--recursive',
     'git --no-optional-locks status --porcelain=v1 -uall',
   ])
-  UserInput.require(dirty === '', 'A submodule has saved changes; snapshot it separately before measuring the parent.')
+  UserInput.Require(dirty === '', 'A submodule has saved changes; snapshot it separately before measuring the parent.')
 }
 
 async function createSnapshotCommit(root: string, tree: string, base: string, env: Record<string, string>) {
@@ -167,7 +166,7 @@ async function hashExistingIndex(path: string): Promise<string | undefined> {
 
 async function assertControllerUnchanged(root: string, before: ControllerState): Promise<void> {
   const after = await readControllerState(root)
-  UserInput.require(
+  UserInput.Require(
     !(before.head !== after.head || before.indexHash !== after.indexHash || before.status !== after.status),
     'Controller HEAD, index or source status changed during capture; snapshot not accepted.',
   )

@@ -63,7 +63,7 @@ async function createRecoveryWorkspace(root: string) {
     project,
     runtimeOptions: { dependencyDirectory: Repo.resolvePath('ts/7-runtime/node_modules') },
     compile: Timings.createTopLevelTimer((_timings, _document: unknown, options: { revision: string }) => {
-      UserInput.require(mode !== 'Invalid', 'Deliberate preview build failure')
+      UserInput.Require(mode !== 'Invalid', 'Deliberate preview build failure')
       return { 'App.tsx': createRecoveryApp(options.revision, mode) }
     }),
   })
@@ -74,7 +74,7 @@ async function createRecoveryWorkspace(root: string) {
       mode = next
       const result = await workspace.update(source.replace('Hello World', next))
       if (result.status !== 'published') {
-        UserInput.fail(`Recovery fixture publication was ${result.status}.`)
+        UserInput.Fail(`Recovery fixture publication was ${result.status}.`)
       }
       return result.revision
     },
@@ -107,7 +107,7 @@ async function observePreviewPublications(page: HeadlessBrowser.Page): Promise<v
 
 function createRecoveryApp(revision: string, mode: RecoveryMode): string {
   const render = mode === 'Broken'
-    ? "UserInput.fail('Deliberate preview render failure');"
+    ? "UserInput.Fail('Deliberate preview render failure');"
     : `return React.createElement('span', { 'data-testid': 'recovery-label' }, '${mode}');`
   return S`
     import React from '@runtime/client/Bridge_react/Bridge_react';

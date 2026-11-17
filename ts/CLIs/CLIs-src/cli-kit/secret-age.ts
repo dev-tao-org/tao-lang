@@ -16,7 +16,7 @@ export function createAgeCipher(identityPath: string, setupCommand: string): Cip
 }
 
 async function encrypt(plaintext: string, recipients: readonly string[]): Promise<string> {
-  UserInput.require(recipients.length !== 0, 'The secret store has no recipients.')
+  UserInput.Require(recipients.length !== 0, 'The secret store has no recipients.')
   const recipientArgs = recipients.flatMap(recipient => ['--recipient', recipient])
   return run('age', ['--armor', ...recipientArgs], plaintext)
 }

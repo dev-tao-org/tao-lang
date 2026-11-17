@@ -17,7 +17,7 @@ export async function setupSshKey(host: string, options: SshKeySetupOptions = {}
     IO.print(`Would set up SSH key ${identity} for ${host}, update SSH config and verify a fresh login.`)
     return
   }
-  UserInput.require(
+  UserInput.Require(
     Platform.systemInfo().os === 'Darwin',
     'SSH key setup uses macOS Keychain. Run it on the controlling Mac.',
   )
@@ -40,7 +40,7 @@ async function enrollKey(host: string, identity: string): Promise<void> {
 }
 
 async function copyKeyToHost(host: string, identity: string): Promise<void> {
-  UserInput.require(!!Terminal.isInteractive(), 'Run just setup-ssh-key HOST in Terminal to enroll the key.')
+  UserInput.Require(!!Terminal.isInteractive(), 'Run just setup-ssh-key HOST in Terminal to enroll the key.')
   await prepareKey(host, identity)
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', ['--apple-use-keychain', identity])
   IO.print(`Installing the public key on ${host}. SSH may ask for the remote login password once.`)
@@ -65,7 +65,7 @@ async function prepareKey(host: string, identity: string): Promise<void> {
   const privateExists = await FS.exists(identity)
   const publicExists = await FS.exists(publicKey)
   if (privateExists !== publicExists) {
-    UserInput.fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
+    UserInput.Fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
   }
   if (privateExists) {
     return
@@ -92,7 +92,7 @@ const FreshLoginArgs = [
 async function probeDedicatedKey(host: string, identity: string): Promise<boolean> {
   const publicKey = identity + PublicKeySuffix
   if (!await FS.exists(publicKey)) {
-    UserInput.fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
+    UserInput.Fail(`SSH key pair is incomplete at ${identity}. Restore the missing file before retrying.`)
   }
   const keyInfo = await Exec.captureStdout('/usr/bin/ssh-keygen', ['-E', 'sha256', '-lf', publicKey])
   const fingerprint = keyInfo.match(Regxs.SshPublicKeyFingerprintRegx)?.[0]

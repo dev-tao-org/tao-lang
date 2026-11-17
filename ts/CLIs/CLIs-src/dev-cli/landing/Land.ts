@@ -13,27 +13,27 @@ export async function land(io: LandingIO): Promise<LandingProof> {
   }
   const messagePath = `.artifacts/merge/${branch}.msg`
   const message = await reviewedMessage(io, messagePath)
-  UserInput.require(
+  UserInput.Require(
     !(await integrateMain(io)),
     'Main integration changed HEAD. Review the integrated changes and merge message, then rerun land.',
   )
   const reviewedHead = await git(io, ['rev-parse', 'HEAD'])
   await io.command('./agent', 'verify')
   await requireClean(io)
-  UserInput.require(
+  UserInput.Require(
     await git(io, ['rev-parse', 'HEAD']) === reviewedHead,
     'HEAD changed during verification; review it before rerunning land.',
   )
   const archive = await publishPreviewArchive(io, reviewedHead)
   if (![archive.commit, ...archive.sources].every(identity => message.includes(identity))) {
-    UserInput.fail(
+    UserInput.Fail(
       `Review ${messagePath} with archive ${archive.commit} and measured sources ${
         archive.sources.join(', ')
       }, then rerun land.`,
     )
   }
   await requireClean(io)
-  UserInput.require(
+  UserInput.Require(
     await io.read(messagePath) === message,
     'The reviewed merge message changed while land was running; review it and rerun land.',
   )
@@ -47,7 +47,7 @@ async function existingLanding(io: LandingIO, branch: string): Promise<LandingPr
   if (!proof) {
     return undefined
   }
-  UserInput.require(
+  UserInput.Require(
     await git(io, ['rev-parse', 'HEAD']) === proof.sourceCommit,
     'This feature branch already landed and now has a different HEAD. Continue the new work on a new feature branch.',
   )
@@ -60,17 +60,17 @@ async function existingLanding(io: LandingIO, branch: string): Promise<LandingPr
 
 async function reviewedMessage(io: LandingIO, path: string): Promise<string> {
   if (!await io.exists(path)) {
-    UserInput.fail(`Prepare and review the merge message at ${path} before landing.`)
+    UserInput.Fail(`Prepare and review the merge message at ${path} before landing.`)
   }
   const message = await io.read(path)
   const [title, blank, ...body] = message.trimEnd().split(NewlineCharacter)
   const hasValidTitle = Boolean(title) && title.length <= 72
   const hasRequiredBody = blank === '' && Boolean(body[0]?.startsWith('- '))
-  UserInput.require(
+  UserInput.Require(
     !(!hasValidTitle || !hasRequiredBody),
     'The reviewed merge message needs a title of at most 72 characters, a blank line and bullets.',
   )
-  UserInput.require(
+  UserInput.Require(
     !body.some(line => !Regxs.LandStatusLineRegx.test(line)),
     'The reviewed merge message body must contain contiguous bullets with indented continuation lines.',
   )

@@ -21,7 +21,7 @@ export async function doctorReport(fingerprintOnly = false): Promise<DoctorRepor
 
 /** assertDoctorReady raises the diagnosis after its report has been printed. */
 export function assertDoctorReady(status: Check['status']): void {
-  UserInput.require(status !== 'fail', 'Doctor found required setup failures; resolve the FAIL entries above.')
+  UserInput.Require(status !== 'fail', 'Doctor found required setup failures; resolve the FAIL entries above.')
 }
 
 type OptionalToolOutput = string | undefined

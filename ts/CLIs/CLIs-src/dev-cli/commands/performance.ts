@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Timings, Try, UserInput } from '@shared'
 import { FS, Process } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
@@ -23,7 +23,7 @@ export default registerCommand({
     { flags: '--report-only', description: 'Print the raw preview report path without a baseline comparison.' },
   ],
   action: Timings.createTopLevelTimer(async function(timings, target: string, options: PerformanceOptions) {
-    UserInput.require(
+    UserInput.Require(
       !(target !== 'preview' && hasPreviewOptions(options)),
       '--fixture, --baseline, and --report-only are available only for performance preview.',
     )
@@ -39,7 +39,7 @@ export default registerCommand({
     if (target === 'extension') {
       return runExtension()
     }
-    UserInput.require(
+    UserInput.Require(
       !!['parser', 'preview', 'editor', 'record'].includes(target),
       'Available performance targets: parser, formatter, reactivity, modules, extension, preview, editor, record',
     )
@@ -118,7 +118,7 @@ async function runExtension(): Promise<void> {
 async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
   const LocalBaseline = await import('../preview/LocalPreviewBaseline')
   if (options.baseline) {
-    UserInput.require(!options.fixture, 'Capture the baseline on the fixed performance project.')
+    UserInput.Require(!options.fixture, 'Capture the baseline on the fixed performance project.')
     return await LocalBaseline.recordLocalPreviewBaseline()
   }
   const source = options.fixture

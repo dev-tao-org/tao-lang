@@ -1,6 +1,5 @@
-import { Json, UserInput } from '@shared'
-import { Errors, NewlineCharacter, S, Try } from '@shared'
 import * as Shared from '@shared'
+import { Errors, Json, NewlineCharacter, S, Try, UserInput } from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { TypeScript } from '@tao/shared/typescript'
@@ -303,7 +302,7 @@ function stringMap(value: unknown): Record<string, string> {
 async function readLock(path: string): Promise<LockFile> {
   const parsed = TypeScript.parseConfigFileTextToJson(path, await FS.readFile(path, 'utf8'))
   if (parsed.error || !parsed.config) {
-    UserInput.fail(`Acceptance fixture lock is invalid: ${path}`)
+    UserInput.Fail(`Acceptance fixture lock is invalid: ${path}`)
   }
   return parsed.config as LockFile
 }

@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Regxs, UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
@@ -20,7 +20,7 @@ export default registerCommand({
     const caller = CLIKit.resolveCallerPath('.')
     const project = await Workspace.discoverProject(caller)
     if (!project) {
-      UserInput.fail(`No Tao project was found from ${caller}. Run tao init <path>.`)
+      UserInput.Fail(`No Tao project was found from ${caller}. Run tao init <path>.`)
     }
     const moduleRoot = await resolveModuleRoot(project.root, moduleName)
     const entry = await findModuleEntry(moduleRoot, project.root)
@@ -36,11 +36,11 @@ export default registerCommand({
 
 async function resolveModuleRoot(projectRoot: string, moduleName: string): Promise<string> {
   if (!Regxs.ModuleNameRegx.test(moduleName)) {
-    UserInput.fail(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
+    UserInput.Fail(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
   const matches = await Workspace.findNamedPackageDirectories(projectRoot, moduleName)
   if (matches.length !== 1) {
-    UserInput.fail(
+    UserInput.Fail(
       matches.length === 0
         ? `No project-owned module ${moduleName} was found in ${projectRoot}.`
         : `Module ${moduleName} is ambiguous: ${matches.join(', ')}`,
@@ -53,7 +53,7 @@ async function findModuleEntry(moduleRoot: string, projectRoot: string): Promise
   const files = (await Workspace.listRecursiveSourceFiles(moduleRoot, moduleRoot, projectRoot))
     .sort((left, right) => getPathDepth(left) - getPathDepth(right) || left.localeCompare(right))
   if (files.length === 0) {
-    UserInput.fail(`Module ${moduleRoot} contains no Tao source entry.`)
+    UserInput.Fail(`Module ${moduleRoot} contains no Tao source entry.`)
   }
   return files[0]!
 }

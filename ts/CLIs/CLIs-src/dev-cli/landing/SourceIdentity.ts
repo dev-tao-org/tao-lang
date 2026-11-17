@@ -3,7 +3,7 @@ import { git, type LandingIO } from './LandingIO'
 
 /** requireSourceHead rejects changes to the reviewed source identity before publication. */
 export async function requireSourceHead(io: LandingIO, expectedHead: string): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     await git(io, ['rev-parse', 'HEAD']) === expectedHead,
     'HEAD changed after verification. Review and verify the new source before rerunning land.',
   )
@@ -12,7 +12,7 @@ export async function requireSourceHead(io: LandingIO, expectedHead: string): Pr
 /** pinArchive records only the archive gitlink above the exact verified source and returns its checked identity. */
 export async function pinArchive(io: LandingIO, verifiedHead: string, publishedArchive: string): Promise<string> {
   await requireSourceHead(io, verifiedHead)
-  UserInput.require(
+  UserInput.Require(
     await git(io, ['rev-parse', 'HEAD'], { storage: true }) === publishedArchive,
     'Storage advanced after remote confirmation; rerun land before pinning its archive.',
   )
@@ -22,12 +22,12 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
     await requireArchiveGitlink(io, verifiedHead, publishedArchive)
     return verifiedHead
   }
-  UserInput.require(
+  UserInput.Require(
     staged === '.storage',
     'The archive pointer update includes unrelated staged changes; preserve them before rerunning land.',
   )
   const indexed = await git(io, ['ls-files', '--stage', '--', '.storage'])
-  UserInput.require(
+  UserInput.Require(
     indexed === `160000 ${publishedArchive} 0${TabCharacter}.storage`,
     'The staged archive identity changed after publication; review before rerunning land.',
   )
@@ -44,7 +44,7 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
     '-r',
     pointerHead,
   ])
-  UserInput.require(
+  UserInput.Require(
     !(parents !== verifiedHead || paths !== '.storage'),
     'The archive pointer commit is not an isolated follow-up to the verified source; review before rerunning land.',
   )
@@ -53,7 +53,7 @@ export async function pinArchive(io: LandingIO, verifiedHead: string, publishedA
 
 async function requireArchiveGitlink(io: LandingIO, source: string, publishedArchive: string): Promise<void> {
   const entry = await git(io, ['ls-tree', source, '--', '.storage'])
-  UserInput.require(
+  UserInput.Require(
     entry === `160000 commit ${publishedArchive}${TabCharacter}.storage`,
     'The source commit does not pin the confirmed published archive; review before rerunning land.',
   )

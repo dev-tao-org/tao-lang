@@ -1,7 +1,6 @@
 import * as Runtime from '@runtime'
-import { Json, UserInput } from '@shared'
-import { NewlineCharacter, Try } from '@shared'
 import * as Shared from '@shared'
+import { Json, NewlineCharacter, Try, UserInput } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { withManagedModuleLock } from './ManagedModuleLock'
 import type { ManagedModuleOwner } from './ManagedModuleOwnership'
@@ -60,10 +59,10 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
   const owned = await Try.WithDefault(undefined, () => FS.readFile(marker, 'utf8'))
   const current = await Try.WithDefault(undefined, () => FS.readFile(path, 'utf8'))
   if (current !== undefined && owned !== ('managed-by-tao' + NewlineCharacter)) {
-    UserInput.fail(`TypeScript defaults are already owned: ${path}`)
+    UserInput.Fail(`TypeScript defaults are already owned: ${path}`)
   }
   if (owned !== undefined && owned !== ('managed-by-tao' + NewlineCharacter)) {
-    UserInput.fail(`TypeScript defaults ownership marker is invalid: ${marker}`)
+    UserInput.Fail(`TypeScript defaults ownership marker is invalid: ${marker}`)
   }
   if (owned === undefined) {
     await Files.writeReadOnly(marker, 'managed-by-tao' + NewlineCharacter)
@@ -76,7 +75,7 @@ export async function ensureTypeScriptDefaults(projectRoot: string): Promise<voi
 /** validateTypeScriptDefaults rejects changed compiler defaults before invoking module tools. */
 export async function validateTypeScriptDefaults(projectRoot: string): Promise<void> {
   if (await typescriptDefaultsDrift(projectRoot).then(items => items.length > 0)) {
-    UserInput.fail(`TypeScript defaults drifted. Repair with: tao setup --repair.`)
+    UserInput.Fail(`TypeScript defaults drifted. Repair with: tao setup --repair.`)
   }
 }
 
@@ -235,7 +234,7 @@ async function repairModuleFiles(
     if (await FS.exists(path) && owner !== expectedOwner) {
       const corruptMarkerRecovery = repair && owner !== undefined && previousOwner === undefined
       if (!corruptMarkerRecovery && cannotReplaceModuleFile(previousOwner, repair, profile)) {
-        UserInput.fail(`Module metadata is already owned: ${path}`)
+        UserInput.Fail(`Module metadata is already owned: ${path}`)
       }
     }
   }
@@ -296,11 +295,11 @@ async function ensureModuleIgnore(directory: string, owned: boolean): Promise<vo
   const start = current.indexOf('# tao-managed-sidecars:begin')
   if (start >= 0) {
     if (!owned || start !== current.lastIndexOf('# tao-managed-sidecars:begin')) {
-      UserInput.fail(`Module ignore block is already present without Tao ownership: ${path}`)
+      UserInput.Fail(`Module ignore block is already present without Tao ownership: ${path}`)
     }
     const end = current.indexOf('# tao-managed-sidecars:end' + NewlineCharacter, start)
     if (end < start || end !== current.lastIndexOf('# tao-managed-sidecars:end' + NewlineCharacter)) {
-      UserInput.fail(`Module ignore block is invalid: ${path}`)
+      UserInput.Fail(`Module ignore block is invalid: ${path}`)
     }
     const endExclusive = end + ('# tao-managed-sidecars:end' + NewlineCharacter).length
     await writeModuleIgnore(path, `${current.slice(0, start)}${block}${current.slice(endExclusive)}`)
@@ -334,6 +333,6 @@ function createModuleIgnoreBlock(): string {
 
 function rejectSymlink(path: string): void {
   if (Try.WithDefault(false, () => FS.lstatSync(path).isSymbolicLink())) {
-    UserInput.fail(`Generated module metadata cannot be a symbolic link: ${path}`)
+    UserInput.Fail(`Generated module metadata cannot be a symbolic link: ${path}`)
   }
 }

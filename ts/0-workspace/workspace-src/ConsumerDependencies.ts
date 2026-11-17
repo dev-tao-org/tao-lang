@@ -1,5 +1,4 @@
-import { Json, Schema } from '@shared'
-import { Try, UserInput } from '@shared'
+import { Json, Schema, Try, UserInput } from '@shared'
 import { Files, FS, Path, Platform, Storage } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { satisfies, validRange } from './bridges/Bridge_semver'
@@ -51,7 +50,7 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
     if (hasLock) {
       await updateLocalDependencyGraph(directory, current, receipt)
     }
-    UserInput.require(
+    UserInput.Require(
       names.every(name => hasInstalledPackage(directory, name)),
       `The install did not prepare all declared packages in ${directory}.`,
     )
@@ -63,12 +62,12 @@ async function prepareInstalledConsumer(manifest: TypeScriptProjectPackage, ui: 
 
 async function confirmConsumerInstall(directory: string, ui: WorkflowUI): Promise<void> {
   const message = `The TypeScript consumer at ${directory} needs dependency setup.`
-  UserInput.require(await ui.confirm({ entry: directory, message, consumer: true }), 'Dependency setup was declined.')
-  UserInput.require(!ui.cancelled?.(), 'Workflow cancelled.')
+  UserInput.Require(await ui.confirm({ entry: directory, message, consumer: true }), 'Dependency setup was declined.')
+  UserInput.Require(!ui.cancelled?.(), 'Workflow cancelled.')
 }
 
 function hasInstalledPackage(directory: string, name: string): boolean {
-  UserInput.require(isNpmPackageName(name), `Invalid consumer dependency name: ${name}`)
+  UserInput.Require(isNpmPackageName(name), `Invalid consumer dependency name: ${name}`)
   return FS.existsSync(Path.join(directory, 'node_modules', name, 'package.json'))
 }
 

@@ -1,8 +1,7 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import * as Performance from '@repo-analysis/performance'
-import { Json, Schema, UserInput } from '@shared'
-import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs, Schema, Time, Try, UserInput } from '@shared'
 import { Env, FileLock, FS, Path, Platform, Repo, Storage } from '@shared/os'
 import { runWithEvidence } from './Evidence'
 import { captureGit, resolveCommit } from './Git'
@@ -45,7 +44,7 @@ export type MeasurementJob = {
 /** parseMeasurementJob validates the retained job manifest at the file boundary. */
 export function parseMeasurementJob(source: string, path: string): MeasurementJob {
   return Try(() => Json.Parse(source, { schema: measurementJobSchema }), {
-    catch: () => UserInput.fail(`Invalid timing job manifest at ${path}.`),
+    catch: () => UserInput.Fail(`Invalid timing job manifest at ${path}.`),
   })
 }
 
@@ -87,7 +86,7 @@ export async function requirePreviewProtocol(repo: string): Promise<void> {
   const source = await Try.WithDefault('', () => readPreviewMeasurementSource(repo))
   const declaration = `export const PreviewMeasurementProtocol = '${Performance.PreviewMeasurementProtocol}'`
   if (!source.split(NewlineCharacter).includes(declaration)) {
-    UserInput.fail(
+    UserInput.Fail(
       `Incompatible preview measurement protocol in ${repo}. Prepare both revisions with the same instrumentation.`,
     )
   }
@@ -167,7 +166,7 @@ async function measurePreview(job: MeasurementJob, fixture: string, directory: s
   await requireCleanSource(options.repo)
   const commit = await resolveCommit(options.repo, 'HEAD')
   const fixtureSha256 = Platform.hashText(await FS.readFile(fixture, 'utf8'))
-  UserInput.require(
+  UserInput.Require(
     !(commit !== job.commit || fixtureSha256 !== job.fixtureSha256),
     'Job source or canonical fixture changed between sessions.',
   )
@@ -200,12 +199,12 @@ function describePreviewEnvironment(job: MeasurementJob): MeasurementEnvironment
 async function acceptPreviewReport(job: MeasurementJob, commit: string, reports: string, before: Set<string>) {
   const options = job.settings
   await requireCleanSource(options.repo)
-  UserInput.require(
+  UserInput.Require(
     await resolveCommit(options.repo, 'HEAD') === commit,
     'Measured checkout HEAD changed during the run.',
   )
   const created = (await listPreviewReports(reports)).filter(name => !before.has(name))
-  UserInput.require(
+  UserInput.Require(
     created.length === 1,
     'Expected one new raw preview report; inspect the candidate performance logs.',
   )
@@ -224,17 +223,17 @@ async function listPreviewReports(directory: string): Promise<string[]> {
 
 async function requireCleanSource(root: string): Promise<void> {
   const status = await captureGit(root, ['status', '--porcelain=v1', '-uall', '--ignore-submodules=none'])
-  UserInput.require(!status, 'Measure a prepared immutable clone; its tracked and unignored source must be clean.')
+  UserInput.Require(!status, 'Measure a prepared immutable clone; its tracked and unignored source must be clean.')
   const entries = await readTreeEntries(root, 'HEAD')
   await assertMaterializedTree(root, entries)
 }
 
 function requireRunnerOptions(options: RunnerOptions): void {
-  UserInput.require(
+  UserInput.Require(
     !(!Number.isInteger(options.samples) || options.samples < 1),
     'Sample count must be a positive integer.',
   )
   if (!Performance.isValidEditCount(options.edits)) {
-    UserInput.fail(`Edit count must be a positive multiple of ${Performance.PreviewCycleSize}.`)
+    UserInput.Fail(`Edit count must be a positive multiple of ${Performance.PreviewCycleSize}.`)
   }
 }

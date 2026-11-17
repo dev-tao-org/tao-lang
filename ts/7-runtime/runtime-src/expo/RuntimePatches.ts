@@ -16,7 +16,7 @@ export async function readRuntimePatches(directory: string): Promise<RuntimePatc
   const entries = Object.entries(patchedDependencies).sort((left, right) => left[1].localeCompare(right[1]))
   for (const [, path] of entries) {
     if (!isSupportedPatchPath(path)) {
-      UserInput.fail(`Unsupported runtime dependency patch path: ${path}`)
+      UserInput.Fail(`Unsupported runtime dependency patch path: ${path}`)
     }
     patches[path] = await FS.readFile(Path.join(directory, path), 'utf8')
   }
@@ -28,7 +28,7 @@ type RuntimePackageManifest = { patchedDependencies?: PatchedDependencyPaths }
 async function readRuntimePackageManifest(path: string): Promise<RuntimePackageManifest> {
   const parsed: unknown = Json.Parse(await FS.readFile(path, 'utf8'))
   if (!isRuntimePackageManifest(parsed)) {
-    UserInput.fail(`Runtime package manifest ${path} must be an object with string patch paths.`)
+    UserInput.Fail(`Runtime package manifest ${path} must be an object with string patch paths.`)
   }
   return parsed
 }

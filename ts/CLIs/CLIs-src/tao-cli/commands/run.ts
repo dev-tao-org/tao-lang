@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import * as BridgeExpoConfig from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
 import { Try, UserInput } from '@shared'
 import { Terminal } from '@shared/os'
@@ -37,9 +37,9 @@ export default registerCommand({
       )
       return
     }
-    UserInput.require(!options.package, 'Use --package for a React consumer, or provide a Tao app entry file.')
+    UserInput.Require(!options.package, 'Use --package for a React consumer, or provide a Tao app entry file.')
     const target = await Workspace.resolveCompileTarget(CLIKit.resolveCallerPath('.'), entry)
-    UserInput.require(
+    UserInput.Require(
       target.kind === 'app',
       'Run a TypeScript library through its React consumer package with --package.',
     )
@@ -62,5 +62,5 @@ function requireRunPort(port?: string): void {
   }
   const value = Number(port)
   const isInRange = value >= 1 && value <= 65535
-  UserInput.require(Number.isInteger(value) && isInRange, '--port must be an integer between 1 and 65535.')
+  UserInput.Require(Number.isInteger(value) && isInRange, '--port must be an integer between 1 and 65535.')
 }

@@ -1,5 +1,4 @@
-import { Json, Schema, UserInput } from '@shared'
-import { Lists, Try } from '@shared'
+import { Json, Lists, Schema, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
 
@@ -25,14 +24,14 @@ export async function validateModuleOwnership(
   const owner = parseOwner(ownerText)
   if (!owner) {
     if (!repair) {
-      UserInput.fail(`Module metadata ownership marker needs repair: ${marker}. Run tao setup --repair.`)
+      UserInput.Fail(`Module metadata ownership marker needs repair: ${marker}. Run tao setup --repair.`)
     }
     await validateCorruptMarkerRecovery(files, profile, projectRoot, marker)
     return undefined
   }
   validateOwnerProfile(owner, profile, projectRoot, marker)
   if (ownerText !== expectedOwner && owner.profile === profile && !repair) {
-    UserInput.fail(`Module metadata ownership marker needs repair: ${marker}`)
+    UserInput.Fail(`Module metadata ownership marker needs repair: ${marker}`)
   }
   await validateGeneratedFiles(files, owner, repair, marker)
   return owner
@@ -67,23 +66,23 @@ export async function validateModuleLinks(
 ): Promise<void> {
   const localModules = Path.join(directory, 'node_modules')
   if (isSymbolicLink(localModules)) {
-    UserInput.fail(`Module resolution directory is already owned: ${localModules}`)
+    UserInput.Fail(`Module resolution directory is already owned: ${localModules}`)
   }
   for (const name of Lists.unique(packages, previousOwner?.packages ?? [])) {
     const link = Path.join(localModules, name)
     if (Path.dirname(link) !== localModules && isSymbolicLink(Path.dirname(link))) {
-      UserInput.fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
+      UserInput.Fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
     }
     if (!isSymbolicLink(link)) {
       if (FS.existsSync(link)) {
-        UserInput.fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
+        UserInput.Fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
       }
       continue
     }
     const pointsToTarget = await pointsToProfile(link, profile, name)
     const pointsToPriorOwner = previousOwner && pointsToRecordedProfile(link, previousOwner.profile, name)
     if (!pointsToTarget && !pointsToPriorOwner) {
-      UserInput.fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
+      UserInput.Fail(`Module resolution path is not owned by the current or prior profile: ${link}`)
     }
   }
 }
@@ -117,7 +116,7 @@ async function validateCorruptMarkerRecovery(
   if (profileIsExpected && generatedFilesMatch && linksMatch) {
     return
   }
-  UserInput.fail(
+  UserInput.Fail(
     `Module ownership marker is corrupt and Tao cannot prove that the generated metadata belongs to this profile: ${marker}. `
       + `Preserve this marker and any authored package.json or tsconfig.json. Restore a valid marker backup, or inspect those files and `
       + `the node_modules links; move authored files aside before removing only files confirmed as Tao-generated, then run tao setup again.`,
@@ -162,7 +161,7 @@ function validateOwnerProfile(
   ) {
     return
   }
-  UserInput.fail(
+  UserInput.Fail(
     `Tao module metadata at ${marker} is already owned by consumer profile ${owner.profile}; `
       + `this consumer requires ${profile}. A live module directory can use one app dependency graph. `
       + `Use separate module directories or align both consumers' requirements.`,
@@ -182,7 +181,7 @@ async function validateGeneratedFiles(
     const hash = owner.generatedHashes?.[path]
     const current = await Try.WithDefault(undefined, () => FS.readFile(path, 'utf8'))
     if (current === undefined || hash === undefined || hash !== Platform.hashText(current)) {
-      UserInput.fail(
+      UserInput.Fail(
         `Owned module metadata drifted at ${path}; preserve edits or run tao setup --repair before changing requirements. `
           + `Owner marker: ${marker}`,
       )
@@ -204,7 +203,7 @@ async function linkPackage(
     return
   }
   if (!isSymbolicLink(link)) {
-    UserInput.fail(`Module resolution path is already owned: ${link}`)
+    UserInput.Fail(`Module resolution path is already owned: ${link}`)
   }
   if (!FS.existsSync(link)) {
     if (previousOwner && await pointsToRecordedProfile(link, previousOwner.profile, name)) {
@@ -212,7 +211,7 @@ async function linkPackage(
       await FS.symlink(target, link, 'dir')
       return
     }
-    UserInput.fail(`Module resolution path is already owned: ${link}`)
+    UserInput.Fail(`Module resolution path is already owned: ${link}`)
   }
   const currentTarget = FS.realpathSync(link)
   if (currentTarget === FS.realpathSync(target)) {
@@ -222,7 +221,7 @@ async function linkPackage(
     await FS.replaceDirectoryLink(target, link)
     return
   }
-  UserInput.fail(`Module resolution path is already owned: ${link}`)
+  UserInput.Fail(`Module resolution path is already owned: ${link}`)
 }
 
 async function removeOwnedLink(localModules: string, name: string, profile: string): Promise<void> {
@@ -231,7 +230,7 @@ async function removeOwnedLink(localModules: string, name: string, profile: stri
     return
   }
   if (!isSymbolicLink(link) || !await pointsToRecordedProfile(link, profile, name)) {
-    UserInput.fail(`Cannot remove module resolution path not owned by the prior profile: ${link}`)
+    UserInput.Fail(`Cannot remove module resolution path not owned by the prior profile: ${link}`)
   }
   await FS.rm(link, { force: true })
 }

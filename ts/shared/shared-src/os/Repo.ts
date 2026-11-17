@@ -56,13 +56,13 @@ export function assertNewWorkspacePath(path: string, root = getWorkspaceRoot()):
   const canonical = FS.realpathSync(existing)
   const legacyRoot = resolvePath('.x-tao-old-v1')
   const legacy = FS.existsSync(legacyRoot) ? FS.realpathSync(legacyRoot) : legacyRoot
-  UserInput.require(
+  UserInput.Require(
     !(Path.isWithin(legacyRoot, absolute) || Path.isWithin(legacy, canonical)),
     'Run legacy workflows from .x-tao-old-v1/; root commands target the new implementation.',
   )
   const canonicalRoot = FS.realpathSync(root)
   if (!Path.isWithin(root, absolute) || !Path.isWithin(canonicalRoot, canonical)) {
-    UserInput.fail(`Requested paths must remain inside ${root}: ${path}`)
+    UserInput.Fail(`Requested paths must remain inside ${root}: ${path}`)
   }
 }
 

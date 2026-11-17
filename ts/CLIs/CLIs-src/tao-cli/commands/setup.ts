@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
@@ -22,7 +22,7 @@ export default registerCommand({
     const target = CLIKit.resolveCallerPath(entry ?? '.')
     const project = await Workspace.discoverProject(target)
     if (!project) {
-      UserInput.fail(`No Tao project was found from ${target}. Run tao init <path>.`)
+      UserInput.Fail(`No Tao project was found from ${target}. Run tao init <path>.`)
     }
     const selected = await Workspace.findPreparationEntry(project.root, entry ? target : undefined)
     await Workspace.withDependencySession(project.root, options.session, async () => {

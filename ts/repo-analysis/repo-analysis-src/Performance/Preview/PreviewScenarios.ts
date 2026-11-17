@@ -33,7 +33,7 @@ export function requirePreviewScenario(
 ): PreviewScenario {
   const scenario = scenarios.find(item => item.name === name)
   if (!scenario) {
-    return UserInput.fail('Unknown preview performance scenario: ' + String(name))
+    return UserInput.Fail('Unknown preview performance scenario: ' + String(name))
   }
   return scenario
 }
@@ -51,7 +51,7 @@ function addPreviewDetail(source: string): string {
 
 function replaceOnce(source: string, from: string, to: string): string {
   if (!source.includes(from)) {
-    return UserInput.fail('Preview edit did not match the current source: ' + from)
+    return UserInput.Fail('Preview edit did not match the current source: ' + from)
   }
   return source.replace(from, to)
 }

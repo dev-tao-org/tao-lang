@@ -5,6 +5,6 @@ import type { BunExecutor } from '../sidecars/ManagedModule/ManagedModules'
 export async function runSidecarTests(moduleRoot: string, executor: BunExecutor): Promise<void> {
   const result = await executor('bun', ['test'], moduleRoot)
   if (result.status !== 0) {
-    UserInput.fail(`Sidecar tests failed in ${moduleRoot}. ${result.stderr || result.stdout}`)
+    UserInput.Fail(`Sidecar tests failed in ${moduleRoot}. ${result.stderr || result.stdout}`)
   }
 }

@@ -43,7 +43,7 @@ export async function readTimingReport(
   controlPath: string,
 ): Promise<TimingReport> {
   const { parseTimingReport } = await import('./TimingReportContract')
-  UserInput.require(!!Path.posix.isAbsolute(request.tooling), 'Use an absolute runner tooling checkout path.')
+  UserInput.Require(!!Path.posix.isAbsolute(request.tooling), 'Use an absolute runner tooling checkout path.')
   const remote = { host: request.host, directory: request.tooling, controlPath }
   const job = request.job ?? await readLatestJob(remote)
   requireJobPath(job, request.tooling)
@@ -98,7 +98,7 @@ async function readLatestJob(remote: Omit<TimingRemoteRequest, 'args'>): Promise
   const args = ['/bin/ls', '-1t', jobs]
   const listing = await readTimingRemote(withTimingArguments(remote, args))
   const latest = listing.split(Regxs.TimingListingLineBreakRegx).find(name => Regxs.TimingJobIdRegx.test(name))
-  UserInput.require(!!latest, 'No timing jobs were found in this tooling checkout.')
+  UserInput.Require(!!latest, 'No timing jobs were found in this tooling checkout.')
   return Path.posix.join(jobs, latest)
 }
 
@@ -108,7 +108,7 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
 
 function requireJobPath(job: string, tooling: string): void {
   const parent = Path.posix.join(tooling, JobsDirectory)
-  UserInput.require(
+  UserInput.Require(
     !(Path.posix.dirname(job) !== parent || !Regxs.TimingJobIdRegx.test(Path.posix.basename(job))),
     'Select a job directly inside this tooling checkout’s retained jobs directory.',
   )

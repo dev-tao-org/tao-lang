@@ -30,7 +30,7 @@ export function validateRequirementPlacement(
     return
   }
   if (AST.GetDeclarations(document).some(isSourceRequirement)) {
-    UserInput.fail(`Source requirement declarations belong in project-root Tao files: ${sourcePath}.`)
+    UserInput.Fail(`Source requirement declarations belong in project-root Tao files: ${sourcePath}.`)
   }
 }
 
@@ -46,12 +46,12 @@ export function validateSourceRequirements(requirements: DependencyRequirement[]
   const aliases = new Set<string>()
   for (const requirement of requirements) {
     const alias = requirement.alias ?? deriveDefaultSourceAlias(requirement)
-    UserInput.require(
+    UserInput.Require(
       !(alias === 'tao' && (requirement.provider !== 'bundled' || requirement.identifier !== 'tao')),
       'Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.',
     )
     if (aliases.has(alias)) {
-      UserInput.fail(`Dependency alias ${alias} is declared more than once.`)
+      UserInput.Fail(`Dependency alias ${alias} is declared more than once.`)
     }
     aliases.add(alias)
   }
@@ -64,7 +64,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   }
   const document = AST.transform(parser.parse(source))
   if (!document) {
-    UserInput.fail(`Cannot read requirements from invalid Tao source: ${path}.`)
+    UserInput.Fail(`Cannot read requirements from invalid Tao source: ${path}.`)
   }
   SourceValidation.assertValidRequirements(document, path)
   const requirements = AST.GetDeclarations(document)
@@ -89,7 +89,7 @@ function requirementFromDeclaration(
     Errors.ThrowShouldNeverHappen('npm requirements belong to the sidecar resolver.')
   }
   if (provider === 'github' && !declaration.version) {
-    UserInput.fail(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)
+    UserInput.Fail(`GitHub requirement ${declaration.identifier} in ${path} needs a version.`)
   }
   const version = provider === 'github' ? declaration.version! : declaration.version ?? getDefaultVersion(provider)
   if (declaration.alias) {

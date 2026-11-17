@@ -87,7 +87,7 @@ export async function prepareSourceDependency(
   const requirements = await options.readRequirements(owner)
   const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
   if (requirement === undefined) {
-    UserInput.fail(`Project ${owner} has no declared dependency alias ${alias}.`)
+    UserInput.Fail(`Project ${owner} has no declared dependency alias ${alias}.`)
   }
   const path = LockFile.resolveDependencyLockPath(projectRoot)
   const storedLock = LockFile.materializeLocations(

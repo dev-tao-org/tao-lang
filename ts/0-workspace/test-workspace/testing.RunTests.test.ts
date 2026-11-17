@@ -62,7 +62,7 @@ Tests.test('a failed assertion stops its journey, reports the source line and st
     createDriver: async () => ({
       ...recordingDriver(operations),
       async expectText() {
-        UserInput.fail('Expected visible text "Missing"')
+        UserInput.Fail('Expected visible text "Missing"')
       },
     }),
   })

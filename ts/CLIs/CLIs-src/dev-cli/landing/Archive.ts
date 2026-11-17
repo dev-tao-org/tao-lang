@@ -59,7 +59,7 @@ async function reconcileArchive(io: LandingIO, remote: string, records: PreviewR
     }
     return
   }
-  UserInput.require(
+  UserInput.Require(
     base === tip,
     'Storage history diverged; resolve it without rewriting history before retrying land.',
   )
@@ -71,7 +71,7 @@ async function reconcileArchive(io: LandingIO, remote: string, records: PreviewR
     records.flatMap(record => [`${record.directory}/record.json`, `${record.directory}/report.json`]),
   )
   if (local.some(path => !allowed.has(path))) {
-    UserInput.fail(`Storage has unpublished changes outside this task on ${remote}; refusing to publish them.`)
+    UserInput.Fail(`Storage has unpublished changes outside this task on ${remote}; refusing to publish them.`)
   }
 }
 
@@ -81,7 +81,7 @@ async function copyRecords(io: LandingIO, records: PreviewRecord[]): Promise<voi
       const path = `.storage/${record.directory}/${name}`
       if (await io.exists(path)) {
         if (await io.read(path) !== content) {
-          UserInput.fail(`The immutable archive already contains different bytes at ${path}.`)
+          UserInput.Fail(`The immutable archive already contains different bytes at ${path}.`)
         }
       } else {
         await io.write(path, content)

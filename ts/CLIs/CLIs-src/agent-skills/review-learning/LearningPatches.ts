@@ -19,10 +19,10 @@ export async function preflightProposal(
   for (const file of new Set(proposal.edits.map(edit => edit.file))) {
     LearningStore.safeSourcePath(state.root, file)
     if (!scan.selected.includes(file)) {
-      UserInput.fail(`Patch file was not scanned: ${file}`)
+      UserInput.Fail(`Patch file was not scanned: ${file}`)
     }
     if (LearningStore.isInScope(file, protectedScope)) {
-      UserInput.fail(`Protected active review file: ${file}`)
+      UserInput.Fail(`Protected active review file: ${file}`)
     }
     const content = proposal.outputs?.[file]?.before ?? await FS.readFile(Path.join(state.root, file), 'utf8')
     buildOutput(proposal, file, content)
@@ -46,13 +46,13 @@ export async function applyLearningProposal(
 
 /** findScan resolves an immutable scan identity from retained history. */
 export function findScan(state: LearningState, id: string): Scan {
-  return state.scans.find(scan => scan.id === id) ?? UserInput.fail(`Unknown scan: ${id}`)
+  return state.scans.find(scan => scan.id === id) ?? UserInput.Fail(`Unknown scan: ${id}`)
 }
 
 async function applyLockedProposal(state: LearningState, proposal: Proposal, protectedFiles: string[]): Promise<void> {
-  UserInput.require(proposal.state !== 'applied', 'Proposal already applied; pending human review is unchanged.')
+  UserInput.Require(proposal.state !== 'applied', 'Proposal already applied; pending human review is unchanged.')
   const scan = findScan(state, proposal.scan)
-  UserInput.require(
+  UserInput.Require(
     scan.correction.authority !== 'inferred',
     'An inferred rule cannot apply; capture a new explicit correction with supersedes evidence.',
   )
@@ -66,7 +66,7 @@ async function applyLockedProposal(state: LearningState, proposal: Proposal, pro
     LearningStore.safeSourcePath(state.root, file)
     const content = await FS.readFile(path, 'utf8')
     if (content !== output.before && content !== output.after) {
-      UserInput.fail(`Foreign edits conflict with interrupted proposal: ${file}`)
+      UserInput.Fail(`Foreign edits conflict with interrupted proposal: ${file}`)
     }
     if (content !== output.after) {
       await replaceSource(path, output.after)
@@ -90,7 +90,7 @@ async function assertFreshScan(root: string, scan: Scan, proposal: Proposal): Pr
       inputs[file] = afterHash
     }
   }
-  UserInput.require(
+  UserInput.Require(
     !hasChangedSnapshot(scan, current, expected, inputs),
     'Scan is stale: scope membership, source or configuration changed. Rescan before applying.',
   )
@@ -114,7 +114,7 @@ function buildOutput(proposal: Proposal, file: string, original: string): string
   let previousStart = -1
   for (const edit of edits) {
     if (hasInvalidEdit(edit, original, previousStart, previousEnd)) {
-      UserInput.fail(`Overlapping or stale original spans: ${file}`)
+      UserInput.Fail(`Overlapping or stale original spans: ${file}`)
     }
     previousEnd = edit.range.end - 1
     previousStart = edit.range.start

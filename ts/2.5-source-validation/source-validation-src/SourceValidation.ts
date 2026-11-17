@@ -37,7 +37,7 @@ function requireNoStatementDiagnostics(diagnostics: readonly StatementDiagnostic
   }
   const message = diagnostics.map(diagnostic => `${diagnostic.message} (${path}, offset ${diagnostic.range.start})`)
     .join(NewlineCharacter)
-  UserInput.fail(message, { path, diagnostics })
+  UserInput.Fail(message, { path, diagnostics })
 }
 
 type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'action' | 'library' | 'tests' | 'test' | 'expect'

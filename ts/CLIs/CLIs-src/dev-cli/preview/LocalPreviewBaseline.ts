@@ -54,7 +54,7 @@ async function measureFreshProcess(): Promise<string> {
     },
   })
   const line = output.split(NewlineCharacter).findLast(text => text.startsWith(PreviewPerformanceReportPrefix))
-  UserInput.require(!!line, 'Preview process did not print its raw report path.')
+  UserInput.Require(!!line, 'Preview process did not print its raw report path.')
   return line.slice(PreviewPerformanceReportPrefix.length)
 }
 
@@ -85,7 +85,7 @@ async function readReport(path: string): Promise<PreviewReport> {
 
 async function requireUnchangedSource(root: string, commit: string): Promise<void> {
   const status = await captureGit(root, ['status', '--porcelain=v1', '--untracked-files=all'])
-  UserInput.require(
+  UserInput.Require(
     !(status || await resolveCommit(root, 'HEAD') !== commit),
     'Commit local changes and keep the checkout at one revision throughout baseline capture.',
   )
@@ -95,7 +95,7 @@ function requireComparableSessions(reports: PreviewReport[], commit: string): vo
   const first = reports[0]!
   const uniqueSessions = new Set(reports.map(report => report.sessionId))
   const valid = reports.every(report => isBaselineSample(report, commit) && sameConditions(first, report))
-  UserInput.require(
+  UserInput.Require(
     !(!valid || uniqueSessions.size !== BaselineSessions),
     'Baseline needs five independent sessions of the same complete workload.',
   )

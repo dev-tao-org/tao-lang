@@ -16,7 +16,7 @@ export const fix = Timings.createTopLevelTimer(function(timings, input: FixInput
 })
 
 const fixSource = Timings.measured('fixer.imports', function(input: FixInput): FixResult {
-  UserInput.require(!input.tree.rootNode.hasError, 'Fixing requires a complete Tao document.')
+  UserInput.Require(!input.tree.rootNode.hasError, 'Fixing requires a complete Tao document.')
   const edits = organizeImports(input.source, input.tree, input.ast)
   return { text: applyEdits(input.source, edits), edits }
 })

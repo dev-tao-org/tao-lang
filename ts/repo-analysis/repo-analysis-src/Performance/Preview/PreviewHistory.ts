@@ -85,7 +85,7 @@ function newRecord(context: Context): PreviewHistoryStore.HistoryRecord {
 async function requireCleanInputs(git: Git, sourceCommit: string): Promise<void> {
   const current = (await git(['rev-parse', 'HEAD'])).trim()
   const dirty = await git(['status', '--porcelain=v1', '--untracked-files=all', '--', ...inputs])
-  UserInput.require(
+  UserInput.Require(
     !(current !== sourceCommit || dirty !== ''),
     'Commit benchmark implementation inputs before recording; HEAD and inputs must stay unchanged.',
   )

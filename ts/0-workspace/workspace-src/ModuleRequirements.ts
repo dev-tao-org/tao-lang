@@ -24,7 +24,7 @@ function createModuleRequirement(
 ): ManagedModuleRequirement {
   const version = declaration.version
   if (!version || valid(version) !== version) {
-    UserInput.fail(`npm dependency ${declaration.identifier} needs an exact version in ${path}.`)
+    UserInput.Fail(`npm dependency ${declaration.identifier} needs an exact version in ${path}.`)
   }
   if (declaration.alias) {
     SourceValidation.requireValidDeclarationName(declaration.alias, path)

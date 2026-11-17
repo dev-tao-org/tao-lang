@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { Errors, NullCharacter, Regxs, TabCharacter, Try } from '@shared'
+import { Errors, Json, NullCharacter, Regxs, TabCharacter, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { assertOwnedSession, requireCleanReviewed, requireIdleSession } from './ReviewSession'
@@ -53,26 +52,26 @@ export async function planReopen(session: ReviewSession, inputs: string[]): Prom
 export async function validateSelection(session: ReviewSession, selection: ReviewSelection): Promise<void> {
   await assertOwnedSession(session)
   await requireCleanReviewed(session)
-  UserInput.require(
+  UserInput.Require(
     !(selection.version !== 1 || selection.session !== session.id || !selection.files.length),
     'Selection belongs to a different session or unsupported format.',
   )
-  UserInput.require(!!Regxs.ReviewProposalIdRegx.test(selection.proposal), 'Selection proposal identity is invalid.')
+  UserInput.Require(!!Regxs.ReviewProposalIdRegx.test(selection.proposal), 'Selection proposal identity is invalid.')
   const frozen = await ReviewGit.readJson<ReviewSelection>(
     Path.join(session.directory, 'plans', `${selection.proposal}.json`),
   )
-  UserInput.require(
+  UserInput.Require(
     encodeReviewSelection(frozen) === encodeReviewSelection(selection),
     'Selection differs from its immutable proposal. Generate a new plan.',
   )
-  UserInput.require(
+  UserInput.Require(
     !(await ReviewGit.head(session.root) !== selection.sourceHead
       || await ReviewGit.head(session.reviewedRoot) !== selection.reviewedHead),
     'A branch moved after this proposal. Generate and inspect a new plan.',
   )
   const revisions = selection.kind === 'reopen' ? [selection.reviewedHead, session.baseCommit] : selection.reviewedHead
   const files = await ReviewGit.expandFiles(session.root, selection.files, revisions)
-  UserInput.require(
+  UserInput.Require(
     files.join(NullCharacter) === selection.files.join(NullCharacter),
     'The literal selection changed after planning. Generate a new plan.',
   )
@@ -82,13 +81,13 @@ export async function validateSelection(session: ReviewSession, selection: Revie
     await ReviewGit.readGitPathEntries(session.root, disk, files)
       !== await ReviewGit.readGitPathEntries(session.root, selection.diskTree, files)
   ) {
-    UserInput.fail(`Saved disk content changed after planning: ${files.join(', ')}`)
+    UserInput.Fail(`Saved disk content changed after planning: ${files.join(', ')}`)
   }
   if (
     await ReviewGit.readGitPathEntries(session.root, index, files)
       !== await ReviewGit.readGitPathEntries(session.root, selection.indexTree, files)
   ) {
-    UserInput.fail(`Staged content changed after planning: ${files.join(', ')}`)
+    UserInput.Fail(`Staged content changed after planning: ${files.join(', ')}`)
   }
   await assertOnlySelected(session.root, selection.sourceHead, selection.sourceTree, files)
   await assertOnlySelected(session.root, selection.reviewedHead, selection.reviewedTree, files)
@@ -154,7 +153,7 @@ async function partialCandidates(
     return { sourceTree: source, reviewedTree: reviewed, reconciledIndexTree: reconciled, kind: 'partial' }
   }, {
     catch(error) {
-      UserInput.fail(
+      UserInput.Fail(
         `Partial selection cannot be applied safely for ${
           files.join(', ')
         }. Include the missing reviewed context or defer this selection. ${
@@ -170,7 +169,7 @@ async function patchedTree(session: ReviewSession, base: string, path?: string):
   if (path) {
     const patch = await FS.readFile(path, 'utf8')
     if (!patch.trim()) {
-      UserInput.fail(`Patch is empty: ${path}`)
+      UserInput.Fail(`Patch is empty: ${path}`)
     }
     await ReviewGit.applyPatch(session.root, index, patch)
   }
@@ -208,7 +207,7 @@ async function reconcilePartial(
 async function assertOnlySelected(root: string, before: string, after: string, files: string[]): Promise<void> {
   const outside = (await ReviewGit.changedPaths(root, before, after)).filter(path => !files.includes(path))
   if (outside.length) {
-    UserInput.fail(`Patch changes paths outside the literal selection: ${outside.join(', ')}`)
+    UserInput.Fail(`Patch changes paths outside the literal selection: ${outside.join(', ')}`)
   }
 }
 

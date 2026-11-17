@@ -20,13 +20,13 @@ export async function withLearningState<Value>(
   const directory = Path.join(root, '.artifacts/notes/review-learning')
   await ensureProjectMetadataDirectory(root, directory)
   const lock = await FileLock.tryAcquire(Path.join(directory, 'operation.lock'))
-  UserInput.require(!!lock, 'Another review learning operation is active.')
+  UserInput.Require(!!lock, 'Another review learning operation is active.')
   return await Try(async () => {
     const path = Path.join(directory, 'state.json')
     const state: LearningState = await FS.exists(path)
       ? await readLearningState(path)
       : { version: 1, root, corrections: [], scans: [], proposals: [], protectedFiles: [], events: [] }
-    UserInput.require(
+    UserInput.Require(
       !(state.version !== 1 || state.root !== root),
       'Review learning state belongs to another checkout or version.',
     )
@@ -49,13 +49,13 @@ export function safeSourcePath(root: string, input: string, allowRoot = false): 
   const absolute = Path.resolve(root, input)
   const relative = Path.relative(root, absolute).replaceAll('\\', '/')
   if (isUnsafeSourcePath(relative, allowRoot)) {
-    UserInput.fail(`Unsafe source path: ${input}`)
+    UserInput.Fail(`Unsafe source path: ${input}`)
   }
   let current = root
   for (const segment of relative.split('/').filter(Boolean)) {
     current = Path.join(current, segment)
     if (FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()) {
-      UserInput.fail(`Symbolic links are outside review learning scope: ${input}`)
+      UserInput.Fail(`Symbolic links are outside review learning scope: ${input}`)
     }
   }
   return relative
@@ -96,7 +96,7 @@ export async function ensureProjectMetadataDirectory(root: string, directory: st
   let current = root
   for (const segment of relative.replaceAll('\\', '/').split('/')) {
     current = Path.join(current, segment)
-    UserInput.require(
+    UserInput.Require(
       !(FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()),
       'Review learning metadata directories must not be symbolic links.',
     )

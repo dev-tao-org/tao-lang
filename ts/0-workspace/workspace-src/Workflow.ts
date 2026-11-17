@@ -147,7 +147,7 @@ async function openWorkflowWorkspace(
       if (initialResult.status === 'failed' && initialResult.setupRequired) {
         requireSetup(initialResult.error)
       }
-      UserInput.fail(
+      UserInput.Fail(
         initialResult.status === 'failed'
           ? initialResult.error
           : `Workflow compilation was ${initialResult.status}: ${request.entry}`,
@@ -169,10 +169,10 @@ function createWorkflowWorkspaceOptions(request: Extract<WorkflowRequest, { kind
 }
 
 async function confirmSetup(entry: string, message: string, ui: WorkflowUI): Promise<void> {
-  UserInput.require(!!(await ui.confirm({ entry, message })), 'Dependency setup was declined.')
+  UserInput.Require(!!(await ui.confirm({ entry, message })), 'Dependency setup was declined.')
   assertActive(ui)
 }
 
 function assertActive(ui: WorkflowUI): void {
-  UserInput.require(!ui.cancelled?.(), 'Workflow cancelled.')
+  UserInput.Require(!ui.cancelled?.(), 'Workflow cancelled.')
 }

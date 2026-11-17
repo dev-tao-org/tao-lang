@@ -1,6 +1,5 @@
-import { Json, UserInput } from '@shared'
-import { Try } from '@shared'
 import * as Shared from '@shared'
+import { Json, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import * as ReviewGit from './ReviewGit'
 import { replaceEntries, validateSelection } from './ReviewPlan'
@@ -25,7 +24,7 @@ export async function recoverAcceptance(session: ReviewSession): Promise<void> {
   if (journal.phase === 'complete') {
     return
   }
-  UserInput.require(journal.selection.session === session.id, 'Recovery journal belongs to a different review session.')
+  UserInput.Require(journal.selection.session === session.id, 'Recovery journal belongs to a different review session.')
   await finishJournal(session, journal)
 }
 
@@ -78,7 +77,7 @@ function reviewedMessage(selection: ReviewSelection, sourceCommit: string): stri
 async function requireFinishedJournal(session: ReviewSession): Promise<void> {
   if (await FS.exists(resolveJournalPath(session))) {
     const journal = await ReviewGit.readJson<ReviewJournal>(resolveJournalPath(session))
-    UserInput.require(
+    UserInput.Require(
       journal.phase === 'complete',
       'An interrupted acceptance is pending. Run recover before accepting another selection.',
     )
@@ -137,11 +136,11 @@ async function finishJournal(session: ReviewSession, journal: ReviewJournal): Pr
 async function requireExpectedRefs(session: ReviewSession, journal: ReviewJournal): Promise<void> {
   const source = await ReviewGit.head(session.root)
   const reviewed = await ReviewGit.head(session.reviewedRoot)
-  UserInput.require(
+  UserInput.Require(
     !![journal.selection.sourceHead, journal.sourceCommit].includes(source),
     'Implementation branch moved outside the frozen journal; recovery will not overwrite it.',
   )
-  UserInput.require(
+  UserInput.Require(
     !![journal.selection.reviewedHead, journal.reviewedCommit].includes(reviewed),
     'Reviewed branch moved outside the frozen journal; recovery will not overwrite it.',
   )
@@ -153,7 +152,7 @@ async function requirePreparedDisk(session: ReviewSession, journal: ReviewJourna
   }
   const selection = journal.selection
   const disk = await ReviewGit.snapshot(session.root, session.directory, selection.sourceHead, selection.files)
-  UserInput.require(
+  UserInput.Require(
     await ReviewGit.readGitPathEntries(session.root, disk, selection.files)
       === await ReviewGit.readGitPathEntries(session.root, selection.diskTree, selection.files),
     'Saved selected content changed before the source commit. Recovery will not accept unseen changes.',
@@ -162,11 +161,11 @@ async function requirePreparedDisk(session: ReviewSession, journal: ReviewJourna
 
 async function requireExpectedIndex(path: string, journal: ReviewJournal): Promise<void> {
   const hash = await ReviewGit.indexHash(path)
-  UserInput.require(
+  UserInput.Require(
     !![journal.originalIndexHash, journal.reconciledIndexHash].includes(hash),
     'The implementation index changed during acceptance; recovery will not overwrite staged work.',
   )
-  UserInput.require(
+  UserInput.Require(
     await ReviewGit.indexHash(journal.reconciledIndex) === journal.reconciledIndexHash,
     'The retained reconciled index changed; recovery cannot safely continue.',
   )
@@ -205,7 +204,7 @@ async function finishReviewed(session: ReviewSession, journal: ReviewJournal): P
 async function acquireIndexLock(path: string, session: ReviewSession, journal: ReviewJournal): Promise<void> {
   const token = encodeIndexLockToken(session, journal)
   if (await FS.exists(path)) {
-    UserInput.require(
+    UserInput.Require(
       await FS.readFile(path, 'utf8') === token,
       'A foreign Git index lock exists; recovery will not remove it.',
     )

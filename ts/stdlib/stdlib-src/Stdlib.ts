@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { NewlineCharacter, Regxs, Try } from '@shared'
+import { Json, NewlineCharacter, Regxs, Try, UserInput } from '@shared'
 import { FS, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
 import ProjectMetadata from './.tao/store/project.json' with { type: 'json' }
@@ -74,7 +73,7 @@ function serializeStdlibResourceEntries(entries: StdlibResourceEntries): string 
 }
 
 function validateResources(entries: StdlibResourceEntries): void {
-  UserInput.require(
+  UserInput.Require(
     !(entries.length === 0 || entries.some(([path]) => {
       return Path.isAbsolute(path)
         || path.split(Regxs.PathSeparatorRegx).some(part => !part || part === '.' || part === '..')
@@ -140,6 +139,6 @@ function assertContainedPath(path: string, parent: string): void {
   const resolvedParent = Try.WithDefault(undefined, () => FS.realpathSync(parent))
   const canonicalPath = Try.WithDefault(undefined, () => FS.realpathSync(path))
   if (!resolvedParent || !canonicalPath || !Path.isWithin(resolvedParent, canonicalPath)) {
-    UserInput.fail(`Stdlib project cache path escapes its cache root: ${path}`)
+    UserInput.Fail(`Stdlib project cache path escapes its cache root: ${path}`)
   }
 }

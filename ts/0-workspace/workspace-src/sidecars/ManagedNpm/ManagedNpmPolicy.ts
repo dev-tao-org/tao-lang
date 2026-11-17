@@ -1,5 +1,4 @@
-import { Json, Sort, UserInput } from '@shared'
-import { NewlineCharacter } from '@shared'
+import { Json, NewlineCharacter, Sort, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import type { ManagedModulesInput, ManagedRuntimePolicy } from '../ManagedModule/ManagedModuleTypes'
@@ -47,7 +46,7 @@ export async function ensureManagedPatches(
 export async function validateManagedPatches(profile: string, input: ManagedModulesInput): Promise<void> {
   for (const [path, content] of listManagedPatches(input.runtimePolicy)) {
     validateManagedProfilePath(input.directory, Path.join(profile, path))
-    UserInput.require(
+    UserInput.Require(
       await optionalText(Path.join(profile, path)) === content,
       'Managed npm runtime patch drifted. Repair with: tao setup --repair.',
     )
@@ -74,7 +73,7 @@ export function repairManagedLockPolicy(source: string, input: ManagedModulesInp
   for (const [name, version] of Object.entries(input.runtimePolicy?.overrides ?? {})) {
     const identities = listLockedPackageIdentities(packages, name)
     if (!identities.length || identities.some(identity => identity !== `${name}@${version}`)) {
-      UserInput.fail(
+      UserInput.Fail(
         `Runtime patch policy requires ${name}@${version}, but the durable npm graph locks ${
           identities.join(', ') || 'no version'
         }. Frozen repair cannot change package resolutions; explicitly update the owning npm graph before retrying.`,
@@ -97,11 +96,11 @@ function listManagedPatches(policy: RuntimePolicyInput): [string, string][] {
   const patches: [string, string][] = []
   for (const path of Sort.Strings(Object.values(policy?.patchedDependencies ?? {}))) {
     if (!isManagedPatchPath(path)) {
-      UserInput.fail(`Unsupported managed runtime patch path: ${path}`)
+      UserInput.Fail(`Unsupported managed runtime patch path: ${path}`)
     }
     const content = policy?.patches[path]
     if (content === undefined) {
-      UserInput.fail(`Managed runtime patch resource is missing: ${path}`)
+      UserInput.Fail(`Managed runtime patch resource is missing: ${path}`)
     }
     patches.push([path, content])
   }

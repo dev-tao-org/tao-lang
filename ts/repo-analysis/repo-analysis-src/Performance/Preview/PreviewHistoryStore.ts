@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { NewlineCharacter, Try } from '@shared'
+import { Json, NewlineCharacter, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 
 /** HistoryRecord retains measured source identity independently from later archive commits. */
@@ -30,7 +29,7 @@ export async function resolveHistoryDirectories(
   }
   const top = (await git(['-C', storage, 'rev-parse', '--show-toplevel'])).trim()
   const parent = (await git(['-C', storage, 'rev-parse', '--show-superproject-working-tree'])).trim()
-  UserInput.require(
+  UserInput.Require(
     !!isStorageCheckout(top, parent, root, storage),
     'Performance archive must be this checkout’s initialized .storage submodule.',
   )
@@ -49,11 +48,11 @@ export async function existingHistory(
     const recordText = await FS.readFile(Path.join(directory, 'record.json'), 'utf8')
     const record = parseHistoryRecord(recordText)
     if (!matchesRecord(record, context)) {
-      UserInput.fail('Existing performance record is incomplete or differs from the source: ' + directory)
+      UserInput.Fail('Existing performance record is incomplete or differs from the source: ' + directory)
     }
     const report = await FS.readFile(Path.join(directory, 'report.json'), 'utf8')
     if (Platform.hashText(report) !== record.reportSha256) {
-      UserInput.fail('Existing performance report checksum differs: ' + directory)
+      UserInput.Fail('Existing performance report checksum differs: ' + directory)
     }
     validatePreviewReport(report, context.sourceCommit)
     return directory
@@ -73,7 +72,7 @@ export async function writeHistory(directory: string, record: HistoryRecord, rep
     const recordText = serializeHistoryRecord(record)
     await FS.writeFile(Path.join(staging, 'record.json'), recordText, 'utf8')
     if (await FS.exists(directory)) {
-      UserInput.fail('Performance history already exists: ' + directory)
+      UserInput.Fail('Performance history already exists: ' + directory)
     }
     await FS.rename(staging, directory)
   }, {
@@ -84,7 +83,7 @@ export async function writeHistory(directory: string, record: HistoryRecord, rep
 /** validatePreviewReport requires the raw capture to name the expected source commit and schema. */
 export function validatePreviewReport(report: string, sourceCommit: string): void {
   const value = parsePreviewReport(report)
-  UserInput.require(
+  UserInput.Require(
     !!isSourceReport(value, sourceCommit),
     'The preview report does not identify the measured source commit and schema.',
   )

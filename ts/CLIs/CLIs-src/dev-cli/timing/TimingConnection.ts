@@ -1,7 +1,6 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json, UserInput } from '@shared'
-import { Errors } from '@shared'
+import { IO } from '@cli-kit'
+import { Errors, Json, UserInput } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 
@@ -33,7 +32,7 @@ export async function connectTiming(options: TimingConnection): Promise<void> {
     io.print(`Existing SSH connection is ready for ${options.host}.`)
     return
   }
-  UserInput.require(
+  UserInput.Require(
     !!io.interactive,
     'Run ./dev timing-connect HOST in Terminal to verify the host and enter your SSH password.',
   )

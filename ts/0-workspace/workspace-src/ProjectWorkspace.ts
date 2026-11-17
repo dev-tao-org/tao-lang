@@ -16,7 +16,7 @@ export async function openProjectWorkspace(
 ): Promise<WorkspaceSession> {
   const project = await discoverProject(entry)
   if (!project) {
-    UserInput.fail(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
+    UserInput.Fail(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
   }
   const session = await acquireSession(project.root, options)
   const identity = `${project.root}:${session.id}`

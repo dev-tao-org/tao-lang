@@ -38,11 +38,11 @@ export async function readManagedProfileLock(
   if (!profile && durable) {
     requireSetup('The installed npm lock is missing; setup restores it from the exact durable lock.')
   }
-  UserInput.require(
+  UserInput.Require(
     !(!profile || !durable),
     'Managed npm lock is missing; restore it and its SHA-256 file from version control, then retry preparation.',
   )
-  UserInput.require(profile === durable, 'Managed npm lock copies differ. Repair with: tao setup --repair.')
+  UserInput.Require(profile === durable, 'Managed npm lock copies differ. Repair with: tao setup --repair.')
   return profile
 }
 
@@ -76,7 +76,7 @@ function validateDurableLock(
     (lock === undefined) !== (hash === undefined)
     || lock !== undefined && hash !== `${Platform.hashText(lock)}${NewlineCharacter}`
   ) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm durable lock is changed or incomplete for ${fingerprint}; restore it and its SHA-256 file from version control.`,
     )
   }
@@ -104,7 +104,7 @@ async function readReferencedLock(
 ): Promise<string | undefined> {
   const path = Path.resolve(input.directory, ...reference.lockPath.split('/'))
   const lock = await optionalText(path)
-  UserInput.require(
+  UserInput.Require(
     !(lock === undefined || Platform.hashText(lock) !== reference.lockHash),
     'Referenced managed npm graph lock is missing or changed; restore the source lock and .tao/store lock files from version control.',
   )
@@ -116,7 +116,7 @@ async function readReferencedLock(
     return undefined
   }
   if (!managedLockPolicyMatches(lock, input)) {
-    UserInput.require(
+    UserInput.Require(
       !(!repair || reference.fingerprint === graphFingerprint),
       'Managed npm runtime patch policy changed. Preserve locked package versions with: tao setup --repair.',
     )
@@ -133,12 +133,12 @@ async function validatePresentProfile(
 ): Promise<void> {
   const profile = Path.join(input.directory, '.tao', 'cache', 'managed-modules', fingerprint)
   const metadata = await optionalJson(Path.join(profile, '.tao-managed.json'))
-  UserInput.require(
+  UserInput.Require(
     !(metadata && (metadata.fingerprint !== fingerprint || metadata.lockHash !== lockHash)),
     'Referenced managed npm profile does not match its exact source lock reference.',
   )
   const profileLock = await optionalText(Path.join(profile, 'bun.lock'))
-  UserInput.require(
+  UserInput.Require(
     !(profileLock !== undefined && profileLock !== lock),
     'Referenced managed npm profile lock differs from its exact source lock reference.',
   )

@@ -8,8 +8,8 @@ export async function confirmDependencyWork(work: string[], yes: boolean): Promi
     return
   }
   const summary = work.join(', ')
-  UserInput.require(!!Terminal.isInteractive(), 'Dependency setup requires --yes when running non-interactively.')
-  UserInput.require(
+  UserInput.Require(!!Terminal.isInteractive(), 'Dependency setup requires --yes when running non-interactively.')
+  UserInput.Require(
     !!(await IO.askConfirm({ message: `Set up/download: ${summary}?`, defaultValue: true })),
     'Dependency preparation was declined; rerun with --yes to proceed non-interactively.',
   )

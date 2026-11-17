@@ -20,10 +20,10 @@ export async function withConsumerProject(
   ui?: WorkflowUI,
 ): Promise<void> {
   const manifest = await readTypeScriptProjectPackage(packageDirectory)
-  const runConfiguration = manifest.run ?? UserInput.fail('Configure tao.run.entry in the authored package.json.')
+  const runConfiguration = manifest.run ?? UserInput.Fail('Configure tao.run.entry in the authored package.json.')
   Expo.resolveConsumerEntry(manifest.directory, runConfiguration.entry)
   const project = await discoverProject(packageDirectory)
-  UserInput.require(!!project, `No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
+  UserInput.Require(!!project, `No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
   await ensureProjectMetadata(project.root)
   await withDependencySession(project.root, sessionId, async session => {
     const library = await compileConsumerLibrary(manifest, project.root, session, ui)
@@ -76,7 +76,7 @@ async function compileConsumerLibrary(
     return
   }
   const target = await resolveCompileTarget(manifest.directory)
-  UserInput.require(
+  UserInput.Require(
     target.kind === 'library' && !!target.name,
     'A React consumer tao.compile configuration must select a named TypeScript library output.',
   )

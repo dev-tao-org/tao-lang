@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { Lists, NewlineCharacter, Objects, Regxs, Try } from '@shared'
+import { Json, Lists, NewlineCharacter, Objects, Regxs, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { isDependencyLock, isOwnedSourceKey, isVersionOne } from './LockFileSchema'
 import type * as Types from './Types'
@@ -18,16 +17,16 @@ export async function readDependencyLock(path: string): Promise<Types.Dependency
     () => parseDependencyLockFile(path),
     {
       catch: () =>
-        UserInput.fail(`Dependency lock ${path} is invalid; restore it from version control or repair it explicitly.`),
+        UserInput.Fail(`Dependency lock ${path} is invalid; restore it from version control or repair it explicitly.`),
     },
   )
   if (!isDependencyLock(parsed)) {
     if (isVersionOne(parsed)) {
-      UserInput.fail(
+      UserInput.Fail(
         `Dependency lock ${path} uses unsupported format version 1; restore an updated version 2 lock without re-resolving pins.`,
       )
     }
-    UserInput.fail(`Dependency lock ${path} is invalid; restore it from version control or repair it explicitly.`)
+    UserInput.Fail(`Dependency lock ${path} is invalid; restore it from version control or repair it explicitly.`)
   }
   return parsed
 }
@@ -278,8 +277,8 @@ function isRegularFile(path: string): boolean {
 }
 
 function validateGraphReference(key: string, fingerprint: string, hash: string): void {
-  UserInput.require(!!isOwnedSourceKey(key), 'Managed dependency graph key must be a safe project-relative identifier.')
-  UserInput.require(
+  UserInput.Require(!!isOwnedSourceKey(key), 'Managed dependency graph key must be a safe project-relative identifier.')
+  UserInput.Require(
     !(!Regxs.Sha256HashRegx.test(fingerprint) || !Regxs.Sha256HashRegx.test(hash)),
     'Managed dependency graph fingerprint and lock hash must be SHA-256 values.',
   )
@@ -287,7 +286,7 @@ function validateGraphReference(key: string, fingerprint: string, hash: string):
 
 function relativizeProjectPath(projectRoot: string, filePath: string): string {
   const absolute = Path.resolve(filePath)
-  UserInput.require(
+  UserInput.Require(
     !(absolute === Path.resolve(projectRoot) || !Path.isWithin(projectRoot, absolute)),
     'Managed dependency lock path must be inside the project.',
   )
@@ -300,7 +299,7 @@ function requiredBundledLocation(
 ): string {
   const location = bundledProjects?.[identifier]
   if (!location) {
-    UserInput.fail(`Bundled dependency ${identifier} is unavailable in this runtime.`)
+    UserInput.Fail(`Bundled dependency ${identifier} is unavailable in this runtime.`)
   }
   return location
 }

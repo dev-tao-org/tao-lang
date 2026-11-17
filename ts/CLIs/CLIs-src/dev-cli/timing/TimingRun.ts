@@ -49,20 +49,20 @@ export async function runTiming(options: TimingRun, summary: (message: string) =
 /** requireTimingRun rejects invalid workloads and paths before authentication or measurement. */
 export function requireTimingRun(options: TimingRun): void {
   requireHost(options.host)
-  UserInput.require(
+  UserInput.Require(
     !!Path.posix.isAbsolute(options.repo),
     'Use absolute paths for the runner checkout and optional tooling checkout.',
   )
-  UserInput.require(
+  UserInput.Require(
     !(options.tooling !== undefined && !Path.posix.isAbsolute(options.tooling)),
     'Use absolute paths for the runner checkout and optional tooling checkout.',
   )
   if (!hasValidWorkload(options)) {
-    UserInput.fail(
+    UserInput.Fail(
       `Use a positive session count and an edit count that is a positive multiple of ${Performance.PreviewCycleSize}.`,
     )
   }
-  UserInput.require(
+  UserInput.Require(
     !(options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)),
     'Use an absolute runner fixture path.',
   )
@@ -82,7 +82,7 @@ async function readCandidateFixture(repo: string, remote: TimingRunner): Promise
     isRegularTreeFile(entry) && entry.path.endsWith(PerformanceFixtureSuffix)
   )
   if (candidates.length !== 1) {
-    UserInput.fail(`Expected one committed performance fixture in ${repo}. Supply --fixture to select it.`)
+    UserInput.Fail(`Expected one committed performance fixture in ${repo}. Supply --fixture to select it.`)
   }
   return Path.posix.join(repo, candidates[0]!.path)
 }

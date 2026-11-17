@@ -22,7 +22,7 @@ export default registerCommand({
 })
 
 function requireRegistryPin(dependency: string): void {
-  UserInput.require(
+  UserInput.Require(
     !!Regxs.RegistryDependencyPinRegx.test(dependency),
     'Specify a registry package with an exact version, such as zod@4.1.0.',
   )
@@ -37,7 +37,7 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   const manifests = RepoAnalysis.readWorkspaceManifestPaths(workspace)
   const manifest = manifests.find(candidate => Path.relative(directory, Path.dirname(candidate)) === '')
   if (!manifest) {
-    UserInput.fail(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
+    UserInput.Fail(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)
   }
   return Path.dirname(manifest)
 }

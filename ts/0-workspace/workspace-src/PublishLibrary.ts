@@ -35,7 +35,7 @@ async function linkLibraryRuntime(session: ProjectSession): Promise<void> {
   const target = Runtime.libraryRuntimePackageDirectory()
   const existing = await Try.WithDefault(undefined, () => FS.lstat(link))
   if (existing && !existing.isSymbolicLink()) {
-    UserInput.fail(`Compiler runtime path is not a symbolic link; preserved it: ${link}.`)
+    UserInput.Fail(`Compiler runtime path is not a symbolic link; preserved it: ${link}.`)
   }
   if (Try.WithDefault(undefined, () => FS.realpathSync(link)) !== target) {
     await FS.replaceDirectoryLink(target, link)
@@ -43,13 +43,13 @@ async function linkLibraryRuntime(session: ProjectSession): Promise<void> {
 }
 
 function createSessionLibraryRequest(target: CompileTarget, session: ProjectSession): LibraryPackageRequest {
-  UserInput.require(
+  UserInput.Require(
     !(target.kind !== 'library' || !target.target || !target.name),
     'Select a ts-library and configure tao.compile.name in the authored package.json.',
   )
   const libraries = Path.join(session.directory, 'libraries')
   const out = Path.join(libraries, target.target)
-  UserInput.require(Path.dirname(out) === libraries, `Invalid library target name: ${target.target}`)
+  UserInput.Require(Path.dirname(out) === libraries, `Invalid library target name: ${target.target}`)
   return { entry: target.entry, target: target.target, name: target.name, out }
 }
 
@@ -63,6 +63,6 @@ async function requireOutputDirectory(output: string): Promise<void> {
     return
   }
   if (!existing.isDirectory() || existing.isSymbolicLink()) {
-    return UserInput.fail(`Compiler output is not a regular directory; preserved it: ${output}.`)
+    return UserInput.Fail(`Compiler output is not a regular directory; preserved it: ${output}.`)
   }
 }

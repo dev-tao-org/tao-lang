@@ -78,7 +78,7 @@ function transpile(source: string, path: string): string {
   })
   const errors = collectTranspileErrors(output)
   if (errors.length > 0) {
-    UserInput.fail(
+    UserInput.Fail(
       `Generated TypeScript failed to transpile in ${path}: ${errors.map(error => error.messageText).join('; ')}`,
     )
   }

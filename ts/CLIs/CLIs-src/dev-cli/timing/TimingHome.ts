@@ -41,7 +41,7 @@ async function importTimingReports(source: string, destination: string): Promise
     }
     const from = Path.join(source, name)
     if (!(await FS.lstat(from)).isFile()) {
-      UserInput.fail(`Import only regular report files: ${from}`)
+      UserInput.Fail(`Import only regular report files: ${from}`)
     }
     const to = Path.join(destination, name)
     if (await FS.exists(to)) {
@@ -59,6 +59,6 @@ async function requireMatchingReport(source: string, destination: string): Promi
   const sourceHash = Platform.hashBytes(await FS.readFile(source), ReportDigestAlgorithm)
   const destinationHash = Platform.hashBytes(await FS.readFile(destination), ReportDigestAlgorithm)
   if (sourceHash !== destinationHash) {
-    UserInput.fail(`A different report already exists at ${destination}; resolve the conflict before importing.`)
+    UserInput.Fail(`A different report already exists at ${destination}; resolve the conflict before importing.`)
   }
 }

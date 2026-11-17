@@ -226,7 +226,7 @@ function createScope(parent: OptionalScope, resolveModule: ResolveModuleValue): 
 
 function declare(scope: Scope, name: AST.Name, binding: ViewBinding, owner: ViewOwner): void {
   if (scope.locals.has(name.value)) {
-    UserInput.fail(
+    UserInput.Fail(
       `View ${owner.view} in ${owner.path} declares ${name.value} more than once in one scope (offset ${name.range.start}).`,
     )
   }
@@ -248,5 +248,5 @@ function resolveLocal(scope: Scope, name: string): OptionalBinding {
 }
 
 function reject(owner: ViewOwner, source: AST.Node, message: string): never {
-  return UserInput.fail(`View ${owner.view} in ${owner.path} (offset ${source.range.start}): ${message}`)
+  return UserInput.Fail(`View ${owner.view} in ${owner.path} (offset ${source.range.start}): ${message}`)
 }

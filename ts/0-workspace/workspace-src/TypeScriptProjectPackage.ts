@@ -22,7 +22,7 @@ export async function readTypeScriptProjectPackage(directory: string): Promise<T
   const root = Path.resolve(directory)
   const path = Path.join(root, 'package.json')
   if (!FS.existsSync(path)) {
-    return UserInput.fail(`No package.json at ${root}; select the authored TypeScript package with --package.`)
+    return UserInput.Fail(`No package.json at ${root}; select the authored TypeScript package with --package.`)
   }
   return parseTypeScriptProjectPackage(await FS.readFile(path, 'utf8'), root)
 }
@@ -44,7 +44,7 @@ function parseTypeScriptProjectPackage(source: string, directory: string): TypeS
 
 function readCompileConfiguration(value: unknown): PackageCompileConfiguration {
   const configuration = requirePackageRecord(value, 'tao.compile')
-  UserInput.require(
+  UserInput.Require(
     configuration.out === undefined,
     'Remove tao.compile.out; build output is owned by the selected session.',
   )
@@ -64,7 +64,7 @@ function readRunConfiguration(value: unknown, name: string): PackageRunConfigura
 
 function requirePackageRecord(value: unknown, field: string): PackageRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return UserInput.fail(`${field} must be an object.`)
+    return UserInput.Fail(`${field} must be an object.`)
   }
   return value as PackageRecord
 }
@@ -79,7 +79,7 @@ function readPackageVersions(value: unknown): Runtime.RuntimePackageVersions {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value) {
-    return UserInput.fail(`${field} must be a non-empty string.`)
+    return UserInput.Fail(`${field} must be a non-empty string.`)
   }
   return value
 }

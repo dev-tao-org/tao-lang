@@ -21,12 +21,12 @@ export async function requireOwnedStorageChanges(io: LandingIO): Promise<void> {
   for (const entry of status.split(NullCharacter).filter(Boolean)) {
     const path = entry.slice(3)
     const expected = allowed.get(path)
-    UserInput.require(
+    UserInput.Require(
       !(expected === undefined || Regxs.GitStatusChangeCodeRegx.test(entry.slice(0, 2))),
       'Storage contains changes outside this task; preserve and resolve them before landing.',
     )
     if (!await io.exists(`.storage/${path}`) || await io.read(`.storage/${path}`) !== expected) {
-      UserInput.fail(`Storage retry bytes differ from the validated pending record: ${path}.`)
+      UserInput.Fail(`Storage retry bytes differ from the validated pending record: ${path}.`)
     }
   }
 }

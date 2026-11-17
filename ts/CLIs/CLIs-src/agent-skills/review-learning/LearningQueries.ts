@@ -15,7 +15,7 @@ export async function runCandidateScan(root: string, correction: Correction, sel
   const program = RepoAnalysis.createConformanceProgram(root, files.map(file => Path.join(root, file)))
   const findings = queryProgram(program, root, included, correction.rule)
   const after = await snapshotScope(root, correction)
-  UserInput.require(
+  UserInput.Require(
     encodeLearningSnapshot(snapshot) === encodeLearningSnapshot(after),
     'Source or configuration changed during the scan; rerun against a stable snapshot.',
   )
@@ -74,7 +74,7 @@ function resolveTarget(
     visit(source)
   }
   const unique = Lists.unique(found)
-  UserInput.require(unique.length === 1, 'call-symbol requires one unambiguous declaration in the scanned scope.')
+  UserInput.Require(unique.length === 1, 'call-symbol requires one unambiguous declaration in the scanned scope.')
   return unique[0]!
 }
 

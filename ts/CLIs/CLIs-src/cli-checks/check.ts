@@ -22,7 +22,7 @@ export async function assertNewWorkspaceTree(root = Repo.getWorkspaceRoot()): Pr
       if (entry.isSymbolicLink()) {
         const target = FS.realpathSync(path)
         if (!Path.isWithin(workspace, target)) {
-          UserInput.fail(`Workspace source links must remain inside ts/: ${path}`)
+          UserInput.Fail(`Workspace source links must remain inside ts/: ${path}`)
         }
       } else if (entry.isDirectory()) {
         await visit(path)
@@ -83,7 +83,7 @@ export async function workspaceConformance(): Promise<void> {
   const elapsed = Math.round(Time.nowMs() - started)
   CLIKit.IO.print(`Checked source conformance: ${result.findings.length} issue(s) in ${elapsed}ms`)
   if (result.findings.length > 0) {
-    UserInput.fail(
+    UserInput.Fail(
       result.findings.map(({ file, line, message }) => `${file}${line === undefined ? '' : ':' + line}: ${message}`)
         .join(NewlineCharacter),
     )

@@ -138,7 +138,7 @@ function reuseOrBeginCopy(source: object, prototype: CollectionPrototype, traver
     return existing
   }
   if (copies.has(source)) {
-    return UserInput.fail('Tao value snapshots require acyclic lists and records.')
+    return UserInput.Fail('Tao value snapshots require acyclic lists and records.')
   }
   copies.set(source, undefined)
   const listLength = Array.isArray(source) ? source.length : undefined
@@ -149,7 +149,7 @@ function reuseOrBeginCopy(source: object, prototype: CollectionPrototype, traver
 }
 
 function requireStringFields(value: object): void {
-  UserInput.require(
+  UserInput.Require(
     Object.getOwnPropertySymbols(value).length === 0,
     'Tao collection snapshots require string field names.',
   )
@@ -159,13 +159,13 @@ function requireListIndex(name: string, length: number): void {
   const index = Number(name)
   const isIntegerKey = Number.isInteger(index) && String(index) === name
   const isInBounds = index >= 0 && index < length
-  UserInput.require(!(!isIntegerKey || !isInBounds), 'Tao list snapshots require indexed data fields.')
+  UserInput.Require(!(!isIntegerKey || !isInBounds), 'Tao list snapshots require indexed data fields.')
 }
 
 function requireDataField(source: object, name: string): unknown {
   const field = Object.getOwnPropertyDescriptor(source, name)
   if (!field?.enumerable || !Object.hasOwn(field, 'value')) {
-    return UserInput.fail('Tao value snapshots require enumerable data fields.')
+    return UserInput.Fail('Tao value snapshots require enumerable data fields.')
   }
   return field.value as unknown
 }

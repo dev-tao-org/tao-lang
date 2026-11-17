@@ -1,6 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Json, UserInput } from '@shared'
-import { Regxs } from '@shared'
+import { Json, Regxs, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { captureGit, resolveCommit } from './Git'
 import type { PerformanceSnapshot } from './Snapshot'
@@ -13,21 +12,21 @@ export async function receiveSnapshot(
   directory: string,
   ref?: string,
 ): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     !(await FS.exists(directory)),
     'Snapshot destination already exists; select a new runner directory.',
   )
   const snapshot = Json.Parse(await FS.readFile(manifest, 'utf8')) as PerformanceSnapshot
   const actualHash = Platform.hashBytes(await FS.readFile(bundle), 'sha256')
-  UserInput.require(
+  UserInput.Require(
     !(snapshot.version !== 1 || snapshot.bundleSha256 !== actualHash),
     'Snapshot bundle checksum or manifest schema differs; transfer it again.',
   )
   const commit = ref ?? snapshot.commit
-  UserInput.require(!!Regxs.Sha1HashRegx.test(commit), 'Select a full immutable commit SHA from the snapshot history.')
+  UserInput.Require(!!Regxs.Sha1HashRegx.test(commit), 'Select a full immutable commit SHA from the snapshot history.')
   await FS.mkdir(Path.dirname(directory))
   await CLIKit.runNonInteractiveCommand('git', ['clone', '--no-checkout', '--', bundle, directory])
-  UserInput.require(
+  UserInput.Require(
     await resolveCommit(directory, commit) === commit,
     'The transferred bundle does not contain the requested checkpoint.',
   )

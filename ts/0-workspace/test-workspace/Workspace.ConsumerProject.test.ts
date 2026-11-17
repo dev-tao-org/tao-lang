@@ -47,7 +47,7 @@ Tests.test('managed consumer host borrows authored dependencies and protects act
     const protectedState = await cleanProject(root)
     Tests.expect(protectedState.skippedActive).toEqual(['ownership'])
     Tests.expect(protectedState.sharedProtected).toBe(true)
-    UserInput.fail('Recorded host process failure')
+    UserInput.Fail('Recorded host process failure')
   })).rejects.toThrow('Recorded host process failure')
   const session = await acquireSession(root, { id: 'ownership' })
   session.release()

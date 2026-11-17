@@ -17,7 +17,7 @@ export function workflowUI(
       }
       if (!Terminal.isInteractive()) {
         const retry = consumer ? 'Pass --yes' : 'Use tao setup or pass --yes'
-        UserInput.fail(`Setup is required for ${entry}: ${message} ${retry} to authorize setup non-interactively.`)
+        UserInput.Fail(`Setup is required for ${entry}: ${message} ${retry} to authorize setup non-interactively.`)
       }
       return await askConfirm({
         message: `${message} Set up dependencies and continue?`,

@@ -42,7 +42,7 @@ export function createCommandRunners(operations: CommandInteractionOperations) {
       args: CommandArgs = [],
       options: InteractiveCommandOptions = {},
     ): Promise<void> {
-      UserInput.require(
+      UserInput.Require(
         !!operations.isInteractive(),
         'Interactive commands require a terminal. Run this operation in Terminal.',
       )

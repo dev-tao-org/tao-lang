@@ -56,7 +56,7 @@ export class ProjectDependencies {
     this.requirements.set(owner, requirements)
     const requirement = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === alias)
     if (requirement === undefined) {
-      UserInput.fail(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
+      UserInput.Fail(`Project ${owner} has no dependency alias ${alias}; declare the source requirement.`)
     }
     const source = resolveLockedAlias(this.current, owner, alias, this.root)
     if (source === undefined) {
@@ -113,5 +113,5 @@ function requireEditableDependencyDeclarations(lock: DependencyLock, owner: stri
   const pinnedRemote = Object.values(lock.sources).some(source =>
     source.location === owner && source.provider === 'github'
   )
-  UserInput.require(!pinnedRemote, 'Pinned remote dependency declarations changed; restore the exact pinned source.')
+  UserInput.Require(!pinnedRemote, 'Pinned remote dependency declarations changed; restore the exact pinned source.')
 }

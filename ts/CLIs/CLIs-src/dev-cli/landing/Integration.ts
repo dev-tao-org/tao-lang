@@ -13,7 +13,7 @@ export async function requireCleanBranch(io: LandingIO): Promise<string> {
 
 /** requireFeatureBranch validates a literal feature branch before using it in refspecs or paths. */
 export function requireFeatureBranch(branch: string): void {
-  UserInput.require(
+  UserInput.Require(
     !(!Regxs.FeatureBranchNameRegx.test(branch) || branch.includes('..') || branch.endsWith('/')),
     'Landing requires a named feat/<name> branch.',
   )
@@ -21,7 +21,7 @@ export function requireFeatureBranch(branch: string): void {
 
 /** requireClean includes untracked files and the storage worktree despite ignore-all gitlink settings. */
 export async function requireClean(io: LandingIO): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     !(await git(io, ['status', '--porcelain=v1', '--untracked-files=all', '--ignore-submodules=all'])),
     'Commit or preserve authored changes before running the landing workflow.',
   )

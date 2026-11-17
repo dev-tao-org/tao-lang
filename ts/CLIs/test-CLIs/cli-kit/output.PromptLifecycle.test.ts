@@ -173,7 +173,7 @@ Tests.test('keeps the prompt failure primary while exposing a failed renderer re
       reported.push(error)
     },
   })
-  await Tests.expect(lifecycle.run(async () => UserInput.fail('primary prompt failure'))).rejects.toMatchObject({
+  await Tests.expect(lifecycle.run(async () => UserInput.Fail('primary prompt failure'))).rejects.toMatchObject({
     name: 'UserInputError',
     messageForUser: 'primary prompt failure',
   })

@@ -53,7 +53,7 @@ const EmptyFacadeSpecifiers: ReadonlySet<string> = new Set()
 
 function prepareSidecarBytes(path: string, bytes: Uint8Array, facadeSpecifiers: ReadonlySet<string>): Uint8Array {
   if (Regxs.TaoSourceExtensionRegx.test(path)) {
-    UserInput.fail(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
+    UserInput.Fail(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
   }
   if (!isScriptSource(path)) {
     return bytes
@@ -68,7 +68,7 @@ function prepareSidecarBytes(path: string, bytes: Uint8Array, facadeSpecifiers: 
 
 function resolveModuleSpecifier(path: string, specifier: string, facadeSpecifiers: ReadonlySet<string>): string {
   if (Path.isAbsolute(specifier) || specifier.startsWith('file:')) {
-    UserInput.fail(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
+    UserInput.Fail(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
   }
   if (specifier === '@tao/runtime-api') {
     return '@tao/runtime/runtime-api'
@@ -77,7 +77,7 @@ function resolveModuleSpecifier(path: string, specifier: string, facadeSpecifier
     return specifier
   }
   if (Path.posix.normalize(specifier) !== specifier) {
-    UserInput.fail(`Invalid published Tao package subpath: ${specifier}.`)
+    UserInput.Fail(`Invalid published Tao package subpath: ${specifier}.`)
   }
   return Compile.resolveModuleSpecifier(path, `ts/${specifier}.ts`)
 }

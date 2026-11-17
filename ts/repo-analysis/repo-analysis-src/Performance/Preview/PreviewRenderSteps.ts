@@ -78,7 +78,7 @@ const RenderIndent = '    '
 
 function renderEntry(canonical: string, step: PreviewRenderStep, cycle: number): string {
   const marker = `Text("${InitialMarker}")`
-  UserInput.require(!!canonical.includes(marker), 'Performance entry is missing its initial render marker.')
+  UserInput.Require(!!canonical.includes(marker), 'Performance entry is missing its initial render marker.')
   const blocks = [`Text("${entryMarker(step, cycle)}")`]
   blocks.push(...Array.from({ length: step.localBranches }, () => LocalBranch))
   const branches = PreviewImportGroupRoots.map(root => `Load${root * PreviewViewsPerFile}`)

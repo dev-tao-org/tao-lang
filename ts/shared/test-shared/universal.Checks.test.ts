@@ -52,7 +52,7 @@ Tests.test('malformed boolean-check arguments fail internally without touching o
 Tests.test('unconditional input failures retain details and cause through the Tao error boundary', () => {
   const details = { field: 'Name' }
   const cause = new Error('Rejected by provider')
-  Tests.throws(() => UserInput.fail('Provide a valid name.', details, { cause }), thrown => {
+  Tests.throws(() => UserInput.Fail('Provide a valid name.', details, { cause }), thrown => {
     Tests.expect(Errors.isTaoError(thrown)).toBe(true)
     Tests.expect(thrown).toMatchObject({ name: 'UserInputError', message: 'Provide a valid name.' })
     const error = thrown as Errors.TaoError
@@ -70,7 +70,7 @@ Tests.test('unconditional input failures reject nontext messages without inspect
       return undefined
     },
   })
-  const failUnchecked = UserInput.fail as (message: unknown) => never
+  const failUnchecked = UserInput.Fail as (message: unknown) => never
   Tests.throws(
     () => failUnchecked(message),
     error => expectCheckError(error, 'UnexpectedBehaviorError', 'An input failure requires a string message.'),
@@ -83,7 +83,7 @@ type CheckErrorName = 'UnexpectedBehaviorError' | 'UserInputError'
 
 const Checks: readonly (readonly [check: UncheckedCheck, category: CheckErrorName])[] = [
   [Invariant as UncheckedCheck, 'UnexpectedBehaviorError'],
-  [UserInput.require as UncheckedCheck, 'UserInputError'],
+  [UserInput.Require as UncheckedCheck, 'UserInputError'],
 ]
 
 function expectCheckError(error: unknown, category: CheckErrorName, message: string): boolean {

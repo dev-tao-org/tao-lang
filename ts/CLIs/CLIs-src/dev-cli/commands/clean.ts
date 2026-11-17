@@ -12,7 +12,7 @@ export default registerCommand({
   arguments: [{ name: 'args', description: 'Optional --full or --partial flag.', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    UserInput.require(!!hasValidCleanArguments(args), 'Usage: clean [--full | --partial]')
+    UserInput.Require(!!hasValidCleanArguments(args), 'Usage: clean [--full | --partial]')
     if (args.includes('--partial')) {
       const removed = await Artifacts.cleanPartial()
       IO.print(`Removed ${removed} temporary artifacts; retained caches, recent output, failures and active runs.`)

@@ -41,7 +41,7 @@ const RenderCompilation = (result: string, components: string): RenderCompilatio
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
   if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
-    UserInput.fail(`Foreign view ${node.name.value} parameters must all use the text type.`)
+    UserInput.Fail(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
   if (component === undefined) {

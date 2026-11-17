@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { Lists, S, Try } from '@shared'
+import { Json, Lists, S, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
@@ -89,11 +88,11 @@ async function linkRuntimeSources(directory: string, resourcesDirectory: string,
   if (current?.isDirectory()) {
     await removeOwnedSourceCopies(target, sourceFiles)
     if (!await FS.isEmptyDir(target)) {
-      UserInput.fail(`Generated runtime source path contains user files: ${target}`)
+      UserInput.Fail(`Generated runtime source path contains user files: ${target}`)
     }
     await FS.rmdir(target)
   } else if (current) {
-    UserInput.fail(`Generated runtime source path is not a directory: ${target}`)
+    UserInput.Fail(`Generated runtime source path is not a directory: ${target}`)
   } else {
     // A missing target needs no cleanup before creating the runtime source link.
   }
@@ -121,10 +120,10 @@ async function assertUnlinkedDirectories(directories: readonly string[]): Promis
   for (const directory of directories) {
     const current = await Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (current?.isSymbolicLink()) {
-      UserInput.fail(`Generated runtime source path contains a linked directory: ${directory}`)
+      UserInput.Fail(`Generated runtime source path contains a linked directory: ${directory}`)
     }
     if (current && !current.isDirectory()) {
-      UserInput.fail(`Generated runtime source path is not a directory: ${directory}`)
+      UserInput.Fail(`Generated runtime source path is not a directory: ${directory}`)
     }
   }
 }

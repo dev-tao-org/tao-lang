@@ -29,7 +29,7 @@ export async function writeReadOnly(path: string, contents: string): Promise<voi
       },
     })
     if (existing && !existing.isFile()) {
-      UserInput.fail(`Generated metadata must be a regular file: ${path}`)
+      UserInput.Fail(`Generated metadata must be a regular file: ${path}`)
     }
     if (!existing) {
       await createReadOnlyFile(canonical, contents)
@@ -86,10 +86,10 @@ async function createReadOnlyFile(path: string, contents: string): Promise<void>
       }
       const info = await Native.lstat(path)
       if (!info.isFile()) {
-        UserInput.fail(`Generated metadata must be a regular file: ${path}`)
+        UserInput.Fail(`Generated metadata must be a regular file: ${path}`)
       }
       if (await Native.readFile(path, 'utf8') !== contents) {
-        UserInput.fail(
+        UserInput.Fail(
           `Generated metadata was created concurrently with different contents: ${path}. Retry the command.`,
         )
       }

@@ -21,13 +21,13 @@ async function resolveExistingDirectory(path: string): Promise<string> {
   const info = await Try(() => FS.lstat(absolute), {
     catch(error) {
       if (isMissingPath(error)) {
-        UserInput.fail(`A Tao library project target must be an existing directory: ${absolute}`)
+        UserInput.Fail(`A Tao library project target must be an existing directory: ${absolute}`)
       }
       Errors.Throw(error)
     },
   })
   if (!info.isDirectory()) {
-    UserInput.fail(`A Tao library project target must be an existing directory: ${absolute}`)
+    UserInput.Fail(`A Tao library project target must be an existing directory: ${absolute}`)
   }
   return await FS.realpath(absolute)
 }
@@ -35,17 +35,17 @@ async function resolveExistingDirectory(path: string): Promise<string> {
 async function preflightLibraryProject(root: string): Promise<void> {
   const taoDirectory = Path.join(root, '.tao')
   if (await hasPathEntry(taoDirectory)) {
-    UserInput.fail(`A Tao project marker already exists at ${taoDirectory}`)
+    UserInput.Fail(`A Tao project marker already exists at ${taoDirectory}`)
   }
   const nestedProject = await Files.findProjectMarker(root)
   if (nestedProject) {
-    UserInput.fail(`Cannot initialize a Tao project containing another project at ${Path.dirname(nestedProject)}`)
+    UserInput.Fail(`Cannot initialize a Tao project containing another project at ${Path.dirname(nestedProject)}`)
   }
   await requireDirectories(root, ['src', 'src/tao', 'src/ts'])
   for (const file of libraryProjectFiles) {
     const destination = Path.join(root, file.path)
     if (await hasPathEntry(destination)) {
-      UserInput.fail(`Tao library scaffolding would overwrite an existing path: ${destination}`)
+      UserInput.Fail(`Tao library scaffolding would overwrite an existing path: ${destination}`)
     }
   }
 }
@@ -66,7 +66,7 @@ async function requireDirectories(root: string, relativeDirectories: string[]): 
   for (const relative of relativeDirectories) {
     const path = Path.join(root, relative)
     if (await hasPathEntry(path) && !FS.lstatSync(path).isDirectory()) {
-      UserInput.fail(`Tao library scaffolding requires a directory at ${path}`)
+      UserInput.Fail(`Tao library scaffolding requires a directory at ${path}`)
     }
   }
 }

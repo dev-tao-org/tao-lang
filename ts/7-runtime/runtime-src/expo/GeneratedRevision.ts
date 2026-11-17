@@ -35,14 +35,14 @@ export function createRevisionOwner(
 
 /** snapshotRevision validates and copies a complete generated namespace before admission. */
 export function snapshotRevision(revision: GeneratedRevision): GeneratedRevision {
-  UserInput.require(
+  UserInput.Require(
     !!hasValidRevisionIdentity(revision),
     'Generated publication requires an identity and a nonnegative integer sequence.',
   )
   const files: MutableGeneratedSourceFiles = Object.create(null)
   for (const [path, text] of Object.entries(revision.files)) {
     if (!isSupportedGeneratedFile(path, text)) {
-      UserInput.fail(`Unsupported generated source path: ${path}`)
+      UserInput.Fail(`Unsupported generated source path: ${path}`)
     }
     files[path] = text
   }

@@ -33,7 +33,7 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
   const { job, reports } = await readCompletedJob(directory)
   const conditions = describeMeasurementConditions(reports[0])
   const sameConditions = reports.every(report => Objects.equal(describeMeasurementConditions(report), conditions))
-  UserInput.require(
+  UserInput.Require(
     !!sameConditions,
     'Job conditions changed between sessions; split the comparison before interpreting timings.',
   )
@@ -55,12 +55,12 @@ export async function summarizeJob(directory: string): Promise<MeasurementSummar
 export async function readCompletedJob(directory: string): Promise<{ job: MeasurementJob; reports: PreviewReport[] }> {
   const jobPath = Path.join(directory, JobFileName)
   const job = parseMeasurementJob(await FS.readFile(jobPath, 'utf8'), jobPath)
-  UserInput.require(
+  UserInput.Require(
     !!isCompleteJob(job),
     'Summarize a complete passed job; failed and interrupted jobs remain evidence gaps.',
   )
   const reports = await Promise.all(job.samples.map(name => readReport(directory, name, job)))
-  UserInput.require(
+  UserInput.Require(
     new Set(reports.map(report => report.sessionId)).size === reports.length,
     'Duplicate session identities cannot count as independent measurements.',
   )

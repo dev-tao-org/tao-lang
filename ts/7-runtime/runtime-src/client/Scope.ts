@@ -32,7 +32,7 @@ export function LetReferenceDeclaration(scope: Scope, name: string, reference: s
 /** defineScopeBinding installs one own binding without replacing a declaration. */
 export function defineScopeBinding(scope: Scope, name: string, descriptor: PropertyDescriptor): void {
   if (Object.prototype.hasOwnProperty.call(scope, name)) {
-    UserInput.fail(`Name "${name}" is already defined`)
+    UserInput.Fail(`Name "${name}" is already defined`)
   }
   Object.defineProperty(scope, name, descriptor)
 }
@@ -53,7 +53,7 @@ export function ScopeAliases<Bindings extends Scope>(
 /** Name resolves a value from the nearest lexical scope. */
 export function Name(scope: Scope, name: string): unknown {
   if (!hasScopeBinding(scope, name)) {
-    UserInput.fail(`Undefined name "${name}"`)
+    UserInput.Fail(`Undefined name "${name}"`)
   }
   return scope[name]
 }

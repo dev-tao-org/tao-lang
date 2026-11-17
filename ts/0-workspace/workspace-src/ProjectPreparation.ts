@@ -45,14 +45,14 @@ export async function prepareProject(
 ): Promise<void> {
   const project = await discoverProject(entry)
   if (!project) {
-    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.Fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   await ensureProjectMetadata(project.root)
   const lifecycle = await Lifecycle.acquireProjectLifecycle(project.root)
-  UserInput.require(!!lifecycle, 'Project maintenance is active. Retry dependency preparation when it finishes.')
+  UserInput.Require(!!lifecycle, 'Project maintenance is active. Retry dependency preparation when it finishes.')
   return await Try(async () => {
     const lock = await FileLock.tryAcquire(Path.join(project.taoDirectory, 'locks/preparation.lock'))
-    UserInput.require(!!lock, 'Another dependency preparation is running for this project. Retry after it finishes.')
+    UserInput.Require(!!lock, 'Another dependency preparation is running for this project. Retry after it finishes.')
     return await Try(() => prepareEntry(entry, project.root, options), { finally: lock.release })
   }, { finally: lifecycle.release })
 }
@@ -64,7 +64,7 @@ export async function inspectProjectPreparation(
 ): Promise<void> {
   const project = await discoverProject(entry)
   if (!project) {
-    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.Fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   const input = await loadProjectManagedInput(entry, options)
   requireReachableManagedModule(input, options.moduleRoot)
@@ -78,7 +78,7 @@ export async function inspectProjectPreparation(
   await ManagedModules.readManagedModules(input)
   const drift = await ManagedModules.inspectGeneratedModuleFiles(input)
   if (drift.length > 0) {
-    UserInput.fail(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
+    UserInput.Fail(`Generated dependency files changed: ${drift[0]!.path}. Repair with tao setup --repair.`)
   }
 }
 
@@ -141,7 +141,7 @@ function requireReachableManagedModule(input: OptionalManagedInput, moduleRoot: 
   }
   const reachable = input?.modules.some(module => Path.resolve(module.directory) === Path.resolve(moduleRoot))
   if (!reachable) {
-    UserInput.fail(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
+    UserInput.Fail(`Module ${moduleRoot} has no reachable managed npm or sidecar profile.`)
   }
 }
 
@@ -160,7 +160,7 @@ async function loadProjectManagedInput(
 ): Promise<ManagedModules.ManagedModulesInput | undefined> {
   const project = await discoverProject(entry)
   if (!project) {
-    UserInput.fail(`No Tao project owns ${entry}. Run tao init <path>.`)
+    UserInput.Fail(`No Tao project owns ${entry}. Run tao init <path>.`)
   }
   const source = await readPreparationEntry(entry)
   const dependencies = new ProjectDependencies(
@@ -210,7 +210,7 @@ async function prepareEntrySources(
   services: DependencyStoreOptions,
 ): Promise<Typecheck.SourceModule[]> {
   const lock = await FileLock.tryAcquire(Path.join(root, '.tao/locks/dependencies.lock'))
-  UserInput.require(!!lock, 'Another source dependency setup is running; retry after it finishes.')
+  UserInput.Require(!!lock, 'Another source dependency setup is running; retry after it finishes.')
   const resolutions = new Map<string, Promise<{ root: string }>>()
   const resolvedPins = new Map<string, string>()
   return await Try(() =>
@@ -241,7 +241,7 @@ async function readPreparationEntry(path: string): Promise<PreparationEntry> {
 function parsePreparationEntry(path: string, text: string, parser: Grammar.Parser): AST.Document {
   const document = AST.transform(parser.parse(text))
   if (document === undefined) {
-    UserInput.fail(`Cannot prepare dependencies of invalid source ${path}.`)
+    UserInput.Fail(`Cannot prepare dependencies of invalid source ${path}.`)
   }
   return document
 }

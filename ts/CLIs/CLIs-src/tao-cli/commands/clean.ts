@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { UserInput } from '@shared'
 import { Storage } from '@shared/os'
 import * as Workspace from '@workspace'
@@ -15,7 +15,7 @@ export default registerCommand({
   async action(path: string, options: { wipe?: boolean } = {}) {
     const project = await Workspace.discoverProject(CLIKit.resolveCallerPath(path))
     if (!project) {
-      UserInput.fail(`No Tao project was found from ${CLIKit.resolveCallerPath(path)}.`)
+      UserInput.Fail(`No Tao project was found from ${CLIKit.resolveCallerPath(path)}.`)
     }
     const result = await Workspace.cleanProject(project.root)
     for (const warning of result.warnings) {

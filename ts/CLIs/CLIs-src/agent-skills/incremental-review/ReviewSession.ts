@@ -8,7 +8,7 @@ export async function withReviewLock<Value>(root: string, action: () => Promise<
   const directory = sessionDirectory(root)
   await FS.mkdir(directory)
   const lock = await FileLock.tryAcquire(Path.join(directory, 'operation.lock'))
-  UserInput.require(!!lock, 'Another incremental review operation owns this session.')
+  UserInput.Require(!!lock, 'Another incremental review operation owns this session.')
   return await Try(action, { finally: () => lock.release() })
 }
 
@@ -25,7 +25,7 @@ export async function startReview(
     const existing = await loadSession(root)
     const existingSessionDiffers = existing.reviewedBranch !== branch || existing.base !== base
     const requestedWorktreeDiffers = Boolean(worktree && existing.reviewedRoot !== Path.resolve(worktree))
-    UserInput.require(
+    UserInput.Require(
       !(existingSessionDiffers || requestedWorktreeDiffers),
       'A different review session already exists. Resume it using its recorded branch and base.',
     )
@@ -47,20 +47,20 @@ export async function prepareReview(
   worktree?: string,
 ): Promise<ReviewSession> {
   const directory = sessionDirectory(root)
-  UserInput.require(
+  UserInput.Require(
     !(await FS.exists(Path.join(directory, 'session.json'))),
     'A review session already exists in the destination checkout.',
   )
   const sourceBranch = (await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
   if (!sourceBranch.startsWith('feat/') || branch !== `${sourceBranch}-incremental-review-approved`) {
-    UserInput.fail(`Use the approved-content branch ${sourceBranch}-incremental-review-approved.`)
+    UserInput.Fail(`Use the approved-content branch ${sourceBranch}-incremental-review-approved.`)
   }
   if ((await git(root, ['branch', '--list', branch])).trim()) {
-    UserInput.fail(`Approved-content branch already exists: ${branch}`)
+    UserInput.Fail(`Approved-content branch already exists: ${branch}`)
   }
   const reviewedRoot = Path.resolve(worktree ?? Path.join(directory, 'reviewed'))
   if (await FS.exists(reviewedRoot)) {
-    UserInput.fail(`Reviewed worktree destination already exists: ${reviewedRoot}`)
+    UserInput.Fail(`Reviewed worktree destination already exists: ${reviewedRoot}`)
   }
   return {
     version: 1,
@@ -88,12 +88,12 @@ export async function createReview(session: ReviewSession, acceptedCommit: strin
 /** loadSession verifies that retained state belongs to this implementation checkout. */
 export async function loadSession(root: string): Promise<ReviewSession> {
   const path = Path.join(sessionDirectory(root), 'session.json')
-  UserInput.require(
+  UserInput.Require(
     !!(await FS.exists(path)),
     'No incremental review session exists. Run start --base main --branch feat/<topic>-incremental-review-approved first.',
   )
   const session = await readJson<ReviewSession>(path)
-  UserInput.require(
+  UserInput.Require(
     !(session.version !== 1 || session.root !== root || session.directory !== sessionDirectory(root)),
     'Review session state belongs to a different checkout or unsupported format.',
   )
@@ -109,10 +109,10 @@ export async function saveSession(session: ReviewSession): Promise<void> {
 export async function renameReviewBranch(session: ReviewSession, branch: string): Promise<void> {
   await requireIdleSession(session)
   if (branch !== `${session.sourceBranch}-incremental-review-approved`) {
-    UserInput.fail(`Use the approved-content branch ${session.sourceBranch}-incremental-review-approved.`)
+    UserInput.Fail(`Use the approved-content branch ${session.sourceBranch}-incremental-review-approved.`)
   }
   const actual = (await git(session.reviewedRoot, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim()
-  UserInput.require(
+  UserInput.Require(
     !(actual !== session.reviewedBranch && actual !== branch),
     'The approved checkout changed branches; preserve it and resolve ownership first.',
   )
@@ -127,7 +127,7 @@ export async function renameReviewBranch(session: ReviewSession, branch: string)
 /** requireIdleSession refuses to replace a transaction interrupted between source and reviewed updates. */
 export async function requireIdleSession(session: ReviewSession): Promise<void> {
   const path = Path.join(session.directory, 'journal.json')
-  UserInput.require(
+  UserInput.Require(
     !(await FS.exists(path) && (await readJson<ReviewJournal>(path)).phase !== 'complete'),
     'An interrupted acceptance is pending. Run recover before planning another selection.',
   )
@@ -140,14 +140,14 @@ export async function assertOwnedSession(session: ReviewSession): Promise<void> 
   const owner = await readJson<{ id: string; root: string }>(await resolveReviewOwnerPath(session.reviewedRoot))
   const branchChanged = source !== session.sourceBranch || reviewed !== session.reviewedBranch
   const ownershipChanged = owner.id !== session.id || owner.root !== session.root
-  UserInput.require(
+  UserInput.Require(
     !(branchChanged || ownershipChanged),
     'Review checkout ownership or branch identity changed; resume the recorded checkouts first.',
   )
   const sourceGit = (await git(session.root, ['rev-parse', '--path-format=absolute', '--git-common-dir'])).trim()
   const reviewedGit = (await git(session.reviewedRoot, ['rev-parse', '--path-format=absolute', '--git-common-dir']))
     .trim()
-  UserInput.require(
+  UserInput.Require(
     sourceGit === reviewedGit,
     'The reviewed checkout no longer belongs to the implementation repository.',
   )
@@ -160,7 +160,7 @@ export async function requireCleanReviewed(session: ReviewSession): Promise<void
     (await git(session.reviewedRoot, ['ls-files', '-z'])).split(NullCharacter).filter(Boolean),
   )
   if ((await git(session.reviewedRoot, ['status', '--porcelain=v1', '--untracked-files=all'])).trim()) {
-    UserInput.fail(`Reviewed checkout contains unapproved work: ${session.reviewedRoot}`)
+    UserInput.Fail(`Reviewed checkout contains unapproved work: ${session.reviewedRoot}`)
   }
 }
 
@@ -200,11 +200,11 @@ export async function assertReviewedSnapshot(session: ReviewSession, journal: Re
   const index = await tree(session.reviewedRoot)
   const before = await head(session.root, `${journal.selection.reviewedHead}^{tree}`)
   const allowed = [before, journal.selection.reviewedTree]
-  UserInput.require(
+  UserInput.Require(
     !(!allowed.includes(index) || (await git(session.reviewedRoot, ['diff-files', '--name-only'])).trim()),
     'Reviewed checkout changed during acceptance; preserve it and resolve ownership before recovery.',
   )
-  UserInput.require(
+  UserInput.Require(
     !(await git(session.reviewedRoot, ['ls-files', '--others', '--exclude-standard', '-z'])).length,
     'Reviewed checkout has untracked work; move it aside explicitly before recovery.',
   )

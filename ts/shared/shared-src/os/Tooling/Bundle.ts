@@ -19,7 +19,7 @@ export async function bundleNode(entrypoint: string, outdir: string, external: s
     define: { 'import.meta.url': '__taoImportMetaUrl' },
   })
   if (!result.success) {
-    UserInput.fail(`Bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
+    UserInput.Fail(`Bundling failed: ${result.logs.map(log => log.message).join(NewlineCharacter)}`)
   }
 }
 

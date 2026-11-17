@@ -60,9 +60,9 @@ function requireSynchronousResult(result: unknown, stop: () => void): void {
 }
 
 function throwAsynchronousObservation(): never {
-  return UserInput.fail('Observation callbacks must finish synchronously. Do not use async or return a promise.')
+  return UserInput.Fail('Observation callbacks must finish synchronously. Do not use async or return a promise.')
 }
 
 function throwObservationWrite(): never {
-  return UserInput.fail('Observation callbacks cannot write Tao state. Move the write to an action or external event.')
+  return UserInput.Fail('Observation callbacks cannot write Tao state. Move the write to an action or external event.')
 }

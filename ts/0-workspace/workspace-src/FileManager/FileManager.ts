@@ -177,7 +177,7 @@ export class FileManager {
 
   private async ensureWatcher(): Promise<void> {
     const root = this.workspaceRoot!
-    UserInput.require(!(this.watcherRoot && this.watcherRoot !== root), 'A workspace watcher cannot change its root.')
+    UserInput.Require(!(this.watcherRoot && this.watcherRoot !== root), 'A workspace watcher cannot change its root.')
     if (this.watcherStart) {
       await this.watcherStart
       return
@@ -273,7 +273,7 @@ export class FileManager {
   private selectWorkspaceRoot(entry: string): void {
     this.workspaceRoot ??= findNearestProjectRoot(Path.dirname(entry)) ?? Path.dirname(entry)
     if (!Path.isWithin(this.workspaceRoot, entry)) {
-      UserInput.fail(`Entry file must be inside the workspace root: ${entry}`)
+      UserInput.Fail(`Entry file must be inside the workspace root: ${entry}`)
     }
   }
 
@@ -335,7 +335,7 @@ export class FileManager {
   }
 
   private ensureActive(): void {
-    UserInput.require(!this.disposed, 'Workspace has been disposed.')
+    UserInput.Require(!this.disposed, 'Workspace has been disposed.')
   }
 }
 

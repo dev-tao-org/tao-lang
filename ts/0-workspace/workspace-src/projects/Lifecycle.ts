@@ -42,7 +42,7 @@ export function isRegularFile(path: string): boolean {
 
 async function ensureProjectDirectory(path: string): Promise<void> {
   if (pathExists(path) && !isRealDirectory(path)) {
-    UserInput.fail(`Project state directory is not a real directory: ${path}`)
+    UserInput.Fail(`Project state directory is not a real directory: ${path}`)
   }
   await FS.mkdir(path)
   requireRealDirectory(path, 'project state directory')
@@ -50,13 +50,13 @@ async function ensureProjectDirectory(path: string): Promise<void> {
 
 function requireRealDirectory(path: string, description: string): void {
   if (!isRealDirectory(path)) {
-    UserInput.fail(`${description} is not a real directory: ${path}`)
+    UserInput.Fail(`${description} is not a real directory: ${path}`)
   }
 }
 
 function ensureDirectoryParent(parent: string, child: string): void {
   if (isUnsafeDirectoryParent(parent, child)) {
-    UserInput.fail(`Project lock path is not a real directory: ${child}`)
+    UserInput.Fail(`Project lock path is not a real directory: ${child}`)
   }
 }
 
@@ -66,7 +66,7 @@ function isUnsafeDirectoryParent(parent: string, child: string): boolean {
 
 function ensureRegularLockPath(path: string): void {
   if (pathExists(path) && !isRegularFile(path)) {
-    UserInput.fail(`Project lifecycle lock is not a regular file: ${path}`)
+    UserInput.Fail(`Project lifecycle lock is not a regular file: ${path}`)
   }
 }
 

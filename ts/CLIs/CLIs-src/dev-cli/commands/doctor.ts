@@ -10,7 +10,7 @@ export default registerCommand({
   arguments: [{ name: 'args', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    UserInput.require(
+    UserInput.Require(
       !args.some(arg => arg !== '--json' && arg !== '--fingerprint'),
       'Usage: doctor [--json] [--fingerprint]',
     )

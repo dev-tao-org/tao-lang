@@ -296,7 +296,7 @@ function parseDocument(
 ): AST.Document {
   const document = timings.run(AST.transform, timings.run(parser.parse, source))
   if (!document) {
-    UserInput.fail(`Cannot load Tao module with invalid syntax: ${path}.`)
+    UserInput.Fail(`Cannot load Tao module with invalid syntax: ${path}.`)
   }
   return document
 }

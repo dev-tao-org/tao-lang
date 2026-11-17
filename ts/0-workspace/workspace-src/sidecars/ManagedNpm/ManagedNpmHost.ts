@@ -51,7 +51,7 @@ export async function validateReusableProfile(
 
 function validateDurableOwnership(metadata: ManagedProfileMetadata, fingerprint: string, lock: string): void {
   if (metadata.fingerprint !== fingerprint || metadata.lockHash !== Platform.hashText(lock)) {
-    UserInput.fail(`Managed npm cache ownership or lock validation failed for ${fingerprint}.`)
+    UserInput.Fail(`Managed npm cache ownership or lock validation failed for ${fingerprint}.`)
   }
 }
 
@@ -62,7 +62,7 @@ async function validateProfileLock(profile: string, storedLock: string, repair: 
     return
   }
   if (!repair) {
-    UserInput.fail(`Managed npm lock copies differ. Repair with: tao setup --repair.`)
+    UserInput.Fail(`Managed npm lock copies differ. Repair with: tao setup --repair.`)
   }
   await writeReadOnly(lockfile, storedLock)
 }
@@ -70,7 +70,7 @@ async function validateProfileLock(profile: string, storedLock: string, repair: 
 async function removeOwnedInstallTree(profile: string): Promise<void> {
   const nodeModules = Path.join(profile, 'node_modules')
   if (FS.existsSync(nodeModules) && FS.lstatSync(nodeModules).isSymbolicLink()) {
-    UserInput.fail(`Managed npm install tree cannot be a symbolic link: ${nodeModules}`)
+    UserInput.Fail(`Managed npm install tree cannot be a symbolic link: ${nodeModules}`)
   }
   await FS.rm(nodeModules, { recursive: true, force: true })
 }

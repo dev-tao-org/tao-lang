@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Regxs, UserInput } from '@shared'
 import { Path } from '@shared/os'
 import * as Workspace from '@workspace'
@@ -23,16 +23,16 @@ export default registerCommand({
     const target = CLIKit.resolveCallerPath(options.entry ?? '.')
     const project = await Workspace.discoverProject(target)
     if (!project) {
-      UserInput.fail(`No Tao project was found from ${target}. Run tao init <path>.`)
+      UserInput.Fail(`No Tao project was found from ${target}. Run tao init <path>.`)
     }
     const requirements = await Workspace.readProjectRequirements(project.root)
     const aliases = requirements.map(requirement => requirement.alias ?? defaultAlias(requirement))
     const update = alias ? [alias] : aliases
     if (alias && !aliases.includes(alias)) {
-      UserInput.fail(`No direct source dependency alias ${alias} was found in ${project.root}.`)
+      UserInput.Fail(`No direct source dependency alias ${alias} was found in ${project.root}.`)
     }
     if (update.length === 0) {
-      UserInput.fail(`No direct source dependencies are declared in ${project.root}.`)
+      UserInput.Fail(`No direct source dependencies are declared in ${project.root}.`)
     }
     const selected = await Workspace.findPreparationEntry(project.root, options.entry ? target : undefined)
     await Workspace.withDependencySession(project.root, options.session, async () => {

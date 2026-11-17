@@ -68,7 +68,7 @@ export function describeWarmWork(reports: PreviewReport[]): WarmPreviewWork {
 
 /** compareBranchMetrics uses whole sessions as units and validates equal pair counts. */
 export function compareBranchMetrics(sessions: BranchSessions): BranchMetric[] {
-  UserInput.require(
+  UserInput.Require(
     !(sessions.baseline.length !== sessions.candidate.length || !sessions.baseline.length),
     'Branch comparison requires equal, nonempty sets of paired sessions.',
   )

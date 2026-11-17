@@ -42,7 +42,7 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
     async catch(error) {
       const output = await expo?.output()
       const details = Json.Print(Errors.describe(error))
-      UserInput.fail(
+      UserInput.Fail(
         `Headless Metro acceptance failed. ${
           output ? `${output.stdout}${NewlineCharacter}${output.stderr}` : ''
         } ${details}`,

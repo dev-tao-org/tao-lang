@@ -22,7 +22,7 @@ export function createGeneratedPaths(program: Typecheck.LinkedProgram): Generate
     const path = resolveGeneratedModulePath(module.path, root, directory)
     const stem = path.replace(Regxs.TypeScriptFileExtensionRegx, '')
     if (outputs.has(stem)) {
-      UserInput.fail(`Generated source paths collide: ${path}.`)
+      UserInput.Fail(`Generated source paths collide: ${path}.`)
     }
     outputs.add(stem)
     outputs.add(stem + '.views')

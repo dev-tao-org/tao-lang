@@ -1,8 +1,6 @@
 import * as AST from '@ast-gen'
-import { Json, UserInput } from '@shared'
-import { Errors, Lists, Regxs, Sort, Try } from '@shared'
-import { Text } from '@shared/os'
-import { FS, Path, Platform } from '@shared/os'
+import { Errors, Json, Lists, Regxs, Sort, Try, UserInput } from '@shared'
+import { FS, Path, Platform, Text } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
 import * as Paths from '../modules/Paths'
@@ -71,7 +69,7 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
       const absoluteModulePath = Path.resolve(modulePath)
       const resolvedAuthoredPath = resolveAuthoredForeignPath(absoluteModulePath, authoredPath)
       const key = Typecheck.createModuleMemberKey(absoluteModulePath, resolvedAuthoredPath)
-      return pathMap.get(key) ?? UserInput.fail(`Foreign view path was not validated: ${authoredPath}`)
+      return pathMap.get(key) ?? UserInput.Fail(`Foreign view path was not validated: ${authoredPath}`)
     },
     watchDirectories: Lists.unique(groups.flatMap(group => [...group.files.keys()].map(Path.dirname))).sort(
       Sort.CompareStrings,
@@ -187,7 +185,7 @@ async function collectSidecarView(
   )
   const realModulePath = Paths.resolveRealPathInsideProject(modulePath, projectRoot)
   if (realModulePath === undefined) {
-    UserInput.fail(`Tao module is outside its project boundary: ${modulePath}`)
+    UserInput.Fail(`Tao module is outside its project boundary: ${modulePath}`)
   }
   const moduleRoot = Paths.findNamedPackageRoot(Path.dirname(realModulePath), projectRoot) ?? projectRoot
   const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
@@ -269,11 +267,11 @@ async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDi
   await requireAvailableSidecarFile(absolute)
   const realPath = Paths.resolveRealPathInsideProject(absolute, projectDirectory)
   if (!realPath || !Paths.within(moduleRoot, realPath)) {
-    UserInput.fail(`Foreign view sidecar escapes its module boundary: ${absolute}`)
+    UserInput.Fail(`Foreign view sidecar escapes its module boundary: ${absolute}`)
   }
   const expectedPackage = moduleRoot === projectDirectory ? undefined : moduleRoot
   if (Paths.findNamedPackageRoot(Path.dirname(realPath), projectDirectory) !== expectedPackage) {
-    UserInput.fail(`Foreign view sidecar crosses a nested module boundary: ${absolute}`)
+    UserInput.Fail(`Foreign view sidecar crosses a nested module boundary: ${absolute}`)
   }
   await rejectNestedProjectPath(absolute, moduleRoot, projectDirectory)
   return absolute
@@ -281,13 +279,13 @@ async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDi
 
 function requireModulePathInsideSidecar(moduleRoot: string, absolute: string): void {
   if (!Paths.within(moduleRoot, absolute) || hasDependencyPath(absolute)) {
-    UserInput.fail(`Foreign view sidecar import crosses its module boundary: ${absolute}`)
+    UserInput.Fail(`Foreign view sidecar import crosses its module boundary: ${absolute}`)
   }
 }
 
 async function requireAvailableSidecarFile(absolute: string): Promise<void> {
   if (!await FS.exists(absolute) || !FS.statSync(absolute).isFile()) {
-    UserInput.fail(`Foreign view sidecar file is unavailable: ${absolute}`)
+    UserInput.Fail(`Foreign view sidecar file is unavailable: ${absolute}`)
   }
 }
 
@@ -295,7 +293,7 @@ async function rejectNestedProjectPath(path: string, moduleRoot: string, project
   let current = Path.dirname(path)
   while (Paths.within(moduleRoot, current) && current !== moduleRoot) {
     if (current !== projectDirectory && await FS.exists(Path.join(current, '.tao'))) {
-      UserInput.fail(`Foreign view sidecar crosses a nested Tao project boundary: ${path}`)
+      UserInput.Fail(`Foreign view sidecar crosses a nested Tao project boundary: ${path}`)
     }
     current = Path.dirname(current)
   }

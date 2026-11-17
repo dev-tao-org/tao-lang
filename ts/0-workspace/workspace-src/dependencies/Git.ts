@@ -23,7 +23,7 @@ async function resolveGitHubCommit(repository: string, version: string): Promise
 
 async function fetchGitHubCommit(repository: string, commit: string, destination: string): Promise<void> {
   if (!isCommit(commit)) {
-    UserInput.fail(`Invalid immutable Git commit ID ${commit}.`)
+    UserInput.Fail(`Invalid immutable Git commit ID ${commit}.`)
   }
   await FS.mkdir(destination)
   await Exec.captureStdout('git', ['init', '--quiet', destination])
@@ -43,7 +43,7 @@ type CandidateCommit = string | undefined
 
 function validateCommit(commit: CandidateCommit, repository: string, version: string): string {
   if (!isCommit(commit)) {
-    UserInput.fail(`Cannot resolve ${repository} version ${version} to an immutable commit.`)
+    UserInput.Fail(`Cannot resolve ${repository} version ${version} to an immutable commit.`)
   }
   return commit.toLowerCase()
 }

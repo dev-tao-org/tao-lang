@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { UserInput } from '@shared'
 import { FS, Repo } from '@shared/os'
 import { registerCommand } from './_command-runner'
@@ -10,7 +10,7 @@ export default registerCommand({
   description: 'Start a repository service.',
   arguments: [{ name: 'service', required: true }],
   async action(service: string) {
-    UserInput.require(service === 'local-instantdb', 'Supported service: local-instantdb.')
+    UserInput.Require(service === 'local-instantdb', 'Supported service: local-instantdb.')
     const cwd = Repo.resolvePath('.config/local-instantdb')
     await CLIKit.runSteps(
       () =>

@@ -1,7 +1,6 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { UserInput } from '@shared'
-import { NullCharacter, Regxs, S, Try } from '@shared'
+import { IO } from '@cli-kit'
+import { NullCharacter, Regxs, S, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
@@ -59,7 +58,7 @@ export async function discoverHosts(): Promise<DiscoveredHosts> {
 
 /** requireHost rejects SSH options and shell expressions where a host is expected. */
 export function requireHost(host: string): void {
-  UserInput.require(
+  UserInput.Require(
     !!Regxs.SshHostRegx.test(host),
     'Use an SSH alias or user@hostname. Run the skill helper hosts to discover candidates.',
   )
@@ -67,7 +66,7 @@ export function requireHost(host: string): void {
 
 function createRemoteCommand(args: readonly string[], directory: string, log?: string): string {
   requireAbsoluteRemotePath(directory)
-  UserInput.require(!!args.length, 'Provide a remote executable and its arguments.')
+  UserInput.Require(!!args.length, 'Provide a remote executable and its arguments.')
   const command = args.map(quoteShellArgument).join(' ')
   if (log) {
     requireAbsoluteRemotePath(log)
@@ -81,13 +80,13 @@ function createRemoteCommand(args: readonly string[], directory: string, log?: s
 }
 
 function requireAbsoluteRemotePath(path: string): void {
-  UserInput.require(
+  UserInput.Require(
     !(!path.startsWith('/') || Regxs.RemotePathControlCharacterRegx.test(path)),
     'Use an absolute POSIX path on the runner, without control characters or ~ expansion.',
   )
 }
 
 function quoteShellArgument(value: string): string {
-  UserInput.require(!value.includes(NullCharacter), 'Remote arguments cannot contain a null character.')
+  UserInput.Require(!value.includes(NullCharacter), 'Remote arguments cannot contain a null character.')
   return "'" + value.replaceAll("'", "'\\''") + "'"
 }

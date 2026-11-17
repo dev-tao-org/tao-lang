@@ -1,12 +1,10 @@
 import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
-import { Sort, UserInput } from '@shared'
-import { Json } from '@shared'
+import { Json, Sort, UserInput } from '@shared'
 import Exec from '@shared/os/exec'
 
 import { Errors, Lists, NewlineCharacter, Range, Regxs, Source, Try } from '@shared'
-import { Text } from '@shared/os'
-import { Files, FS, Path, Storage } from '@shared/os'
+import { Files, FS, Path, Storage, Text } from '@shared/os'
 import { valid } from './bridges/Bridge_semver'
 import { readProjectRequirements } from './dependencies/Requirements'
 import { isNpmRequirement } from './ModuleRequirements'
@@ -43,7 +41,7 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
   if (requested) {
     const path = Path.resolve(requested)
     if (!await sourceIsInsideProject(path, projectRoot)) {
-      UserInput.fail(`Preparation entry must belong to ${projectRoot}: ${path}`)
+      UserInput.Fail(`Preparation entry must belong to ${projectRoot}: ${path}`)
     }
     return path
   }
@@ -53,13 +51,13 @@ export async function findPreparationEntry(projectRoot: string, requested?: stri
     return apps[0]!
   }
   if (apps.length > 1) {
-    UserInput.fail(`Multiple Tao app entries found; specify one: ${apps.join(', ')}`)
+    UserInput.Fail(`Multiple Tao app entries found; specify one: ${apps.join(', ')}`)
   }
   const rootSources = sources.filter(path => Path.dirname(path) === projectRoot)
   if (rootSources.length === 1) {
     return rootSources[0]!
   }
-  UserInput.fail(`No unique Tao app entry was found; run tao setup <entry>.`)
+  UserInput.Fail(`No unique Tao app entry was found; run tao setup <entry>.`)
 }
 
 /** listDependencyWork describes authored source and npm requirements before preparation. */
@@ -129,12 +127,12 @@ async function resolveNpmVersion(packageName: string, cwd: string): Promise<stri
   const addEnv = { BUN_INSTALL_CACHE_DIR: Storage.resolveCacheDirectory('bun') }
   const result = await Exec.capture('bun', ['info', packageName, 'version', '--json'], { check: false, cwd, addEnv })
   if (result.status !== 0 || result.signal !== null) {
-    UserInput.fail(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
+    UserInput.Fail(`Could not resolve ${packageName} with bun info: ${result.stderr.trim()}`)
   }
   const value = Try.WithDefault(undefined, () => parseNpmVersionResponse(result.stdout.trim()))
   const version = resolveNpmVersionValue(value)
   if (!version) {
-    UserInput.fail(`Bun returned no exact version for ${packageName}.`)
+    UserInput.Fail(`Bun returned no exact version for ${packageName}.`)
   }
   return version
 }
@@ -163,14 +161,14 @@ function hasStringVersion(value: object): value is { version: string } {
 
 async function resolveModule(projectRoot: string, moduleName: string): Promise<string> {
   if (!Regxs.ModuleNameRegx.test(moduleName)) {
-    UserInput.fail(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
+    UserInput.Fail(`Expected a local Tao module name such as @widgets; received ${moduleName}.`)
   }
   const matches = await findNamedPackageDirectories(projectRoot, moduleName)
   if (matches.length === 0) {
-    UserInput.fail(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
+    UserInput.Fail(`No project-owned module ${moduleName} was found in ${projectRoot}.`)
   }
   if (matches.length > 1) {
-    UserInput.fail(`Module ${moduleName} is ambiguous: ${matches.join(', ')}`)
+    UserInput.Fail(`Module ${moduleName} is ambiguous: ${matches.join(', ')}`)
   }
   return matches[0]!
 }
@@ -181,7 +179,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
   const packageName = index > 0 ? spec.slice(0, index) : spec
   const version = index > 0 ? spec.slice(index + 1) : undefined
   if (!isNpmPackageName(packageName)) {
-    UserInput.fail(`Invalid npm package name: ${packageName}`)
+    UserInput.Fail(`Invalid npm package name: ${packageName}`)
   }
   if (version) {
     validateExactVersion(version)
@@ -191,7 +189,7 @@ function parsePackageSpec(spec: string): { packageName: string; version?: string
 
 function validateExactVersion(version: string): void {
   if (valid(version) !== version) {
-    UserInput.fail(`Expected an exact semantic version; received ${version}.`)
+    UserInput.Fail(`Expected an exact semantic version; received ${version}.`)
   }
 }
 
@@ -244,7 +242,7 @@ function collectNpmRequirementSpans(
 ): NpmRequirementOccurrence[] {
   const document = AST.transform(parser.parse(source))
   if (!document) {
-    UserInput.fail(`Cannot add a requirement to invalid Tao source: ${path}`)
+    UserInput.Fail(`Cannot add a requirement to invalid Tao source: ${path}`)
   }
   return AST.GetDeclarations(document).flatMap(declaration => {
     if (!isNpmRequirement(declaration) || declaration.identifier !== packageName) {

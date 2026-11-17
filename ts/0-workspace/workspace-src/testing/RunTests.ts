@@ -48,7 +48,7 @@ export async function runTests(document: AST.Document, options: TestOptions): Pr
     }
   }
   if (results.length === 0) {
-    UserInput.fail(`No Tao test cases found in ${options.path}.`)
+    UserInput.Fail(`No Tao test cases found in ${options.path}.`)
   }
   return results
 }
@@ -100,12 +100,12 @@ function assertActive(signal?: AbortSignal): void {
 function assertJourney(test: AST.TestDeclaration): void {
   const steps = AST.GetTestSteps(test)
   const first = steps[0]
-  UserInput.require(!(!first || !AST.IsKind(first, 'RunStatement')), 'An app test must start with run <app>.')
-  UserInput.require(
+  UserInput.Require(!(!first || !AST.IsKind(first, 'RunStatement')), 'An app test must start with run <app>.')
+  UserInput.Require(
     !steps.slice(1).some(step => AST.IsKind(step, 'RunStatement')),
     'Use a separate test case for another app launch.',
   )
-  UserInput.require(
+  UserInput.Require(
     !!steps.some(step => AST.IsKind(step, 'ExpectStatement') && hasExpectations(step)),
     'An app test must contain a visible expectation.',
   )
@@ -142,7 +142,7 @@ function expectValue(expectation: AST.Expectation, parentTag: OptionalRenderTag,
     TextExpectation: value => driver.expectText(value.value.value, parentTag),
     InputExpectation: value =>
       driver.expectInput(
-        value.target?.value ?? parentTag ?? UserInput.fail('An input expectation needs a render tag.'),
+        value.target?.value ?? parentTag ?? UserInput.Fail('An input expectation needs a render tag.'),
         value.value.value,
       ),
   })

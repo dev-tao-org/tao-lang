@@ -43,7 +43,7 @@ export async function analyzePackageGraph(workspace: string): Promise<PackageGra
     undefined,
     { tsConfig },
   )
-  UserInput.require(
+  UserInput.Require(
     !(result.exitCode !== 0 || typeof result.output === 'string'),
     'Dependency-cruiser did not return an import graph.',
   )

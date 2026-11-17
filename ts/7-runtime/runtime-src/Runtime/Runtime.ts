@@ -1,13 +1,12 @@
-import { Json, UserInput } from '@shared'
-import { Errors, Regxs, Try } from '@shared'
+import { Errors, Json, Regxs, Try, UserInput } from '@shared'
 import { FS, Path, Storage } from '@shared/os'
 import { createExpoSession, type ExpoOptions, type ExpoSession } from '../expo/Expo/Expo'
 import type { GeneratedRevision, PublicationOutcome } from '../expo/PreviewProtocol'
 import * as RuntimeDependencyPolicy from '../expo/RuntimeDependencyPolicy'
-export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '../expo/Toolchain'
 import { RuntimeLibraryResourceDirectory } from './RuntimeResources'
+export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
 
 /** RuntimePackageVersions maps package names to their pinned install specifications. */
 export type RuntimePackageVersions = Record<string, string>
@@ -118,7 +117,7 @@ export function runtimeTypeScriptPaths(resourceDirectory = defaultResourcesDirec
   const sharedPath = Path.join(resourceDirectory, 'shared/shared.ts')
   for (const path of [apiPath, sharedPath]) {
     if (!FS.existsSync(path)) {
-      UserInput.fail(`Compiled runtime resource is missing: ${path}`)
+      UserInput.Fail(`Compiled runtime resource is missing: ${path}`)
     }
   }
   const runtimeClientPath = Path.join(resourceDirectory, 'runtime/*')
@@ -194,16 +193,16 @@ async function readRuntimeResources(directory: string): Promise<RuntimeResources
     async () => parseRuntimeMetadata(await FS.readFile(metadataPath, 'utf8')),
     {
       catch(error) {
-        UserInput.fail(`Compiled runtime resources are unavailable: ${metadataPath}`, { cause: error })
+        UserInput.Fail(`Compiled runtime resources are unavailable: ${metadataPath}`, { cause: error })
       },
     },
   )
   if (!isRuntimeMetadata(metadata)) {
-    UserInput.fail(`Compiled runtime metadata is invalid: ${metadataPath}`)
+    UserInput.Fail(`Compiled runtime metadata is invalid: ${metadataPath}`)
   }
   for (const file of ['package.json', 'bun.lock', ...metadata.sourceFiles]) {
     if (!await FS.exists(Path.join(directory, file))) {
-      UserInput.fail(`Compiled runtime resource is missing: ${Path.join(directory, file)}`)
+      UserInput.Fail(`Compiled runtime resource is missing: ${Path.join(directory, file)}`)
     }
   }
   return {

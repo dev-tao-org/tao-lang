@@ -7,7 +7,7 @@ Tests.test('WASM initialization retries after rejection and caches a successful 
   let attempts = 0
   const initialize = createRetryableInitialization(async () => {
     attempts += 1
-    return attempts === 1 ? UserInput.fail('first initialization failed') : 'ready'
+    return attempts === 1 ? UserInput.Fail('first initialization failed') : 'ready'
   })
 
   await Tests.expect(initialize()).rejects.toThrow('first initialization failed')

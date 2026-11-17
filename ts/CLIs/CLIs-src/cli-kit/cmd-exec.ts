@@ -48,7 +48,7 @@ async function executeCommand(
   options: CommandInteraction.CommandRunOptions,
   mode: CommandInteraction.CommandInteractionMode,
 ): Promise<void> {
-  UserInput.require(!!command.trim(), 'A command is required.')
+  UserInput.Require(!!command.trim(), 'A command is required.')
   const argv = Exec.resolveCommandArgs(args)
   const label = [command, ...argv].join(' ')
   if (options.signal?.aborted) {

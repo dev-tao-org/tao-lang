@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
@@ -17,14 +17,14 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use a named project session lock.' },
   ],
   async action(moduleName: string, options: AddCommandOptions = {}) {
-    UserInput.require(!!options.npm, 'tao add requires --npm <package>.')
+    UserInput.Require(!!options.npm, 'tao add requires --npm <package>.')
     const caller = CLIKit.resolveCallerPath('.')
     const project = await Workspace.discoverProject(caller)
     if (!project) {
-      UserInput.fail(`No Tao project was found from ${caller}. Run tao init <path>.`)
+      UserInput.Fail(`No Tao project was found from ${caller}. Run tao init <path>.`)
     }
     await Workspace.withDependencySession(project.root, options.session, async () => {
-      UserInput.require(
+      UserInput.Require(
         !(!options.yes && !await IO.askConfirm({
           message: `Resolve and prepare ${options.npm} for ${moduleName}?`,
           defaultValue: false,

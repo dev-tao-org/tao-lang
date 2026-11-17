@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Json, UserInput } from '@shared'
 
 import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
@@ -104,8 +104,8 @@ async function executeTestPlan(
   }
   const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
   if (failures.length > 0) {
-    UserInput.require(!(!plan.typescript && outcomes.tao), 'Tao app tests failed.')
-    UserInput.fail(`Test execution failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
+    UserInput.Require(!(!plan.typescript && outcomes.tao), 'Tao app tests failed.')
+    UserInput.Fail(`Test execution failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
   reportTestSuccess(groups, !plan.serial, startedAtMs)
 }
@@ -156,7 +156,7 @@ async function executeTaoTests(
   const files = await findTaoTestFiles(Path.resolve(plan.tao.target))
   TestPlanModule2.assertTestRunActive(signal)
   if (files.length === 0) {
-    UserInput.fail(`No Tao test suites found in ${plan.tao.target}.`)
+    UserInput.Fail(`No Tao test suites found in ${plan.tao.target}.`)
   }
   for (const entry of files) {
     if (await Workspace.discoverProject(entry)) {

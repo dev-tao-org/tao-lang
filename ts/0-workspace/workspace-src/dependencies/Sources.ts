@@ -42,7 +42,7 @@ type PreviousSource = LockedSource | undefined
 type OptionalSubdirectory = string | undefined
 
 function preparationNeeded(message: string): never {
-  UserInput.fail(message)
+  UserInput.Fail(message)
 }
 
 function canonicalFileSource(parent: string, identifier: string): string {
@@ -207,10 +207,10 @@ function githubCoordinates(identifier: string): { repository: string; subdirecto
   // ex: x/foo/ui/forms -> owner x, name foo, subdirectory [ui, forms]
   const [owner, name, ...subdirectory] = normalized.split('/')
   if (!owner || !name) {
-    UserInput.fail(`Invalid GitHub dependency identifier ${identifier}.`)
+    UserInput.Fail(`Invalid GitHub dependency identifier ${identifier}.`)
   }
   if (!Regxs.GithubCoordinateRegx.test(owner) || !Regxs.GithubCoordinateRegx.test(name)) {
-    UserInput.fail(`Invalid GitHub dependency identifier ${identifier}.`)
+    UserInput.Fail(`Invalid GitHub dependency identifier ${identifier}.`)
   }
   return {
     repository: `https://github.com/${owner}/${name}.git`,

@@ -1,6 +1,5 @@
 import * as Performance from '@repo-analysis/performance'
-import { Json, UserInput } from '@shared'
-import { Try } from '@shared'
+import { Json, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as BranchMetrics from '../../CLIs-src/agent-skills/performance-investigation/BranchMetrics'
@@ -20,7 +19,7 @@ Tests.test('measurement failure retains completed samples and records a failed j
     let calls = 0
     await Tests.expect(collectSamples(directory, job, async () => {
       calls++
-      UserInput.require(calls !== 2, 'Fixture measurement failed')
+      UserInput.Require(calls !== 2, 'Fixture measurement failed')
       return report
     })).rejects.toThrow('Fixture measurement failed')
     const saved = Json.Parse(await FS.readFile(Path.join(directory, 'job.json'), 'utf8')) as MeasurementFixtureRecord
@@ -107,7 +106,7 @@ Tests.test('postvalidation failures retain raw reports and logs even after the c
     await Tests.expect(runWithEvidence(directory, [{ directory: logs, label: 'preview' }], async () => {
       await FS.writeFile(Path.join(logs, 'preview.json'), '{"wrongCommit":true}')
       await FS.writeFile(Path.join(logs, 'service.log'), 'diagnostic')
-      UserInput.fail('Postvalidation failed')
+      UserInput.Fail('Postvalidation failed')
     })).rejects.toThrow('Postvalidation failed')
     Tests.expect(await FS.readFile(Path.join(directory, 'failed-preview-preview.json'), 'utf8'))
       .toBe('{"wrongCommit":true}')

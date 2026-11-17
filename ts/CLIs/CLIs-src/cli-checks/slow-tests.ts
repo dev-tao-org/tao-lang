@@ -1,6 +1,5 @@
 import { Errors, Regxs, Time, Try, UserInput } from '@shared'
-import { Artifacts, Path, Platform, Repo } from '@shared/os'
-import { Process } from '@shared/os'
+import { Artifacts, Path, Platform, Process, Repo } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
 
 type OptionalReportPath = string | undefined
@@ -70,7 +69,7 @@ function readTestFileTimings(report: string): TestFileTiming[] {
 /** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */
 export function parseSlowTestSeconds(value = '0.075'): number {
   const seconds = Number(value)
-  UserInput.require(
+  UserInput.Require(
     !(!value.trim() || !Number.isFinite(seconds) || seconds < 0),
     '--slow requires a finite, non-negative duration in seconds.',
   )

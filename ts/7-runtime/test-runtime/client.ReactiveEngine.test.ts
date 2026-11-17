@@ -1,8 +1,8 @@
 import { UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { createReactiveEngine } from '../runtime-src/client/ReactiveEngine'
 import type { ReactiveEngine } from '../runtime-src/client/ReactiveEngine'
+import { createReactiveEngine } from '../runtime-src/client/ReactiveEngine'
 
 Tests.test('expressions preserve Object.is values, dynamic dependencies, diamonds, and fresh batched reads', () => {
   const engine = createReactiveEngine()
@@ -171,7 +171,7 @@ Tests.test('a failing queued observer does not strand other deliveries or subseq
   const source = engine.createWritable(0)
   const values: number[] = []
   source.observe(value => {
-    UserInput.require(value !== 1, 'observer failed')
+    UserInput.Require(value !== 1, 'observer failed')
   })
   source.observe(value => values.push(value))
   source.update(1)

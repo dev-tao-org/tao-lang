@@ -27,7 +27,7 @@ async function requirementsWithStandardProject(
   }
   const standardAlias = requirements.find(item => (item.alias ?? deriveDefaultSourceAlias(item)) === 'tao')
   if (standardAlias) {
-    UserInput.require(
+    UserInput.Require(
       !(standardAlias.provider !== 'bundled' || standardAlias.identifier !== 'tao'),
       'Dependency alias tao belongs to the bundled Tao project. Choose another alias with as.',
     )

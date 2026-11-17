@@ -1,5 +1,4 @@
-import { Json, UserInput } from '@shared'
-import { Regxs, Try } from '@shared'
+import { Json, Regxs, Try, UserInput } from '@shared'
 import { FS, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { runInteractiveCommand, runNonInteractiveCommand } from './cli-kit'
@@ -21,12 +20,12 @@ function requiresHostTerminal(argv: readonly string[]): boolean {
 type HostCommandRoute = { executable: string; args: readonly string[] }
 
 function resolveHostCommand(argv: readonly string[], prefixes: unknown): HostCommandRoute {
-  UserInput.require(!isInvalidHostCommand(argv), 'Name an allowlisted host command without leading options.')
-  UserInput.require(!argv.some(argument => typeof argument !== 'string'), 'Host command arguments must be strings.')
+  UserInput.Require(!isInvalidHostCommand(argv), 'Name an allowlisted host command without leading options.')
+  UserInput.Require(!argv.some(argument => typeof argument !== 'string'), 'Host command arguments must be strings.')
   const candidates = validatedPrefixes(prefixes).filter(prefix => prefixMatches(prefix.tokens, argv))
   const matched = candidates.sort((left, right) => right.tokens.length - left.tokens.length)[0]
   if (matched === undefined) {
-    UserInput.fail(`Host command '${argv.join(' ')}' is not allowlisted.`)
+    UserInput.Fail(`Host command '${argv.join(' ')}' is not allowlisted.`)
   }
   return supportedRoute(matched, argv.slice(matched.tokens.length))
 }
@@ -57,26 +56,26 @@ async function readHostCommandPrefixes(): Promise<unknown> {
   const source = await FS.file(path).text()
   return Try(() => Json.Parse(source) as unknown, {
     catch() {
-      UserInput.fail(`The ${allowlistPath} file must contain a valid JSON array of command prefixes.`)
+      UserInput.Fail(`The ${allowlistPath} file must contain a valid JSON array of command prefixes.`)
     },
   })
 }
 
 function validatedPrefixes(value: unknown): Prefix[] {
-  UserInput.require(!!Array.isArray(value), 'The agentHostCommands permission must be an array of command prefixes.')
+  UserInput.Require(!!Array.isArray(value), 'The agentHostCommands permission must be an array of command prefixes.')
   const seen = new Set<string>()
   return value.map((prefix: unknown) => {
-    UserInput.require(
+    UserInput.Require(
       !!isValidPrefix(prefix),
       'Host command permission prefixes must be nonempty strings without surrounding spaces.',
     )
     const tokens = prefix.split(' ')
     if (!hasValidPrefixTokens(tokens)) {
-      UserInput.fail(`Invalid host command permission prefix '${prefix}'.`)
+      UserInput.Fail(`Invalid host command permission prefix '${prefix}'.`)
     }
     const key = encodePrefixIdentity(tokens)
     if (seen.has(key)) {
-      UserInput.fail(`Duplicate host command permission prefix '${prefix}'.`)
+      UserInput.Fail(`Duplicate host command permission prefix '${prefix}'.`)
     }
     seen.add(key)
     return { text: prefix, tokens }
@@ -120,7 +119,7 @@ function supportedRoute(prefix: Prefix, trailing: readonly string[]): HostComman
   if (isNativeGitPrefix(prefix)) {
     return { executable: 'git', args: [prefix.tokens[1]!, ...trailing] }
   }
-  UserInput.fail(`Host operation '${prefix.text}' is allowlisted but has no supported target.`)
+  UserInput.Fail(`Host operation '${prefix.text}' is allowlisted but has no supported target.`)
 }
 
 function isPerformanceOperation(prefix: Prefix): boolean {

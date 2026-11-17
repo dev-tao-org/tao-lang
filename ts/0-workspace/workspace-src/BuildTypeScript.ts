@@ -22,7 +22,7 @@ async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: s
   const target = Path.join(runtimeDirectory, 'node_modules')
   const existing = Try.WithDefault(undefined, () => FS.lstatSync(link))
   if (existing && !existing.isSymbolicLink()) {
-    UserInput.fail(`Generated build dependency path is not a symbolic link: ${link}`)
+    UserInput.Fail(`Generated build dependency path is not a symbolic link: ${link}`)
   }
   const relativeTarget = Path.relative(buildDirectory, target)
   await FS.replaceDirectoryLink(relativeTarget, link)

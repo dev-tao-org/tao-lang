@@ -35,7 +35,7 @@ export async function chooseDiffBase(
     if (base && branches.includes(base)) {
       return base
     }
-    return UserInput.fail(
+    return UserInput.Fail(
       base
         ? `Review comparison branch "${base}" does not exist. Use Dev Tao: Change Diff Base to select an existing branch.`
         : 'This worktree has a detached HEAD. Use Dev Tao: Change Diff Base to select an existing branch.',

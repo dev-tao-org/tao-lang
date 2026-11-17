@@ -21,7 +21,7 @@ Tests.test(
       await verifyOwnershipJourney(browser, expo)
     }, {
       async catch(error) {
-        UserInput.fail(`React ownership Metro acceptance failed. ${String(error)}`)
+        UserInput.Fail(`React ownership Metro acceptance failed. ${String(error)}`)
       },
       async finally() {
         await closeBrowser(browser)

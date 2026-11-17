@@ -167,7 +167,7 @@ async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
 
 function parseManagedModuleMetadata(contents: string): ModuleMetadataFields {
   const value: unknown = Try(() => Json.Parse(contents))
-  UserInput.require(!!isModuleMetadataFields(value), 'Managed module metadata must be a JSON object.')
+  UserInput.Require(!!isModuleMetadataFields(value), 'Managed module metadata must be a JSON object.')
   return value
 }
 
@@ -211,7 +211,7 @@ function isManagedModuleFile(moduleDirectory: string, path: string): boolean {
 
 async function cleanModuleLinks(moduleDirectory: string, profile: string, value: unknown): Promise<void> {
   if (!hasValidPackageNames(value)) {
-    UserInput.fail(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
+    UserInput.Fail(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
   }
   const localModules = Path.join(moduleDirectory, 'node_modules')
   if (isSymbolicLink(localModules)) {

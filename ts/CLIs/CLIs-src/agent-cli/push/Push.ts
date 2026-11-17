@@ -9,7 +9,7 @@ export async function pushBranch(
   branch: string,
   options: { source?: string } = {},
 ): Promise<void> {
-  UserInput.require(
+  UserInput.Require(
     branch.toLowerCase() !== 'main',
     'Agent pushes to main are prohibited. Use the separately authorized landing workflow.',
   )
@@ -22,7 +22,7 @@ export async function pushBranch(
   const remoteList = await Exec.captureStdout('git', 'remote', { cwd })
   const remotes = remoteList.trim().split(Regxs.ExtensionLineEndingRegx).filter(Boolean)
   if (!remotes.includes(remote) || remote.startsWith('-')) {
-    UserInput.fail(`Use a configured remote name, such as origin: ${remote}`)
+    UserInput.Fail(`Use a configured remote name, such as origin: ${remote}`)
   }
   const commit = await Exec.captureStdout('git', ['rev-parse', '--verify', `refs/heads/${source}^{commit}`], { cwd })
   await CLIKit.runNonInteractiveCommand('git', [
@@ -41,7 +41,7 @@ export async function pushBranch(
 
 function assertBareBranch(branch: string): void {
   if (isRefspecOrOption(branch)) {
-    UserInput.fail(`Name a local branch without options, force prefixes or refspecs: ${branch}`)
+    UserInput.Fail(`Name a local branch without options, force prefixes or refspecs: ${branch}`)
   }
 }
 

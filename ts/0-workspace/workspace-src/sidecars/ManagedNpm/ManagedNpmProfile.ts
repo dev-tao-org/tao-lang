@@ -1,6 +1,5 @@
 import * as Runtime from '@runtime'
-import { Json, UserInput } from '@shared'
-import { Errors, NewlineCharacter } from '@shared'
+import { Errors, Json, NewlineCharacter, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
 import * as Graph from '../ManagedModule/ManagedModuleGraph'
@@ -54,7 +53,7 @@ export async function readManagedModules(input: Types.ManagedModulesInput): Prom
   const durableHash = Identity.resolveManagedDurableLockHashPath(input, graphFingerprint)
   const lock = await Lock.readManagedProfileLock(lockfile, durableLock, durableHash, graphFingerprint)
   if (metadata.lockHash !== Platform.hashText(lock)) {
-    UserInput.fail(`Managed npm lock changed. Repair with: tao setup --repair.`)
+    UserInput.Fail(`Managed npm lock changed. Repair with: tao setup --repair.`)
   }
   validateLockPolicy(lock, input)
   await State.validateManagedManifest(profile, normalized, input.runtimePins, input.runtimePolicy)
@@ -153,7 +152,7 @@ function validateExistingState(
     return
   }
   if (storedLock === undefined) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control or an exact source reference.`,
     )
   }
@@ -173,7 +172,7 @@ async function ensureProfileManifest(
 }
 
 function validateLockPolicy(lock: string, input: Types.ManagedModulesInput): void {
-  UserInput.require(
+  UserInput.Require(
     !!managedLockPolicyMatches(lock, input),
     'Managed npm lock does not match the runtime patch policy. Repair with: tao setup --repair.',
   )
@@ -200,7 +199,7 @@ async function installFrozenGraph(
   }
   const resultingLock = await FS.readFile(lockfile, 'utf8')
   if (storedLock !== undefined && resultingLock !== storedLock) {
-    UserInput.fail(`Frozen Bun install changed the durable npm lock. Repair with: tao setup --repair.`)
+    UserInput.Fail(`Frozen Bun install changed the durable npm lock. Repair with: tao setup --repair.`)
   }
 }
 

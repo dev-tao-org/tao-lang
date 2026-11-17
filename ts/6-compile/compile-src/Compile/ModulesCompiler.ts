@@ -1,14 +1,14 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, Objects, S, Timings, UserInput } from '@shared'
 import * as Shared from '@shared'
+import { Errors, NewlineCharacter, Objects, S, Timings, UserInput } from '@shared'
 import { Platform } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
 import { emitStringLiteral, joinCodeBlocks, joinCodeLines } from '../codegen-util'
 import * as DeclarationCompiler from '../DeclarationCompiler'
 import * as ForeignViewsCompiler from '../ForeignViewsCompiler'
-import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from '../GeneratedPaths'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
+import { compileModuleImport, createGeneratedPaths, resolveViewsPath } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
 import { buildModuleTextBindings, type ModuleTextBindingsBySourcePath } from '../ModuleTextBindings'
 import * as RuntimeEmitter from '../RuntimeEmitter'
@@ -245,7 +245,7 @@ function selectApp(program: Typecheck.LinkedProgram, appName?: string): Selected
   }
   if (appName === undefined) {
     const apps = AST.GetAppDeclarations(entry.document)
-    UserInput.require(apps.length === 1, 'Compile one app declaration per entry file.')
+    UserInput.Require(apps.length === 1, 'Compile one app declaration per entry file.')
     return { source: entry.path, declaration: apps[0] }
   }
   const direct = AST.FindAppDeclaration(entry.document, appName)
@@ -254,9 +254,9 @@ function selectApp(program: Typecheck.LinkedProgram, appName?: string): Selected
   }
   const binding = entry.bindings.find(candidate => candidate.name === appName)
   if (binding === undefined) {
-    UserInput.fail(`Unknown Tao app: ${appName}.`)
+    UserInput.Fail(`Unknown Tao app: ${appName}.`)
   }
   const owner = program.modules.find(module => module.path === binding.source)
   const declaration = owner && AST.FindAppDeclaration(owner.document, binding.target)
-  return declaration ? { source: binding.source, declaration } : UserInput.fail(`Unknown Tao app: ${appName}.`)
+  return declaration ? { source: binding.source, declaration } : UserInput.Fail(`Unknown Tao app: ${appName}.`)
 }

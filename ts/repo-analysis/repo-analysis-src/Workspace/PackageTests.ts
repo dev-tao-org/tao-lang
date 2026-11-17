@@ -82,7 +82,7 @@ function requireTestInputDirectory(directory: string, root: string, input: strin
   const resolved = normalizePath(Path.resolve(directory, input))
   const inside = resolved.startsWith(root + '/') && !input.includes('*')
   if (!inside || !FS.existsSync(resolved) || !FS.statSync(resolved).isDirectory()) {
-    UserInput.fail(`Test input layouts require an existing exact directory inside ${root}: ${input}`)
+    UserInput.Fail(`Test input layouts require an existing exact directory inside ${root}: ${input}`)
   }
   return resolved
 }
@@ -97,20 +97,20 @@ function readTestModule(filename: string): TestModule | undefined {
   const validTest = parts[marker] === 'test' && marker === parts.length - 1
   const validHelper = parts[marker] !== 'test' && marker === 1
   if (!valid || (!validTest && !validHelper)) {
-    UserInput.fail(`Use owner[.Concern].test.ts or owner.test-utils/test-fixtures[.Concern].ts: ${filename}`)
+    UserInput.Fail(`Use owner[.Concern].test.ts or owner.test-utils/test-fixtures[.Concern].ts: ${filename}`)
   }
   return { owner: parts[0]!, marker: parts[marker]!, hasConcern: marker > 1 }
 }
 
 function requireTestOwner(filename: string, module: TestModule, ownership: TestOwnership): string {
   if (!filename.startsWith(ownership.root + '/')) {
-    UserInput.fail(`Package tests belong in the central ${ownership.root} root: ${filename}`)
+    UserInput.Fail(`Package tests belong in the central ${ownership.root} root: ${filename}`)
   }
   const parent = normalizePath(Path.relative(ownership.root, Path.dirname(filename)))
   const rootOwner = parent === '' && module.owner === ownership.rootOwner
   const source = rootOwner ? ownership.sourceRoot : normalizePath(Path.join(ownership.sourceRoot, parent, module.owner))
   if (!ownership.sourceDirectories.has(source)) {
-    UserInput.fail(`Test modules must name a mirrored source-folder owner: ${filename} -> ${source}`)
+    UserInput.Fail(`Test modules must name a mirrored source-folder owner: ${filename} -> ${source}`)
   }
   return normalizePath(Path.join(ownership.root, parent, module.owner))
 }
@@ -123,7 +123,7 @@ function requireSingleOwnerMode(owner: string, hasConcern: boolean, modes: TestO
     current.base = true
   }
   if (current.base && current.concerns) {
-    UserInput.fail(`A test folder owner uses one base file or concern files, never both: ${owner}`)
+    UserInput.Fail(`A test folder owner uses one base file or concern files, never both: ${owner}`)
   }
   modes.set(owner, current)
 }

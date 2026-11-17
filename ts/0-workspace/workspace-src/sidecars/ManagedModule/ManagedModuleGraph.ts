@@ -26,7 +26,7 @@ export function collectAllRequirements(
   for (const [name, choices] of versions) {
     if (choices.size > 1) {
       const details = [...choices].map(([version, owners]) => `${version} from ${[...owners].join(', ')}`)
-      UserInput.fail(`Managed modules require incompatible versions of ${name}: ${details.join('; ')}.`)
+      UserInput.Fail(`Managed modules require incompatible versions of ${name}: ${details.join('; ')}.`)
     }
   }
   return Object.fromEntries(
@@ -50,7 +50,7 @@ export function validateGraphContents(
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
   runtimePins: ManagedTypes.ManagedRuntimePins,
 ): void {
-  UserInput.require(
+  UserInput.Require(
     !!graphContentsMatch(source, requirements, runtimePins),
     'Managed npm lock does not match exact top-level requirements; repair it with: tao setup --repair.',
   )
@@ -134,13 +134,13 @@ type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string
 
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {
-    UserInput.fail(`Managed npm package name ${name} in ${owner} is invalid.`)
+    UserInput.Fail(`Managed npm package name ${name} in ${owner} is invalid.`)
   }
 }
 
 function requireExactVersion(name: string, version: string, origin: string): void {
   if (valid(version) !== version) {
-    UserInput.fail(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
+    UserInput.Fail(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
   }
 }
 
@@ -162,7 +162,7 @@ function validateSingleton(name: string, packages: InstalledPackage[], expected?
   const canonical = new Set(instances.map(item => FS.realpathSync(item.directory)))
   if (canonical.size > 1 || expected && instances.some(item => item.version !== expected)) {
     const details = instances.map(item => `${item.directory}@${item.version}`).join(', ')
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm graph has incompatible singleton ${name}: ${details}. Change owning npm requirements to compatible versions, then run tao setup --repair.`,
     )
   }
@@ -215,7 +215,7 @@ async function findPackageDirectory(
     () => Promise.resolve(FS.resolvePackageDirectory(name, from)),
   )
   if (directory === undefined && !optional) {
-    UserInput.fail(`Managed npm ${peer ? 'peer incompatibility' : 'graph'}: missing ${name}, required by ${from}.`)
+    UserInput.Fail(`Managed npm ${peer ? 'peer incompatibility' : 'graph'}: missing ${name}, required by ${from}.`)
   }
   return directory
 }
@@ -230,14 +230,14 @@ function validateInstalledMetadata(
   from: string,
 ): asserts metadata is PackageMetadata.InstalledPackageMetadata {
   if (!PackageMetadata.hasPackageIdentity(metadata)) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
       } ${name} required by ${from} resolved invalid metadata at ${directory}.`,
     )
   }
   if (metadata.name !== expectedName) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
       } ${name} required by ${from} resolved package ${metadata.name} at ${directory}.`,
@@ -287,7 +287,7 @@ function validateRange(name: string, actual: string, range: DependencyVersionRan
     return
   }
   if (!satisfies(actual, range, { includePrerelease: true })) {
-    UserInput.fail(
+    UserInput.Fail(
       `Managed npm ${peer ? 'peer incompatibility' : 'package mismatch'}: ${name}@${actual} does not satisfy ${range}.`,
     )
   }
@@ -308,7 +308,7 @@ function parseNpmAlias(
   const targetName = separator > 0 ? target.slice(0, separator) : target
   const targetRange = separator > 0 ? target.slice(separator + 1) : undefined
   if (!isNpmPackageName(targetName) || targetRange === '') {
-    UserInput.fail(`Managed npm alias ${name} required by ${from} has invalid target ${range}.`)
+    UserInput.Fail(`Managed npm alias ${name} required by ${from} has invalid target ${range}.`)
   }
   return { name: targetName, range: targetRange }
 }

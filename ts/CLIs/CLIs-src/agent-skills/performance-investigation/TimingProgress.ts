@@ -13,7 +13,7 @@ export function describeTimingLabel(label?: string): string {
   if (label === undefined) {
     return 'Developer'
   }
-  UserInput.require(
+  UserInput.Require(
     !(!label.trim() || Regxs.RemotePathControlCharacterRegx.test(label)),
     'Use a nonempty, single-line timing label.',
   )

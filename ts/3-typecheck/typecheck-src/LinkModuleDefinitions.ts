@@ -51,7 +51,7 @@ function visitDefinition(item: DependencyDefinition, state: DefinitionOrderState
     return
   }
   if (state.visiting.has(key)) {
-    UserInput.fail(`Module-level let cycle includes ${item.declaration.name.value} in ${item.source}.`)
+    UserInput.Fail(`Module-level let cycle includes ${item.declaration.name.value} in ${item.source}.`)
   }
   state.visiting.add(key)
   visitDefinitionDependencies(item, state)
@@ -116,7 +116,7 @@ function collectDefinitionDependencies(
     return imports
   }
   if (!knownNames.has(value.value)) {
-    UserInput.fail(`Unknown let reference ${value.value} in ${item.source}.`)
+    UserInput.Fail(`Unknown let reference ${value.value} in ${item.source}.`)
   }
   return []
 }

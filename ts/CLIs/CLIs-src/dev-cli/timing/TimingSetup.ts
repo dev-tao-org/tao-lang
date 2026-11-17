@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { Errors, UserInput } from '@shared'
 import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -26,7 +26,7 @@ type TimingSetupIO = {
 /** setupTiming installs the pinned NetBird service, retains its Nix package and starts ordinary browser login. */
 export async function setupTiming(options: TimingSetup): Promise<void> {
   const io = createSetupIO()
-  UserInput.require(io.platform === 'Darwin', 'Timing network setup currently supports macOS.')
+  UserInput.Require(io.platform === 'Darwin', 'Timing network setup currently supports macOS.')
   const executable = await io.resolveExecutable()
   const packageDirectory = Path.dirname(Path.dirname(executable))
   if (!packageDirectory.startsWith('/nix/store/')) {
@@ -42,7 +42,7 @@ export async function setupTiming(options: TimingSetup): Promise<void> {
     return
   }
   if (!io.interactive) {
-    UserInput.fail(`Run just setup-timing ${options.role} in Terminal for administrator authorization and login.`)
+    UserInput.Fail(`Run just setup-timing ${options.role} in Terminal for administrator authorization and login.`)
   }
   await retainPackage(io, packageDirectory)
   const executeService = (action: string) =>

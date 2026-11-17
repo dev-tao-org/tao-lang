@@ -96,7 +96,7 @@ export async function runBranchComparison(options: BranchComparisonOptions): Pro
 /** requireBranchPairCount validates the sample count before connecting or measuring. */
 export function requireBranchPairCount(pairs: number): void {
   if (!Number.isInteger(pairs) || pairs < Metrics.MinimumBranchPairs) {
-    UserInput.fail(`Use at least ${Metrics.MinimumBranchPairs} independent pairs per round.`)
+    UserInput.Fail(`Use at least ${Metrics.MinimumBranchPairs} independent pairs per round.`)
   }
 }
 
@@ -183,7 +183,7 @@ async function measureRound(
 
 async function readComparableReport(path: string, comparison: BranchComparison, side: Side): Promise<PreviewReport> {
   const { job, reports } = await readCompletedJob(path)
-  UserInput.require(
+  UserInput.Require(
     !(job.commit !== comparison.commits[side] || job.fixtureSha256 !== comparison.fixtureSha256),
     'The branch or fixture changed after the comparison started.',
   )
@@ -191,12 +191,12 @@ async function readComparableReport(path: string, comparison: BranchComparison, 
 }
 
 function requireComparableSession(report: PreviewReport, history: ScenarioSessions): void {
-  UserInput.require(
+  UserInput.Require(
     !history.seenIds.has(report.sessionId),
     'Duplicate preview sessions cannot count as independent pairs.',
   )
   const conditions = describeMeasurementConditions(report)
-  UserInput.require(
+  UserInput.Require(
     !(history.conditions && !Objects.equal(conditions, history.conditions)),
     'Runner, toolchain or preview conditions differ across paired sessions.',
   )

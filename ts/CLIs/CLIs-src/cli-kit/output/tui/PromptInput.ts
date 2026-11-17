@@ -42,7 +42,7 @@ export function createPaneInput(redraw: () => void): PaneInput {
 
   async function readInput(request: OutputInputRequest): Promise<string> {
     requireAvailableInput(input)
-    UserInput.require(!request.signal?.aborted, 'Confirmation cancelled.')
+    UserInput.Require(!request.signal?.aborted, 'Confirmation cancelled.')
     const result = Promise.withResolvers<string>()
     input = { request, value: '', resolve: result.resolve, reject: result.reject }
     const cancel = () => result.reject(new Error('Confirmation cancelled.'))

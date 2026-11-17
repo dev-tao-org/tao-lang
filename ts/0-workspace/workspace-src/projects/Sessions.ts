@@ -21,7 +21,7 @@ export async function acquireSession(
   }
   const layout = deriveProjectLayout(Path.resolve(projectRoot))
   const lifecycle = await Lifecycle.acquireProjectLifecycle(layout.root, 2_000)
-  UserInput.require(!!lifecycle, 'Project maintenance is active. Retry session startup when it finishes.')
+  UserInput.Require(!!lifecycle, 'Project maintenance is active. Retry session startup when it finishes.')
   return await Try(async () => {
     const lock = await acquireSessionLock(layout, id)
     return await Try(() => prepareSession(id, layout, lock), {
@@ -47,7 +47,7 @@ type SessionKind = 'cli' | 'studio'
 
 function validateSessionId(id: string): void {
   if (!isUserSessionId(id)) {
-    UserInput.fail(`Invalid project session ID: ${id}`)
+    UserInput.Fail(`Invalid project session ID: ${id}`)
   }
 }
 
@@ -82,11 +82,11 @@ async function acquireSessionLock(layout: ProjectLayout, id: string): Promise<Fi
   )
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
   if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
-    UserInput.fail(`Project session lock is not a regular file: ${lockPath}`)
+    UserInput.Fail(`Project session lock is not a regular file: ${lockPath}`)
   }
   const lock = await FileLock.tryAcquire(lockPath)
   if (lock === undefined) {
-    UserInput.fail(`Project session is already active: ${id}`)
+    UserInput.Fail(`Project session is already active: ${id}`)
   }
   return lock
 }
@@ -109,7 +109,7 @@ async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
     return
   }
   if (!Lifecycle.isRealDirectory(snapshots)) {
-    UserInput.fail(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
+    UserInput.Fail(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
   }
   await FS.rm(snapshots, { recursive: true, force: true })
 }

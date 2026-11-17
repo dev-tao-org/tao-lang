@@ -1,6 +1,6 @@
 import React from '@runtime/client/Bridge_react/Bridge_react'
-import { Errors, NewlineCharacter, Try, UserInput } from '@shared'
 import * as Shared from '@shared'
+import { Errors, NewlineCharacter, Try, UserInput } from '@shared'
 import { Repo, Terminal } from '@shared/os'
 import { Cancellation } from '@shared/web'
 import { Ink } from '../../CLIs-src/cli-kit/bridges/Bridge_ink'
@@ -77,7 +77,7 @@ async function exercisePanePrompts(input: PaneInput): Promise<void> {
   await runNonInteractiveCommand('bun', ['run', fixture, 'pane-child'], { output: channel })
   input.paste('invalid')
   input.receive('', { return: true } as Ink.Key)
-  UserInput.require(!!(await confirmation), 'Fixture setup declined.')
+  UserInput.Require(!!(await confirmation), 'Fixture setup declined.')
   const secret = await IO.askSecret('Fixture hidden token: ')
   if (secret !== Shared.joinTextLines(...PaneSecretLines)) {
     Errors.ThrowShouldNeverHappen('Fixture secret changed.')

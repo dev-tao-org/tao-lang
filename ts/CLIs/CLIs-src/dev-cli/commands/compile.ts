@@ -1,5 +1,5 @@
-import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
+import { IO } from '@cli-kit'
 import { NewlineCharacter, UserInput } from '@shared'
 import * as Workspace from '@workspace'
 
@@ -44,7 +44,7 @@ export default registerCommand({
 type EntryArgument = string | undefined
 
 async function compileExplicitLibrary(directory: string, argument: EntryArgument, options: CompileCommandOptions) {
-  UserInput.require(!(!options.tsLib || !options.out), 'Use --ts-lib <declaration> together with --out <directory>.')
+  UserInput.Require(!(!options.tsLib || !options.out), 'Use --ts-lib <declaration> together with --out <directory>.')
   const entry = argument === undefined ? undefined : CLIKit.resolveCallerPath(argument)
   const target = await Workspace.resolveLibraryCompileTarget(directory, options.tsLib, entry)
   const output = CLIKit.resolveCallerPath(options.out)

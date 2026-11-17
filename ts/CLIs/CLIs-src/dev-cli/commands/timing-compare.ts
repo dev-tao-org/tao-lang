@@ -50,7 +50,7 @@ export default registerCommand({
 })
 
 function requireAbsoluteCheckouts(paths: string[]): void {
-  UserInput.require(
+  UserInput.Require(
     !paths.some(path => !Path.posix.isAbsolute(path)),
     'Use absolute baseline, candidate and tooling paths on the runner.',
   )
