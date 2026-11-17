@@ -30,6 +30,7 @@ export type ReactiveEngine = {
 }
 
 /** createReactiveEngine adapts Preact Signals to Tao expression semantics.
+ *  Feedback limits stop the writing callback and its new subscriptions, preserving independent observers.
  *  ex: source.update(2) -> derived.jsValue() returns the newly computed value. */
 export function createReactiveEngine(options: ReactiveEngineOptions = {}): ReactiveEngine {
   return buildEngine({
@@ -40,9 +41,8 @@ export function createReactiveEngine(options: ReactiveEngineOptions = {}): React
     disposed: false,
     evaluationDepth: 0,
     deliveryChainCount: 0,
-    deliveryChainActive: false,
     cancelDeliveryChainReset: undefined,
-    deliveryDepth: 0,
+    activeDelivery: undefined,
     deliveryScheduled: false,
     flushingDelivery: false,
   })
@@ -96,12 +96,13 @@ type EngineState = {
   disposed: boolean
   evaluationDepth: number
   deliveryChainCount: number
-  deliveryChainActive: boolean
   cancelDeliveryChainReset: OptionalDeliveryReset
-  deliveryDepth: number
+  activeDelivery: OptionalDeliveryFrame
   deliveryScheduled: boolean
   flushingDelivery: boolean
 }
+type DeliveryFrame = { stop(): void; createdStops: Set<() => void> }
+type OptionalDeliveryFrame = DeliveryFrame | undefined
 
 function buildEngine(state: EngineState): ReactiveEngine {
   return {
@@ -182,7 +183,7 @@ function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) =
         deliveryPending = false
         if (active && !areValueSnapshotsEqual(lastDelivered, pendingValue)) {
           lastDelivered = pendingValue
-          deliverValue(state, receive, lastDelivered)
+          deliverValue(state, receive, lastDelivered, stop)
         }
       })
     })
@@ -196,7 +197,8 @@ function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) =
     state.allStops.delete(stop)
   }
   state.allStops.add(stop)
-  Try<void>(() => deliverValue(state, receive, lastDelivered), {
+  state.activeDelivery?.createdStops.add(stop)
+  Try<void>(() => deliverValue(state, receive, lastDelivered, stop), {
     catch(thrown) {
       stop()
       return Errors.Throw(thrown)
@@ -210,24 +212,14 @@ function watchNode<T>(state: EngineState, node: Node<T>, changed: (value: T) => 
   changed(decodeReactiveValue<T>(node.value.value))
 }
 
-function deliverValue<T>(state: EngineState, receive: (value: T) => void, value: T): void {
-  if (!state.deliveryChainActive) {
-    state.deliveryChainCount = 0
-  }
-  state.deliveryChainActive = false
-  state.deliveryChainCount += 1
-  if (state.deliveryChainCount > MaxReentrantDeliveries) {
-    failDeliveryCycle(state)
-  }
-  state.deliveryDepth += 1
+function deliverValue<T>(state: EngineState, receive: (value: T) => void, value: T, stop: () => void): void {
+  const parent = state.activeDelivery
+  state.activeDelivery = { stop, createdStops: new Set() }
   Try(() => Preact.untracked(() => receive(value)), {
     finally() {
-      state.deliveryDepth -= 1
+      state.activeDelivery = parent
     },
   })
-  if (!state.deliveryChainActive) {
-    resetDeliveryChain(state)
-  }
 }
 
 function scheduleDeliveryChainReset(state: EngineState): void {
@@ -239,7 +231,6 @@ function resetDeliveryChain(state: EngineState): void {
   state.cancelDeliveryChainReset?.()
   state.cancelDeliveryChainReset = undefined
   state.deliveryChainCount = 0
-  state.deliveryChainActive = false
 }
 
 function queueDelivery(state: EngineState, deliver: () => void): void {
@@ -258,14 +249,9 @@ function queueDelivery(state: EngineState, deliver: () => void): void {
 function flushDelivery(state: EngineState): void {
   state.deliveryScheduled = false
   state.flushingDelivery = true
-  let passes = 0
   let failure: unknown
   Try(() => {
     while (state.pending.length > 0) {
-      passes += 1
-      if (passes > MaxReentrantDeliveries) {
-        failDeliveryCycle(state)
-      }
       const current = state.pending
       state.pending = []
       Preact.batch(() => {
@@ -289,12 +275,6 @@ function flushDelivery(state: EngineState): void {
   }
 }
 
-function failDeliveryCycle(state: EngineState): never {
-  state.pending = []
-  disposeObservers(state)
-  return Errors.ThrowUserInput('Reactive observers exceeded the reentrant delivery limit; break the update cycle.')
-}
-
 function createWritable<T>(state: EngineState, initial: T): WritableExpression<T> {
   assertActive(state)
   const snapshot = takeValueSnapshot(initial)
@@ -309,17 +289,31 @@ function createWritable<T>(state: EngineState, initial: T): WritableExpression<T
 function updateSource(state: EngineState, source: Preact.Signal<ReactiveValue>, value: unknown): void {
   assertActive(state)
   const snapshot = takeValueSnapshot(value)
-  if (state.deliveryDepth > 0) {
-    state.deliveryChainActive = true
-  } else {
-    resetDeliveryChain(state)
+  const previous = source.peek()
+  const next = encodeReactiveValue(snapshot, previous)
+  if (Object.is(next, previous)) {
+    return
   }
+  requireBoundedFeedback(state)
   Preact.batch(() => {
-    source.value = encodeReactiveValue(snapshot, source.peek())
+    source.value = next
   })
-  if (state.deliveryDepth > 0) {
-    scheduleDeliveryChainReset(state)
+}
+
+function requireBoundedFeedback(state: EngineState): void {
+  const delivery = state.activeDelivery
+  if (!delivery) {
+    resetDeliveryChain(state)
+    return
   }
+  state.deliveryChainCount += 1
+  if (state.deliveryChainCount >= MaxReentrantDeliveries) {
+    delivery.stop()
+    delivery.createdStops.forEach(stop => stop())
+    resetDeliveryChain(state)
+    Errors.ThrowUserInput('Reactive observers exceeded the reentrant delivery limit; break the update cycle.')
+  }
+  scheduleDeliveryChainReset(state)
 }
 
 function disposeEngine(state: EngineState): void {
