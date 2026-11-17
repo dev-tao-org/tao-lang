@@ -17,7 +17,8 @@ permissions:
 jobs:
   journeys:
     name: Tao journeys (${{ matrix.platform }}, ${{ matrix.shard }})
-    runs-on: ${{ matrix.platform == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
+    # The standard Intel runner has 14 GB for the simulator, WebDriverAgent and Metro.
+    runs-on: ${{ matrix.platform == 'ios' && 'macos-26-intel' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
