@@ -1,5 +1,4 @@
-import { Json } from '@shared'
-import { Errors, Lists, Try } from '@shared'
+import { Errors, Json, Lists, Objects, Try } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
@@ -143,7 +142,7 @@ function hasStringHash(hashes: unknown, path: string): boolean {
 type GeneratedFileHashFields = Record<string, unknown>
 
 function isGeneratedFileHashFields(value: unknown): value is GeneratedFileHashFields {
-  return typeof value === 'object' && value !== null
+  return Objects.isObject(value)
 }
 
 function hasInvalidManagedProfilePath(profile: string, managedRoot: string): boolean {
@@ -175,7 +174,7 @@ function parseManagedModuleMetadata(contents: string): ModuleMetadataFields {
 }
 
 function isModuleMetadataFields(value: unknown): value is ModuleMetadataFields {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return Objects.isObject(value) && !Array.isArray(value)
 }
 
 async function cleanModuleFiles(
@@ -257,5 +256,5 @@ function isMissing(error: unknown): boolean {
 }
 
 function isObjectError(error: unknown): error is object {
-  return typeof error === 'object' && error !== null
+  return Objects.isObject(error)
 }
