@@ -61,5 +61,6 @@ organization and local usage analysis do not require imports to resolve or repla
 
 #### `tao fmt` and `tao fix`
 
-`tao fmt path/to/File.tao` formats a file; `tao fix path/to/File.tao` organizes imports before
+`tao fmt path/to/File.tao` formats a file. Pass a directory to format its Tao files recursively,
+skipping dependency and generated directories. `tao fix path/to/File.tao` organizes imports before
 formatting. Editor format-on-save uses the same formatting behavior without applying fixes.

@@ -32,6 +32,24 @@ Tests.test('tao fmt and fix resolve source paths from the caller directory', asy
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 
+Tests.test('tao fmt formats authored Tao files in a directory and skips generated files', async () => {
+  const directory = Artifacts.resolvePath('tmp', `format-directory-${Platform.randomUUID()}`)
+  await Workspace.initializeProject(directory)
+  await Try(async () => {
+    const source = 'package view Main{render Missing}'
+    const nested = Path.join(directory, 'Nested')
+    const authored = Path.join(nested, 'Example.tao')
+    const generated = Path.join(directory, '.tao', 'Generated.tao')
+    await FS.mkdir(nested)
+    await FS.writeFile(authored, source)
+    await FS.writeFile(generated, source)
+    const result = await Exec.capture(Repo.resolvePath('tao'), ['fmt', '.'], { cwd: directory, check: false })
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await FS.readFile(authored, 'utf8')).toBe('package\nview Main {\n  render Missing\n}')
+    Tests.expect(await FS.readFile(generated, 'utf8')).toBe(source)
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
+})
+
 Tests.test('root agent test rejects legacy and outside Tao targets before compilation', async () => {
   for (
     const [target, message] of [
