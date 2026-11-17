@@ -16,7 +16,7 @@ function useTaoInjectionGreeting$PrivateGreeting_83e89515fb8e() {
 }
 export function TaoView_Greeting$PrivateGreeting_83e89515fb8e(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-
+  const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "PrivateGreeting"> & { readonly "First": string; readonly "Second": string; readonly "PrivateGreeting": TR.View };
 
   return TR.finishViewRender(_Render, useTaoInjectionGreeting$PrivateGreeting_83e89515fb8e());
 }
@@ -50,7 +50,7 @@ function useTaoInjectionPanel_83e89515fb8e(Children: TR.ViewComponentProps['chil
 }
 export function TaoView_Panel_83e89515fb8e(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-
+  const _Scope = _Render.scope as ModuleScope;
 
   return TR.finishViewRender(_Render, useTaoInjectionPanel_83e89515fb8e(_Render.children));
 }

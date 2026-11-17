@@ -151,7 +151,7 @@ function useTaoInjectionHeading_bffa39d2a324() {
 }
 export function TaoView_Heading_bffa39d2a324(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-
+  const _Scope = _Render.scope as ModuleScope;
 
   return TR.finishViewRender(_Render, useTaoInjectionHeading_bffa39d2a324());
 }
@@ -167,7 +167,7 @@ function useTaoInjectionSaveButton_bffa39d2a324() {
 }
 export function TaoView_SaveButton_bffa39d2a324(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-
+  const _Scope = _Render.scope as ModuleScope;
 
   return TR.finishViewRender(_Render, useTaoInjectionSaveButton_bffa39d2a324());
 }

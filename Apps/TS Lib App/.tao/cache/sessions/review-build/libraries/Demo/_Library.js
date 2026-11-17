@@ -1092,6 +1092,7 @@ function useTaoInjectionGreeting$PrivateGreeting_83e89515fb8e() {
 }
 function TaoView_Greeting$PrivateGreeting_83e89515fb8e(_Props) {
   const _Render = beginViewRender(_Props);
+  const _Scope = _Render.scope;
   return finishViewRender(_Render, useTaoInjectionGreeting$PrivateGreeting_83e89515fb8e());
 }
 function TaoView_Greeting_83e89515fb8e(_Props) {
@@ -1113,6 +1114,7 @@ function useTaoInjectionPanel_83e89515fb8e(Children) {
 }
 function TaoView_Panel_83e89515fb8e(_Props) {
   const _Render = beginViewRender(_Props);
+  const _Scope = _Render.scope;
   return finishViewRender(_Render, useTaoInjectionPanel_83e89515fb8e(_Render.children));
 }
 function TaoView_Hidden_83e89515fb8e(_Props) {
@@ -1298,6 +1300,7 @@ function useTaoInjectionValueSnapshots_c504edc83a50() {
 }
 function TaoView_ValueSnapshots_c504edc83a50(_Props) {
   const _Render = beginViewRender(_Props);
+  const _Scope = _Render.scope;
   return finishViewRender(_Render, useTaoInjectionValueSnapshots_c504edc83a50());
 }
 
@@ -1329,6 +1332,7 @@ function useTaoInjectionCol_ecee2c2314f4(Children) {
 }
 function TaoView_Col_ecee2c2314f4(_Props) {
   const _Render = beginViewRender(_Props);
+  const _Scope = _Render.scope;
   return finishViewRender(_Render, useTaoInjectionCol_ecee2c2314f4(_Render.children));
 }
 function useTaoInjectionRow_ecee2c2314f4(Children) {
@@ -1339,6 +1343,7 @@ function useTaoInjectionRow_ecee2c2314f4(Children) {
 }
 function TaoView_Row_ecee2c2314f4(_Props) {
   const _Render = beginViewRender(_Props);
+  const _Scope = _Render.scope;
   return finishViewRender(_Render, useTaoInjectionRow_ecee2c2314f4(_Render.children));
 }
 function useTaoInjectionInput_ecee2c2314f4(Value) {
