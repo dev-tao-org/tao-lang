@@ -47,6 +47,9 @@ Tests.test('tao fmt formats authored Tao files in a directory and skips generate
     Tests.expect(result.status).toBe(0)
     Tests.expect(await FS.readFile(authored, 'utf8')).toBe('package\nview Main {\n  render Missing\n}')
     Tests.expect(await FS.readFile(generated, 'utf8')).toBe(source)
+    const protectedRoot = await Exec.capture(Repo.resolvePath('tao'), ['fmt', '.tao'], { cwd: directory, check: false })
+    Tests.expect(protectedRoot.status).toBe(1)
+    Tests.expect(await FS.readFile(generated, 'utf8')).toBe(source)
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 

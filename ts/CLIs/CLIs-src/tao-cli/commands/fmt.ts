@@ -1,6 +1,6 @@
 import * as CLIKit from '@cli-kit'
 import { Lists, Regxs, Sort, UserInput } from '@shared'
-import { Files, FS } from '@shared/os'
+import { Files, FS, Path } from '@shared/os'
 
 import { registerCommand } from '../../dev-cli/commands/_command-runner'
 import { updateTaoSource } from '../../dev-cli/source/TaoSource'
@@ -26,7 +26,12 @@ export default registerCommand({
 
 async function findFormatFiles(path: string): Promise<string[]> {
   if (FS.existsSync(path)) {
-    const info = FS.statSync(path)
+    const physical = FS.realpathSync(path)
+    UserInput.require(
+      !isExcludedFormatPath(path) && !isExcludedFormatPath(physical),
+      `Cannot format generated or dependency source: ${path}`,
+    )
+    const info = FS.statSync(physical)
     if (info.isDirectory()) {
       const files = await Files.walk(path)
       return files.filter(file => Regxs.TaoSourceExtensionRegx.test(file)).sort(Sort.CompareStrings)
@@ -36,4 +41,8 @@ async function findFormatFiles(path: string): Promise<string[]> {
     }
   }
   return UserInput.fail(`Expected a .tao file or directory: ${path}`)
+}
+
+function isExcludedFormatPath(path: string): boolean {
+  return Path.toPortablePath(path).split('/').some(segment => Files.skipDirectory(segment))
 }
