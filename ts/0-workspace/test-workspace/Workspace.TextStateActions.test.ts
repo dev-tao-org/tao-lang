@@ -35,6 +35,12 @@ Tests.test('invalid text writes and event handlers are rejected before app gener
       'render Text(Status) { on press Edit }',
       'This view does not accept on press.',
     )
+    await expectRejection(
+      workspace,
+      '',
+      'render Status',
+      'Status is text and cannot be rendered as a view.',
+    )
   }, { finally: () => workspace.dispose() })
 })
 

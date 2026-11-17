@@ -95,7 +95,7 @@ function declareParameters(parameters: readonly AST.Parameter[], scope: Scope, o
 }
 
 function assertValidRender(node: AST.ViewRenderExpression, scope: Scope, owner: ViewOwner): void {
-  assertValue(resolveLocal(scope, node.target.value), owner, node.target)
+  assertRenderTarget(node.target, scope, owner)
   for (const argument of node.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       assertValue(resolveLocal(scope, argument.value), owner, argument)
@@ -113,6 +113,14 @@ function assertValidRender(node: AST.ViewRenderExpression, scope: Scope, owner: 
       ViewRenderExpression: expression => assertValidRender(expression, children, owner),
     })
   }
+}
+
+function assertRenderTarget(target: AST.Name, scope: Scope, owner: ViewOwner): void {
+  const binding = resolveLocal(scope, target.value)
+  if (binding?.kind === 'text' || binding?.kind === 'state') {
+    reject(owner, target, `${target.value} is text and cannot be rendered as a view.`)
+  }
+  assertValue(binding, owner, target)
 }
 
 function assertValueCaptures(injection: AST.Injection, scope: Scope, owner: ViewOwner): void {
