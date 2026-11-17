@@ -4,11 +4,12 @@ import { Json } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import { Errors, Lists } from '@shared'
-import { Path } from '@shared/os'
+import { Files, FS, Path } from '@shared/os'
 
 import { buildManagedModulesInput, executeManagedTool } from './ProjectPreparation'
 import { requireSetup } from './SetupRequired'
 import * as SidecarPipeline from './SidecarPipeline'
+import { createTypeScriptDefaults } from './sidecars/ManagedModule/ManagedModuleMetadata'
 import * as ManagedModules from './sidecars/ManagedModule/ManagedModules'
 
 /** ProjectPipelineResult exposes validated foreign-view routing and dynamic source watches. */
@@ -58,6 +59,7 @@ class PipelineSession implements ProjectPipeline {
   private readonly baseWatchFolders: readonly string[]
   private declarationKey?: string
   private input?: ManagedModules.ManagedModulesInput
+  private typescriptDefaultsPath?: string
 
   constructor(
     private readonly root: string,
@@ -71,6 +73,7 @@ class PipelineSession implements ProjectPipeline {
     program: Typecheck.LinkedProgram,
     watchAttemptedFiles?: (files: readonly string[]) => Promise<void>,
   ): Promise<ProjectPipelineResult> {
+    await this.pinRuntimeGeneration()
     const declarationKey = createDeclarationKey(program)
     const input = declarationKey === this.declarationKey
       ? this.input
@@ -110,6 +113,19 @@ class PipelineSession implements ProjectPipeline {
     this.runtimeOptions.dependencyDirectory = dependencyDirectory
   }
 
+  private async pinRuntimeGeneration(): Promise<void> {
+    if (this.typescriptDefaultsPath) {
+      return
+    }
+    const resourcesDirectory = Runtime.resolveRuntimeResourcesDirectory(this.runtimeOptions.resourcesDirectory)
+    const defaults = createTypeScriptDefaults(resourcesDirectory)
+    const path = Path.join(this.sessionDirectory, 'runtime-typescript.json')
+    await FS.mkdir(this.sessionDirectory)
+    await Files.writeReadOnly(path, defaults)
+    this.runtimeOptions.resourcesDirectory = resourcesDirectory
+    this.typescriptDefaultsPath = path
+  }
+
   private rejectChangedGraph(key: string): void {
     if (this.graphKey === undefined || this.graphKey === key) {
       return
@@ -139,6 +155,7 @@ class PipelineSession implements ProjectPipeline {
       target: 'web',
       executor: executeManagedTool,
       projectDirectory: this.root,
+      typescriptDefaultsPath: this.typescriptDefaultsPath,
       onWatchFiles: watchAttemptedFiles,
     })
   }

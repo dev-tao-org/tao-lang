@@ -10,6 +10,18 @@ import * as Toolchain from '../runtime-src/expo/Toolchain'
 import * as ToolchainIdentity from '../runtime-src/expo/ToolchainIdentity'
 import * as Runtime from '../runtime-src/Runtime'
 
+Tests.test('authored TypeScript mappings retain the stable runtime entry instead of a source-build identity', () => {
+  const resources = Repo.resolvePath('ts/7-runtime/_gen_runtime')
+  const paths = Runtime.runtimeTypeScriptPaths()
+  Tests.expect(paths).toEqual({
+    '@runtime/client/*': [Path.join(resources, 'runtime/*')],
+    '@tao/runtime-api': [Path.join(resources, 'runtime/TaoRuntimeAPI.ts')],
+    '@shared': [Path.join(resources, 'shared/shared.ts')],
+  })
+  Tests.expect(FS.existsSync(paths['@tao/runtime-api']![0]!)).toBe(true)
+  Tests.expect(FS.existsSync(paths['@shared']![0]!)).toBe(true)
+})
+
 Tests.test('web preview scaffold excludes native platforms that trigger Expo Xcode probes', async () => {
   const directory = Artifacts.resolvePath('tmp', 'web-scaffold-' + Platform.randomUUID())
   Artifacts.trackTemporary(directory)

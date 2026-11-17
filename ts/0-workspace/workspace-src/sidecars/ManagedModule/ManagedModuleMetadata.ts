@@ -308,7 +308,8 @@ function rejectSymlink(path: string): void {
   }
 }
 
-function createTypeScriptDefaults(): string {
+/** createTypeScriptDefaults shares authored defaults with generation-pinned snapshot validation. */
+export function createTypeScriptDefaults(resourcesDirectory?: string): string {
   return `${
     Json.Print({
       compilerOptions: {
@@ -323,7 +324,7 @@ function createTypeScriptDefaults(): string {
         allowImportingTsExtensions: true,
         lib: ['ES2022', 'DOM'],
         paths: {
-          ...Runtime.runtimeTypeScriptPaths(),
+          ...Runtime.runtimeTypeScriptPaths(resourcesDirectory),
           'zod': ['node_modules/zod'],
           'zod/*': ['node_modules/zod/*'],
           'react': ['node_modules/@types/react'],
