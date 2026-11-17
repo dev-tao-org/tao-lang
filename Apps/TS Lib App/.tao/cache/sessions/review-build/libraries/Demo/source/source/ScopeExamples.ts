@@ -19,7 +19,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "FolderScope", TR.ViewDeclaration("FolderScope", [], _Views.TaoView_FolderScope_2b7780826b86, _Scope));
-  TR.LetDeclaration(_Scope, "PackageScope", TR.ViewDeclaration("PackageScope", [], _Views.TaoView_PackageScope_2b7780826b86, _Scope));
-  TR.LetDeclaration(_Scope, "ProjectScope", TR.ViewDeclaration("ProjectScope", [], _Views.TaoView_ProjectScope_2b7780826b86, _Scope));
+  TR.LetDeclaration(_Scope, "FolderScope", TR.ViewDeclaration("FolderScope", [], _Views.TaoView_FolderScope_5a8a56000d23, _Scope));
+  TR.LetDeclaration(_Scope, "PackageScope", TR.ViewDeclaration("PackageScope", [], _Views.TaoView_PackageScope_5a8a56000d23, _Scope));
+  TR.LetDeclaration(_Scope, "ProjectScope", TR.ViewDeclaration("ProjectScope", [], _Views.TaoView_ProjectScope_5a8a56000d23, _Scope));
 }

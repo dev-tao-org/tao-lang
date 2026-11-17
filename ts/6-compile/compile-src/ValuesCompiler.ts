@@ -1,7 +1,8 @@
 import * as AST from '@ast-gen'
 import { Switch } from '@shared'
+import * as Typecheck from '@typecheck'
 import { emitLiteral, getScopeValue, type ScopeCode } from './codegen-util'
-import { emitLetDeclaration, emitName } from './RuntimeEmitter'
+import { emitLetDeclaration, emitName, type TypeScriptPrimitiveType } from './RuntimeEmitter'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: ScopeCode): string {
@@ -18,17 +19,15 @@ export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode
   return emitLetDeclaration(node, getScopeValue(scope), value)
 }
 
-type TypeScriptParameterType = 'string' | 'boolean'
-
 /** getTypeScriptParameterType maps supported Tao parameter types to their host types. */
-export function getTypeScriptParameterType(parameter: AST.Parameter): TypeScriptParameterType | undefined {
-  if (parameter.type.value === 'text') {
-    return 'string'
-  }
-  if (parameter.type.value === 'boolean') {
-    return 'boolean'
-  }
-  return undefined
+export function getTypeScriptParameterType(parameter: AST.Parameter): TypeScriptPrimitiveType | undefined {
+  const type = Typecheck.resolvePrimitiveParameterType(parameter)
+  return type === undefined ? undefined : projectPrimitiveType(type)
+}
+
+/** projectPrimitiveType maps an implemented Tao primitive to its TypeScript type. */
+export function projectPrimitiveType(type: Typecheck.PrimitiveType): TypeScriptPrimitiveType {
+  return type === 'text' ? 'string' : type
 }
 
 /** hasSupportedViewParameters checks whether every view parameter has an implemented TypeScript type. */
@@ -36,32 +35,24 @@ export function hasSupportedViewParameters(declaration: AST.ViewDeclaration): bo
   return declaration.parameters.every(parameter => getTypeScriptParameterType(parameter) !== undefined)
 }
 
-/** isTextExpression recognizes text literals or names resolved as text in their owning scope. */
-export function isTextExpression(node: AST.Expression, resolveName: (name: AST.Name) => boolean): boolean {
-  return AST.IsKind(node, 'TextLiteral') || AST.IsKind(node, 'Name') && resolveName(node)
-}
-
-/** collectTextBindings identifies implemented text expressions for native capture annotations. */
-export function collectTextBindings(
+/** createViewPrimitiveScope resolves parameters, private views and lets in their lexical order. */
+export function createViewPrimitiveScope(
+  parent: Typecheck.PrimitiveBindingScope,
   definitions: readonly AST.LetDeclaration[],
-  inherited: ReadonlySet<string> = new Set(),
-  parameters: readonly AST.Parameter[] = [],
-): ReadonlySet<string> {
-  const names = new Set(inherited)
+  parameters: readonly AST.Parameter[],
+  views: readonly AST.ViewDeclaration[],
+): Typecheck.PrimitiveBindingScope {
+  const bindings: Typecheck.PrimitiveTypesByName = new Map()
+  const scope = Typecheck.createLocalPrimitiveScope(bindings, parent)
   for (const parameter of parameters) {
-    updateBinding(names, parameter.name.value, parameter.type.value === 'text')
+    bindings.set(parameter.name.value, Typecheck.resolvePrimitiveParameterType(parameter))
+  }
+  for (const view of views) {
+    bindings.set(view.name.value, undefined)
   }
   for (const definition of definitions) {
-    const isText = isTextExpression(definition.value, name => names.has(name.value))
-    updateBinding(names, definition.name.value, isText)
+    const type = Typecheck.resolvePrimitiveExpressionType(definition.value, scope)
+    bindings.set(definition.name.value, type)
   }
-  return names
-}
-
-function updateBinding(names: Set<string>, name: string, isText: boolean): void {
-  if (isText) {
-    names.add(name)
-  } else {
-    names.delete(name)
-  }
+  return scope
 }

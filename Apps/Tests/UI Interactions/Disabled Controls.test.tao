@@ -12,5 +12,6 @@ tests "Disabled controls" {
       expect #inherited { text "Inherited: 0" }
       expect #direct { text "Direct: 0" }
       expect #enabled { text "Enabled: 1" }
+      expect text "Captured locked"
       expect #lockedInput input value "Locked"
 }  }

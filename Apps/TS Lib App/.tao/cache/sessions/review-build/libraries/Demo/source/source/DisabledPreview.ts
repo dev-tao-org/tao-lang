@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./DisabledPreview.views";
-import { DisabledPreviewControls as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/TS Lib App/src/tao/DisabledPreviewControls.tsx";
+import { DisabledPreviewControls as _taoForeignView0 } from "/Users/ro/.codex/worktrees/4f3f/tao-lang/Apps/TS Lib App/src/tao/DisabledPreviewControls.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./ScopeExamples";
 
@@ -25,6 +25,6 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "DisabledPreview", TR.ViewDeclaration("DisabledPreview", ["Locked"], _Views.TaoView_DisabledPreview_b33e36884a1c, _Scope));
+  TR.LetDeclaration(_Scope, "DisabledPreview", TR.ViewDeclaration("DisabledPreview", ["Locked"], _Views.TaoView_DisabledPreview_7db3708347e3, _Scope));
   TR.LetDeclaration(_Scope, "DisabledPreviewControls", TR.ForeignView("DisabledPreviewControls", ["Locked"], _taoForeignView0, _Scope));
 }

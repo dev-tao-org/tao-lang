@@ -7,8 +7,10 @@ export async function verifyDisabledPreview(page: Page): Promise<void> {
   const raw = page.getByRole('button', { name: 'Raw presses: 0' })
   const input = page.getByTestId('previewInput')
   const lock = page.getByRole('button', { name: 'Lock preview' })
+  await page.getByText('Captured unlocked', { exact: true }).waitFor()
   await input.fill('Before locking')
   await lock.click()
+  await page.getByText('Captured locked', { exact: true }).waitFor()
   await page.getByText('Programmatic: 1', { exact: true }).waitFor()
 
   expect(await tao.isDisabled()).toBe(true)
@@ -27,6 +29,7 @@ export async function verifyDisabledPreview(page: Page): Promise<void> {
   expect(await input.inputValue()).toBe('Before locking')
 
   await page.getByRole('button', { name: 'Unlock preview' }).click()
+  await page.getByText('Captured unlocked', { exact: true }).waitFor()
   await tao.press('Enter')
   await page.getByRole('button', { name: 'Tao presses: 1' }).click()
   await page.getByRole('button', { name: 'Tao presses: 2' }).tap()

@@ -122,7 +122,7 @@ Tests.test('generated bootstrap initializes imported values before entry values'
   Tests.expect(scopes[0]!['Copy']).toBe('ready')
 })
 
-Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nested children', async () => {
+Tests.test('Kitchen Sink compiles typed captures, parameter forwarding and nested children', async () => {
   const source = await FS.readFile(Repo.resolvePath('Apps/Dev/Kitchen Sink/Kitchen Sink.tao'), 'utf8')
   const tree = Grammar.createParser().parse(source)
   const document = AST.transform(tree)
@@ -134,6 +134,7 @@ Tests.test('Kitchen Sink compiles parameter forwarding, capture aliases and nest
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["FirstCaption"]], [])')
   Tests.expect(code).toContain('TR.ViewRenderArguments([_Scope["Title"]], [])')
   Tests.expect(code).toContain("Caption: string, Children: TR.ViewComponentProps['children']")
+  Tests.expect(code).toContain('(Status: boolean) {')
   Tests.expect(code).toContain('TR.AppDeclaration(_scope0["RootView"], "kitchen-sink")')
 })
 

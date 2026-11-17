@@ -1,3 +1,4 @@
+export * from './PrimitiveBindings'
 export * from './Typecheck/LinkModules'
 export * from './Typecheck/Modules'
 export * from './Typecheck/Typecheck'

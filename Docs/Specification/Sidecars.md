@@ -10,8 +10,8 @@ public view FormattedDate(Value text) from ./FormattedDate.tsx
 
 #### `public view FormattedDate(Value text) from ./FormattedDate.tsx`
 
-The named component export implements the view; declared parameters currently use Tao's `text`
-type and become same-named string props. Tao checks the component against its generated contract.
+The named component export implements the view. Tao `text` and `boolean` parameters become
+same-named TypeScript `string` and `boolean` props. Tao checks the component against its generated contract.
 
 ```tsx
 import { format } from 'date-fns'

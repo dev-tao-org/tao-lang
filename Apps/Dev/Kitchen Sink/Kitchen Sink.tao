@@ -38,6 +38,7 @@ view RootView {
       SaveButton [disabled no]
       Input("Disabled by its container")
     }
+      InteractionStatus(yes)
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
@@ -51,6 +52,14 @@ view RootView {
   view PrivateGreeting {
     render Text("Private nested view")
   }
+}
+
+view InteractionStatus(Locked boolean) {
+  let Status = Locked
+  render inject Status ```ts
+    const locked: boolean = Status
+    return <Tao.Text>{locked ? 'Controls locked' : 'Controls unlocked'}</Tao.Text>
+  ```
 }
 
 folder

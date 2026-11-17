@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { S, Switch } from '@shared'
+import { S } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import * as CodegenUtil from './codegen-util'
@@ -16,6 +16,9 @@ export type ComponentNames = {
 
 /** InjectionCapture binds one authored hook parameter to its compiled value. */
 export type InjectionCapture = { node: AST.Capture; type: InjectionCaptureType; value: string }
+
+/** TypeScriptPrimitiveType describes an implemented primitive in a generated TypeScript signature. */
+export type TypeScriptPrimitiveType = 'string' | 'boolean'
 
 /** InjectionCapture creates the typed fields for one compiled hook capture. */
 export const InjectionCapture = (
@@ -93,7 +96,7 @@ export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): str
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
 
-type InjectionCaptureType = 'text' | 'children' | 'unknown'
+type InjectionCaptureType = TypeScriptPrimitiveType | 'children' | 'unknown'
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
@@ -165,11 +168,7 @@ function emitCaptureParameter(capture: InjectionCapture): string {
 }
 
 function getCaptureParameterType(capture: InjectionCapture): string {
-  return Switch.property(capture, 'type', {
-    children: () => "TR.ViewComponentProps['children']",
-    text: () => 'string',
-    unknown: () => 'unknown',
-  })
+  return capture.type === 'children' ? "TR.ViewComponentProps['children']" : capture.type
 }
 
 function emitRenderingComponent(
