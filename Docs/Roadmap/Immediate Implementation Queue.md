@@ -82,8 +82,8 @@ Start with a complete Notes schema, generated datasource contract and real Insta
 
 ## Cross-cutting follow-ups
 
-- Settle internal invariant versus user-input checking APIs and classify checks by owner before migrating them.
-- Assess remaining package-export/ownership and AST-generation proposals; do not treat audit suggestions as accepted implementation.
+- Design the internal invariant and user-input checking APIs in the coordinating task before implementation. Use the remaining JS capture-name collision as a case to classify; keep authored source checks and backend checks distinct.
+- The retained [package and API ownership audit](../Dev%20Env/Package%20Analysis%20Integration.md#package-and-api-ownership-audit-reconciliation) has been reconciled against `bfc14aa2dc`. Its remaining ownership candidates await decisions or slice selection. The separate AST-generation proposals still need assessment.
 - Complete runtime/stdlib architecture review: centralize execution semantics, keep generated code compact, and coordinate UI ownership changes with package layout.
 - Re-rank navigation, scrolling, keyed composition and remaining app-authoring gaps rather than assuming an old proposed opening sequence remains approved.
 
