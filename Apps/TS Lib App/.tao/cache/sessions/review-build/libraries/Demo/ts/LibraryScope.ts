@@ -1,4 +1,3 @@
-/// <reference path="./tao-assets.d.ts" />
 import * as TR from '@tao/runtime/generated';
 import * as Source0 from "./packages/src/tao/Library";
 import * as Source1 from "./packages/src/tao/@cards/Card";

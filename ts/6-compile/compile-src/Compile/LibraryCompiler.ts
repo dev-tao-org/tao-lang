@@ -12,9 +12,6 @@ import { type CompiledFiles, compileModuleSources, type ForeignViewPathResolver 
 /** LibraryScopePath is the shared private bootstrap used by every public library facade. */
 export const LibraryScopePath = 'ts/LibraryScope.ts'
 
-/** LibraryAssetTypesPath names the ambient asset types reachable from every public library entry. */
-export const LibraryAssetTypesPath = 'ts/tao-assets.d.ts'
-
 /** CompiledLibrary holds shared generated sources and explicit public component subpaths. */
 export type CompiledLibrary = { files: CompiledFiles; views: readonly LibraryPublications.PublishedView[] }
 
@@ -41,7 +38,6 @@ function compileLibraryBootstrap(
     return compilePublicComponent(view, scope)
   })
   return S`
-    /// <reference path="./tao-assets.d.ts" />
     ${emitGeneratedRuntimeImport()}
     ${initialization.imports}
 

@@ -1,6 +1,6 @@
 export { compile, type CompileOptions } from './Compile/Compile'
 export * from './Compile/ForeignViewContractCompiler'
-export { type CompiledLibrary, compileLibrary, LibraryAssetTypesPath } from './Compile/LibraryCompiler'
+export { type CompiledLibrary, compileLibrary } from './Compile/LibraryCompiler'
 export * from './Compile/LibraryPackageCompiler'
 export {
   collectLibraryPublications,

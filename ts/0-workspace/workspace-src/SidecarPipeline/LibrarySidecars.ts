@@ -2,7 +2,6 @@ import * as Compile from '@compile'
 import { Errors, Regxs } from '@shared'
 import { Path, Text } from '@shared/os'
 import * as Typecheck from '@typecheck'
-import { SidecarAssetDeclarations } from '../sidecars/SidecarAssets'
 
 import { isScriptSource, rewriteModuleSpecifiers } from './Imports'
 import { collectLibrarySidecars } from './SidecarPipeline'
@@ -21,7 +20,6 @@ export async function captureLibrarySidecars(
 ): Promise<LibrarySidecars> {
   const groups = await collectLibrarySidecars(program, projectRoot)
   const files = new Map<string, Uint8Array>()
-  files.set(Compile.LibraryAssetTypesPath, Text.encodeUtf8(SidecarAssetDeclarations))
   const targets = new Map<string, string>()
   for (const [index, group] of groups.entries()) {
     const directory = `ts/sidecars/${index + 1}`

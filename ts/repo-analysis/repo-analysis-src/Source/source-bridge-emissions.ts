@@ -64,7 +64,7 @@ const hostProbeSpecifiers = new Map<string, readonly string[]>([
   ]],
   ['ts/0-workspace/test-workspace/sidecars.test-fixtures.ManagedMetro.Acceptance.ts', ['tao-fixture-label']],
   ['ts/0-workspace/test-workspace/Workspace.ManagedDependenciesAcceptance.test.ts', ['tao-fixture-label']],
-  ['ts/0-workspace/test-workspace/Workspace.LibraryDependencies.test.ts', ['@cards']],
+  ['ts/0-workspace/test-workspace/Workspace.LibraryDependencies.test.ts', ['@cards', '@cards/external']],
   ['ts/7-runtime/test-runtime/expo/Metro.test-fixtures.Integration.DelayPreload.ts', [
     'node:fs',
     'node:module',

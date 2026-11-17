@@ -1,12 +1,13 @@
 import * as Runtime from '@runtime'
-import { Json } from '@shared'
+import { Json, NewlineCharacter } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
+import * as Workspace from '@workspace'
 
 import type { RuntimeSourceContents, RuntimeSourcePaths } from './runtime-sources'
 
 /** resolveLibraryRuntimeResources lists the shared client package resources needed by a complete build. */
 export function resolveLibraryRuntimeResources(sourcePaths: RuntimeSourcePaths): string[] {
-  const initial = ['package.json']
+  const initial = ['package.json', AssetDeclarationsPath]
   const clientFiles = listLibraryClientSources(sourcePaths).map(([resource]) => resource)
   return [...initial, ...clientFiles].map(path => `${Runtime.RuntimeLibraryResourceDirectory}/${path}`)
 }
@@ -25,6 +26,7 @@ export async function writeRuntimeLibraryPackage(
     await FS.mkdir(Path.dirname(target))
     await FS.writeFile(target, relocateRuntimeImports(resource, source))
   }
+  await FS.writeFile(Path.join(root, AssetDeclarationsPath), Workspace.SidecarAssetDeclarations)
   await FS.writeJson(Path.join(root, 'package.json'), {
     name: Runtime.RuntimeLibraryPackageName,
     version: Runtime.RuntimeLibraryPackageVersion,
@@ -43,8 +45,14 @@ function listLibraryClientSources(sourcePaths: RuntimeSourcePaths): [string, str
 }
 
 const RuntimeImportRegx = /(\bfrom\s+)(['"])(@shared(?:\/os\/preview)?)\2/g
+const GeneratedRuntimePath = 'runtime/TR.ts'
+const AssetDeclarationsPath = 'runtime/tao-assets.d.ts'
 
 function relocateRuntimeImports(resource: string, source: string): string {
+  if (resource === GeneratedRuntimePath) {
+    const reference = Path.toRelativeModuleSpecifier(Path.relative(Path.dirname(resource), AssetDeclarationsPath))
+    source = `/// <reference path=${Json.Print(reference)} />` + NewlineCharacter + source
+  }
   return source.replace(RuntimeImportRegx, (_match, prefix: string, _quote: string, specifier: string) => {
     const target = specifier === '@shared' ? 'shared/shared' : 'shared/os/preview/PreviewPlatform'
     const relative = Path.toPortablePath(Path.relative(Path.dirname(resource), target))

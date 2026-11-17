@@ -154,7 +154,7 @@ async function usePublishedPackageInSidecar(root: string): Promise<void> {
   await FS.writeFile(declaration, source.replace('../ts/ForeignGreeting.tsx', './PortableGreeting.tsx'))
   await FS.writeFile(
     Path.join(directory, 'GreetingProps.d.ts'),
-    "export type GreetingProps = import('@cards/external').Fields & { Value: string; Logo?: typeof import('./logo.png').default }",
+    'export type GreetingProps = { Value: string }',
   )
   const external = Path.join(root, 'src/ts/node_modules/@cards/external')
   await FS.mkdir(external)
@@ -169,7 +169,9 @@ async function usePublishedPackageInSidecar(root: string): Promise<void> {
     S`
       import { Caption } from '@cards'
       import Prefix from './prefix.mjs'
-      type Props = import('./GreetingProps').GreetingProps
+      type Props = import('./GreetingProps').GreetingProps & import('@cards/external').Fields & {
+        Logo?: typeof import('./logo.png').default
+      }
       const CaptionAlias = Caption
 
       export function ForeignGreeting({ Value }: Props) {

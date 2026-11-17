@@ -58,6 +58,8 @@ async function readInputs(): Promise<RuntimeBuildInputs> {
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-lock.ts'),
     Path.fileURLToPath(import.meta.url),
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-library-package.ts'),
+    Repo.resolvePath('ts/0-workspace/workspace-src/sidecars/SidecarAssets.ts'),
+    Repo.resolvePath('ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts'),
     Repo.resolvePath('ts/bun.lock'),
     ...await metroBuildInputs(),
   ].sort(Sort.CompareStrings)
