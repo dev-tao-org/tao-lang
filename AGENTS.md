@@ -13,6 +13,7 @@ Tao is a programming language for building apps.
 These are your rules of usage:
 
 - Create every new agent or chat in its own worktree on a fresh `feat/*` branch based on the current branch's committed HEAD, unless the developer explicitly selects another starting point. Never silently use the project's default branch or a shared checkout. Use an isolation-capable tool; `agent-coordinator` owns session setup and the Git workflow below owns uncommitted-baseline handling.
+- When launching an agent or starting work in an assigned isolated worktree, follow the [restricted launch requirements](agents/skills/agent-coordinator/references/restricted-launch.md).
 - By default, interpret questions and perform planning, implementation, investigation, and validation against the new implementation outside `.x-tao-old-v1/`. Use the old implementation only for purposes explicitly authorized by applicable rules or instructions, or specifically requested by the developer.
 - Agents can use trivial shell commands: `cd, ls, pwd, mkdir, rm, cp, mv, git`, etc
 - ALL non-trivial agent commands MUST use `./agent`: `./agent <CMD> <subcommands> <args> <option flags>`
@@ -150,12 +151,12 @@ Your mission is to follow the developer's instructions to implement the Tao MVP 
 
 - Before declaring a branch finished or ready for landing/merge handoff, or retiring its worktree/task, complete `git-workflow`'s branch-evidence preservation workflow; do not defer evidence retention to landing or the receiving agent.
 
-- Change Git state only when the developer instructs the agent to perform that action. Editing or reviewing code does not by itself authorize staging, unstaging, committing, switching or moving branches, merging, rebasing, stashing, resetting, or restoring files; preserve the developer's index and worktree selections.
+- For authorized write work in their assigned isolated worktree, agents may create their own fresh `feat/*` branch at the agreed base, stage and commit only their task's changes, and push their own branch to `origin` through `git-workflow`. An explicit hold on staging, commits, or pushes takes precedence.
+- Other Git mutations require the developer's authorization. Preserve the developer's and other agents' branches, indexes, and worktrees. Read-only assignments do not authorize changes.
 - Before launching a subagent from a branch with relevant uncommitted changes, warn the developer which changes its baseline would omit and establish the intended snapshot. Never automatically stage, commit, stash or copy those changes to prepare a handoff.
 - Land only when explicitly instructed by the developer. A pause or stop revokes authorization until explicitly renewed.
 - Before committing, run `./agent fix` or `./agent fmt` (the `j fix` / `j fmt` workflows).
-- When the developer authorizes creating a worktree, create a new feature branch for it.
-- Commit only when instructed by the developer. Before an authorized commit, complete the verification required for its change type above; reuse passing evidence when its inputs have not changed. For a deliberately intermediate implementation state, state the reason and any known failures in the commit and task checkpoint.
+- Before committing, complete the verification required for the change type above; reuse passing evidence when its inputs have not changed. For a deliberately intermediate implementation state, state the reason and any known failures in the commit and task checkpoint.
 - Back up committed work to `origin` after meaningful implementation chunks, rather than after every commit; `git-workflow` owns backup pushes and keeping them from triggering CI unless requested.
 - Retain one preview-performance record per implementation commit through `pipeline-performance`; its history workflow also owns archive publication before authorized landing.
 - Always compare preview performance from the branch's starting baseline to its final implementation before landing. Use `pipeline-performance` for comparisons and promptly flagging significant changes during development.

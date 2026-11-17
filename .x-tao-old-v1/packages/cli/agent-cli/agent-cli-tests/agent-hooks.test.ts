@@ -179,7 +179,7 @@ Describe('agent hooks', () => {
       const rule of [
         'worktree root',
         '120,000 files',
-        'stage, unstage',
+        'Git authorization and index ownership follow the AGENTS.md for this checkout',
         'developer environment',
         'no agent author credit',
         'no `Co-Authored-By` text',
@@ -275,7 +275,7 @@ Describe('agent hooks', () => {
       Text.stripJsonc(await FS.readText(Repo.resolveGitPath('.rulesync/hooks.jsonc'))),
     ) as { hooks: Record<string, Array<{ command: string; matcher?: string }>> }
     Expect(hooks.hooks['sessionStart']?.map(entry => entry.command)).toEqual([
-      'repo_root="$(git rev-parse --show-toplevel)" && cd "$repo_root" && ./agent setup --frozen-lockfile',
+      'repo_root="$(git rev-parse --show-toplevel)" && cd "$repo_root" && ./agent unsandboxed setup',
     ])
     const commands = Object.entries(hooks.hooks).flatMap(([event, entries]) => event === 'sessionStart' ? [] : entries)
 

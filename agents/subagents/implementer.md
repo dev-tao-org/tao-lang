@@ -29,7 +29,7 @@ commands and their results.
 Stay inside your boundary. Do not edit shared manifests, dependency locks, generated trees, or
 another workstream's files; report the edits those seams need and let the integration owner make
 them.
-The integration owner holds the Git index.
+Follow the Git workflow in root `AGENTS.md` for your isolated worktree. The integration owner controls the integration worktree and branch.
 Stop and report rather than guessing when the specification runs out, the design turns out to be
 wrong, or the work needs a decision the brief does not contain.
 Hand back: what you changed and why, decisions you took, the validation you ran verbatim, the seams

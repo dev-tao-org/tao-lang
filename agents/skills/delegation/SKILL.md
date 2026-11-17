@@ -77,7 +77,7 @@ Implementation handoffs — launched, delegated or printed — include the **las
 
 Resume when earlier context helps; start fresh for unrelated work. Review each implementation wave's diff before integration, and the whole diff before landing.
 
-For an agent launched into its isolated worktree, the `subagentStart` hook gives every Claude Code and Codex subagent the repository's standing rules (worktree root, `rg`, no Git index changes, no ledger edits, no agent identity), so a brief does not repeat them; a Cursor brief still does. A worker must not write another worktree's index; its brief states whether commits on its own feature branch are authorized.
+The `subagentStart` hook supplies shared repository conventions in Claude Code and Codex; include them in a Cursor brief. Root `AGENTS.md` owns Git authorization. Brief any Developer hold on staging, commits, or pushes.
 
 A brief for a fresh agent starts from the agreed committed base and assumes its own isolated worktree. Carry findings as `file:line` references that survive a clean checkout, along with reproducible commands and any fixtures it needs. State exclusive path ownership, the required gates and the intended stopping point. For a Developer-directed takeover of an existing checkout, use the handoff in `agent-coordinator`.
 

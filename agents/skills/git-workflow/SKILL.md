@@ -16,14 +16,12 @@ submodule contents; a clean parent status is not a preservation receipt.
 Root `AGENTS.md` owns branch and index constraints and dependency approval. Integration does not
 waive approval for dependency installations or updates. The warn-only Git hooks
 `./agent unsandboxed setup` installs speak up on a detached HEAD, an unnamed branch, or an attribution trailer.
-`landing` owns merging a branch into `main`, the merge message, and the cleanup after it. Non-main
-branch pushes through the guarded route are authorized; other publication needs the Developer's authorization.
+`landing` owns merging a branch into `main`, the merge message, and the cleanup after it.
 
 ## Guarded branch pushes
 
-- Use `./agent unsandboxed push <remote> <branch>` to publish the matching local branch. For a
-  different destination, use `--source <local-branch>`, such as
-  `./agent unsandboxed push origin backup/feat/work --source feat/work`.
+- Use `./agent unsandboxed push origin <owned-branch>` for routine pushes. Use `--source` only for
+  the backup destination below or an explicitly authorized source and destination.
 - Keep raw `git push` outside the generic host allowlist. Force pushes, remote deletions and
   landing still need separate explicit authorization; this command does not perform them.
 
@@ -50,9 +48,8 @@ branch pushes through the guarded route are authorized; other publication needs 
 
 `git worktree list` routinely shows fifteen or more checkouts sharing one object store, worked in concurrently by other agents and the Developer.
 
-- Create a fresh `feat/*` branch only when the Developer instructs branch or worktree creation;
-  permission to edit code alone does not authorize changing branches.
-  If the sandbox blocks Git metadata writes, use
+- If an assigned implementation worktree starts detached, establish its fresh branch at the agreed
+  commit under the standing authorization in root `AGENTS.md`. Use
   `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
   switch, replace an existing branch, or discard dirty work under this authorization.
 - A sandboxed Git metadata denial does not by itself require another Developer decision. For an already-authorized operation, prepare the pinned environment if needed, then invoke the supported `./agent unsandboxed git <operation>` route with the harness's command-scoped approval mechanism. The wrapper name alone does not grant host access. Ask the Developer only if that route receives an approval rejection, is unavailable, or requires authorization not already given; identify the actual failing boundary. Keep the chat restricted and do not add machine-local Git grants or broaden permissions to work around the denial.
