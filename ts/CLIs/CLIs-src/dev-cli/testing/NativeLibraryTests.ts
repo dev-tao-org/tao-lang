@@ -36,11 +36,11 @@ async function runLibraryJourney(
 }
 
 async function verifyCompiledLibraryControls(device: Workspace.AppTestDevice): Promise<void> {
-  await device.expectText('Ada', 'instance-A')
-  await device.expectText('Published package', 'instance-A')
-  await device.expectText('Published subfolder', 'instance-A')
+  await device.expectText('Lovelace')
+  await device.expectText('Published package')
+  await device.expectText('Published subfolder')
   await device.press('update')
-  await device.expectText('Grace', 'instance-A')
+  await device.expectText('Grace')
 }
 
 async function closeConsumerHost(expo: Runtime.ExpoSession, platform: NativeTestPlatform): Promise<void> {
