@@ -1,15 +1,20 @@
 import { Json, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as PackageApis from '../repo-analysis-src/Workspace/PackageApis'
+import { readWorkspaceManifestPaths } from '../repo-analysis-src/Workspace/WorkspaceManifests'
 
 Tests.test('public APIs derive exact aliases from manifests and reject drift and wildcard access', async () => {
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp', 'package-apis-'))
   await Try(async () => {
-    await FS.mkdir(Path.join(root, 'ts/example/example-src'))
-    await FS.write(Path.join(root, 'ts/example/example-src/Example.ts'), 'export const value = 1')
+    const workspace = Path.join(root, 'ts')
+    await FS.mkdir(workspace)
+    await FS.writeJson(Path.join(workspace, 'package.json'), { workspaces: ['packages/*'] })
+    await FS.write(Path.join(workspace, 'unlisted/package.json'), '{ "exports": { ".": "./Unlisted.ts" } }')
+    await FS.write(Path.join(workspace, 'packages/example/example-src/Example.ts'), 'export const value = 1')
     await writeApiFixture(root, './example-src/Example.ts', '@example')
+    Tests.expect(readWorkspaceManifestPaths(workspace)).toEqual([Path.join(workspace, 'packages/example/package.json')])
     Tests.expect(() => PackageApis.assertPackageApis(root)).not.toThrow()
     Tests.expect(PackageApis.readPackageImportRules(root).get('@example')?.namespace).toBe('Example')
     await FS.write(Path.join(root, 'ts/tsconfig.base.json'), '{"compilerOptions":{"paths":{}}}')
@@ -22,7 +27,7 @@ Tests.test('public APIs derive exact aliases from manifests and reject drift and
     await writeApiFixture(root, './example-src/Absent.ts', '@example')
     Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('existing file')
     await writeApiFixture(root, './example-src/Example.ts', '@example')
-    const manifestPath = Path.join(root, 'ts/example/package.json')
+    const manifestPath = Path.join(root, 'ts/packages/example/package.json')
     const extraExport = {
       exports: { '.': './example-src/Example.ts', './*': './example-src/*' },
       tao: {
@@ -72,7 +77,7 @@ function checkNamespace(source: string, namespaces: PackageApis.PackageImportRul
 }
 
 async function writeApiFixture(root: string, target: string, alias: string): Promise<void> {
-  const inputs = Path.join(root, 'ts/example/test-example/input-fixtures')
+  const inputs = Path.join(root, 'ts/packages/example/test-example/input-fixtures')
   await FS.mkdir(inputs)
   await FS.write(Path.join(inputs, 'Input.test.ts'), 'export const input = 1')
   const manifest = {
@@ -83,13 +88,13 @@ async function writeApiFixture(root: string, target: string, alias: string): Pro
       testInputs: ['./test-example/input-fixtures'],
     },
   }
-  await FS.write(Path.join(root, 'ts/example/package.json'), serializeApiFixture(manifest))
-  const paths = { [alias]: ['./example/example-src/Example.ts'] }
+  await FS.write(Path.join(root, 'ts/packages/example/package.json'), serializeApiFixture(manifest))
+  const paths = { [alias]: ['./packages/example/example-src/Example.ts'] }
   await FS.write(Path.join(root, 'ts/tsconfig.base.json'), serializeApiFixture({ compilerOptions: { paths } }))
 }
 
 async function assertFolderOwnershipContract(root: string): Promise<void> {
-  const tests = Path.join(root, 'ts/example/test-example')
+  const tests = Path.join(root, 'ts/packages/example/test-example')
   await FS.write(Path.join(tests, 'Example.Core.test.ts'), '// root concern')
   await FS.write(Path.join(tests, 'Missing.test.ts'), '// no source folder')
   Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('mirrored source-folder owner')
@@ -97,8 +102,8 @@ async function assertFolderOwnershipContract(root: string): Promise<void> {
   await FS.write(Path.join(tests, 'Example.test.ts'), '// mixed base and concern')
   Tests.expect(() => PackageApis.assertPackageApis(root)).toThrow('one base file or concern files')
   await FS.rm(Path.join(tests, 'Example.test.ts'))
-  await FS.mkdir(Path.join(root, 'ts/example/example-src/Feature'))
-  await FS.write(Path.join(root, 'ts/example/example-src/Feature/Value.ts'), 'export const value = 1')
+  await FS.mkdir(Path.join(root, 'ts/packages/example/example-src/Feature'))
+  await FS.write(Path.join(root, 'ts/packages/example/example-src/Feature/Value.ts'), 'export const value = 1')
   await FS.write(Path.join(tests, 'Feature.test.ts'), '// nested folder owner')
   Tests.expect(() => PackageApis.assertPackageApis(root)).not.toThrow()
 }

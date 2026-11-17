@@ -1,5 +1,5 @@
 import { NewlineCharacter } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { containsNode, movableStart } from './source-conformance-type-order'
 
 export { analyzeConstantOrder }

@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** complexSignatureTypeIssue reports inline structural contracts that belong in named aliases. */

@@ -1,7 +1,7 @@
 import * as RepoAnalysis from '@repo-analysis'
 import { Errors, Lists, Range } from '@shared'
 import { Path, Platform } from '@shared/os'
-import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { encodeLearningSnapshot, isInScope, snapshotScope } from './LearningStore'
 import type { Correction, Finding, QueryRule, Scan } from './LearningTypes'
 import { validateCorrectionAuthority } from './LearningValidation'

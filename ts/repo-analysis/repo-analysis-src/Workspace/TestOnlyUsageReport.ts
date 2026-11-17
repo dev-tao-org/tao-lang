@@ -1,6 +1,6 @@
 import { NewlineCharacter, S } from '@shared'
 import { Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { readPackageApis } from './PackageApis'
 import * as TestOnlyUsage from './TestOnlyUsage'
 import { ExternalWorkspaceEntries, readWorkspaceEntries, type WorkspaceEntries } from './WorkspaceEntries'

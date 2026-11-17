@@ -1,7 +1,8 @@
 import { Errors, Json } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as PackageTests from './PackageTests'
+import { readWorkspaceManifestPaths } from './WorkspaceManifests'
 
 /** PackageApi describes one manifest-owned exact public file and its canonical import name. */
 export type PackageApi = { alias: string; namespace: string; filename: string; entities?: readonly string[] }
@@ -31,10 +32,11 @@ export function synchronizePackageApis(root = Repo.getWorkspaceRoot()): void {
 
 /** assertPackageApis checks manifest ownership, exact files and the generated compiler alias snapshot. */
 export function assertPackageApis(root = Repo.getWorkspaceRoot()): void {
-  for (const manifest of readPackageManifestFiles(root)) {
+  const manifests = readWorkspaceManifestPaths(Path.join(root, 'ts'))
+  for (const manifest of manifests) {
     PackageTests.assertPackageTests(manifest)
   }
-  const apis = readPackageApis(root)
+  const apis = manifests.flatMap(readManifestApis)
   const aliases = new Set<string>()
   for (const api of apis) {
     if (aliases.has(api.alias)) {
@@ -58,6 +60,9 @@ export type PackageImportRules = ReadonlyMap<string, PackageImportRule>
 
 /** readPackageImportRules derives canonical operation-family access from manifests. */
 export function readPackageImportRules(root: string): PackageImportRules {
+  if (!FS.existsSync(Path.join(root, 'ts/package.json'))) {
+    return new Map()
+  }
   return new Map(readPackageApis(root).map(api => [api.alias, { namespace: api.namespace, entities: api.entities }]))
 }
 
@@ -91,14 +96,7 @@ export function packageNamespaceIssue(
 
 /** readPackageApis reads exact entrypoints without traversing fixture packages. */
 export function readPackageApis(root = Repo.getWorkspaceRoot()): PackageApi[] {
-  return readPackageManifestFiles(root).flatMap(filename => readManifestApis(filename))
-}
-
-function readPackageManifestFiles(root: string): string[] {
-  return TypeScript.sys.readDirectory(Path.join(root, 'ts'), ['.json'], ['**/node_modules/**'], [
-    '*/package.json',
-    'ide-extensions/*/package.json',
-  ])
+  return readWorkspaceManifestPaths(Path.join(root, 'ts')).flatMap(readManifestApis)
 }
 
 function serializeCompilerConfig(config: unknown): string {

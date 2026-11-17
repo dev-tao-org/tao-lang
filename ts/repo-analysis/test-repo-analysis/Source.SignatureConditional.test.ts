@@ -1,7 +1,7 @@
 import { S } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as SourceConformanceConditional from '../repo-analysis-src/Source/source-conformance-conditional'
 import { complexSignatureTypeIssue } from '../repo-analysis-src/Source/source-conformance-signatures'
 

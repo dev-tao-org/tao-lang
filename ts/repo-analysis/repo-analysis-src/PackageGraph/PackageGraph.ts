@@ -1,6 +1,6 @@
 import { Errors, Json, NewlineCharacter, S, Schema, Sort } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { readWorkspaceManifestPaths } from '../Workspace/WorkspaceManifests'
 import type { DependencyCruiser } from './Bridge_dependency-cruiser'
 import { classifyModuleImports, type ImportKind } from './PackageGraph-ImportKinds'
@@ -77,7 +77,7 @@ export function renderPackageGraph(graph: PackageGraph): string {
 }
 
 async function readWorkspacePackages(workspace: string): Promise<WorkspacePackage[]> {
-  const manifests = await readWorkspaceManifestPaths(workspace)
+  const manifests = readWorkspaceManifestPaths(workspace)
   const packages = await Promise.all(manifests.map(file => readWorkspacePackage(workspace, file)))
   return packages.sort(Sort.By(pkg => pkg.name, Sort.CompareStrings))
 }

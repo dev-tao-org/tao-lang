@@ -1,7 +1,7 @@
 import { S } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as ConformanceNaming from '../repo-analysis-src/Source/source-conformance-naming'
 
 Tests.test('source conformance > rejects arguments_ local and parameter bindings only', () => {

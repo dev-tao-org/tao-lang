@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** nestedConditionalIssue reports ternary expressions nested in the same runtime expression. */

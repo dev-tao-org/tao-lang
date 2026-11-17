@@ -1,6 +1,6 @@
 import { Range, Source } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { getSingleLineCallChanges } from './source-conformance-call-layout'
 import { analyzeConstantOrder } from './source-conformance-constant-order'
 import { getQuotedObjectKeyChanges } from './source-conformance-object-keys'

@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { type SourceBridgeContext, sourceBridgeOwnerIssue } from './source-bridge-owners'
 
 /** SourceLoaderAliases tracks actual loader bindings without conflating shadowed names. */

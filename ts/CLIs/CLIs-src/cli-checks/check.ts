@@ -40,7 +40,7 @@ export async function workspaceTypes(): Promise<void> {
   const RepoAnalysis = await import('@repo-analysis')
   RepoAnalysis.assertPackageApis()
   const workspace = Repo.resolvePath('ts')
-  const manifests = await RepoAnalysis.readWorkspaceManifestPaths(workspace)
+  const manifests = RepoAnalysis.readWorkspaceManifestPaths(workspace)
   const configs = await readTypeScriptProjects(workspace, manifests)
   await CLIKit.runNonInteractiveCommand('tsc', ['--build', ...configs], { cwd: workspace })
 }

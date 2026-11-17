@@ -1,6 +1,6 @@
 import { Regxs } from '@shared'
 import { Path, Platform } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** SourceBridgeContext identifies internal package names and configured aliases for one workspace. */
 export type SourceBridgeContext = { root: string; packageNames: ReadonlySet<string>; pathAliases: readonly string[] }

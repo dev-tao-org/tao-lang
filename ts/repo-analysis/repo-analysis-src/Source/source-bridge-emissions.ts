@@ -1,5 +1,5 @@
 import { Regxs } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import type { SourceBridgeContext } from './source-bridge-owners'
 import { sourceBridgeIssue, sourceBridgeLoaderAliases } from './source-bridges'
 

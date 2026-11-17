@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 type ModuleReference = { source: TypeScript.SourceFile; specifier: TypeScript.StringLiteralLike }
 

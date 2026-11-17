@@ -33,7 +33,7 @@ async function requireWorkspacePackageDirectory(workspacePackage: string): Promi
   Repo.assertNewWorkspacePath(directory, workspace)
   await assertNewWorkspaceTree()
   const RepoAnalysis = await import('@repo-analysis')
-  const manifests = await RepoAnalysis.readWorkspaceManifestPaths(workspace)
+  const manifests = RepoAnalysis.readWorkspaceManifestPaths(workspace)
   const manifest = manifests.find(candidate => Path.relative(directory, Path.dirname(candidate)) === '')
   if (!manifest) {
     Errors.ThrowUserInput(`Expected a declared workspace package directory under ts/: ${workspacePackage}`)

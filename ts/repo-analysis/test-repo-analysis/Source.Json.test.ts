@@ -1,6 +1,6 @@
 import { S } from '@shared'
 import * as Tests from '@shared-tests'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { rawJsonIssue } from '../repo-analysis-src/Source/source-conformance-json'
 
 Tests.test('JSON boundary catches native aliases and global access without mistaking local data or emitted source', () => {

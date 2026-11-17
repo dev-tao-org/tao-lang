@@ -1,5 +1,5 @@
 import { Range, Regxs, Source } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isRuntimeFunctionNode } from './source-conformance-functions'
 
 /** functionBodyLineCount counts non-brace-only physical lines in a function body. */

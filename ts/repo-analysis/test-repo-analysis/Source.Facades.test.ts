@@ -39,6 +39,7 @@ Tests.test('source conformance > requires sibling facade files to contain only i
 Tests.test('source conformance > enforces manifest namespaces through the integrated source walk', async () => {
   const root = await createFixture()
   await Try(async () => {
+    await FS.writeJson(Path.join(root, 'ts/package.json'), { workspaces: ['fixture'] })
     const manifest = {
       tao: { publicApi: { '.': { alias: '@fixture', namespace: 'Fixture' } } },
       exports: {

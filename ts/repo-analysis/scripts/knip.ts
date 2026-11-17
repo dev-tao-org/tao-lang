@@ -5,7 +5,7 @@ import { readWorkspaceManifestPaths } from '../repo-analysis-src/Workspace/Works
 
 const workspace = Repo.resolvePath('ts')
 const workspaceEntries = await readWorkspaceEntries(workspace)
-const manifests = await readWorkspaceManifestPaths(workspace)
+const manifests = readWorkspaceManifestPaths(workspace)
 const apis = readPackageApis()
 
 const EmptyCheckPackage = '5-check'

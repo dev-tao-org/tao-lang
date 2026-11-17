@@ -1,6 +1,6 @@
 import { Errors, Json } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
 
 type ModuleSpecifierNode = TypeScript.Node | undefined

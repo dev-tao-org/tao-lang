@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** concreteReturnTypeIssue rejects concrete uses of the built-in ReturnType utility. */
 export function concreteReturnTypeIssue(node: TypeScript.Node, checker: TypeScript.TypeChecker): string | undefined {

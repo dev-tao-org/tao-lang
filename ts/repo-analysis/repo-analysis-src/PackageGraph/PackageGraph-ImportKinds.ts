@@ -1,6 +1,6 @@
 import { Sort } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import type { DependencyCruiser } from './Bridge_dependency-cruiser'
 
 /** ImportKind distinguishes emitted dependencies, explicit type declarations and other erased imports. */

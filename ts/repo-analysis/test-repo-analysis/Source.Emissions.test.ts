@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 import { Repo } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { sourceBridgeEmissionIssues } from '../repo-analysis-src/Source/source-bridge-emissions'
 import { createSourceBridgeContext } from '../repo-analysis-src/Source/source-bridge-owners'
 

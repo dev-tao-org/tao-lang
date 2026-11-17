@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as ObjectKeys from '../repo-analysis-src/Source/source-conformance-object-keys'
 
 Tests.test('object keys > quotes named properties, methods, accessors, and shorthand consistently', () => {

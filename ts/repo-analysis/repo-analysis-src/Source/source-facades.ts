@@ -1,6 +1,6 @@
 import { Regxs } from '@shared'
 import { Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as PackageApis from '../Workspace/PackageApis'
 import * as Bridges from './source-bridges'
 
@@ -246,23 +246,7 @@ function isPrivatePackageImport(
   if (sourcePackage === undefined || targetPackage === undefined || sourcePackage === targetPackage) {
     return false
   }
-  if (context.namespaces.has(specifier) || isPlatformToolBoundary(target, context.root)) {
-    return false
-  }
-  return !isAliasRepairBoundary(importer, target, context.root)
-}
-
-function isAliasRepairBoundary(importer: string, target: string, root: string): boolean {
-  // The fixer must load before any generated alias exists and Bun may retain the old configuration.
-  const command = normalizePath(Path.relative(root, importer))
-  if (command !== 'ts/CLIs/CLIs-src/dev-cli/commands/fix.ts') {
-    return false
-  }
-  const module = normalizePath(Path.relative(root, target))
-  return [
-    'ts/repo-analysis/repo-analysis-src/Workspace/PackageApis.ts',
-    'ts/repo-analysis/repo-analysis-src/Source/source-conformance-fix.ts',
-  ].includes(module)
+  return !context.namespaces.has(specifier) && !isPlatformToolBoundary(target, context.root)
 }
 
 function sourcePackageDirectory(filename: string, root: string): string | undefined {
@@ -277,7 +261,6 @@ function sourcePackageDirectory(filename: string, root: string): string | undefi
 function isPlatformToolBoundary(filename: string, root: string): boolean {
   const relative = normalizePath(Path.relative(root, filename))
   const explicitFiles = [
-    'ts/shared/shared-src/bridges/Bridge_typescript.ts',
     'ts/shared/shared-src/os/MetroPlatform.ts',
     'ts/shared/shared-src/os/preview/PreviewErrors.ts',
     'ts/shared/shared-src/os/Tooling/Bootstrap.ts',

@@ -1,5 +1,5 @@
 import { Regxs, Source } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 export {
   type ApiGroup,

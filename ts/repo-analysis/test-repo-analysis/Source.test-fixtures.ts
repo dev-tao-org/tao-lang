@@ -1,5 +1,5 @@
 import { NewlineCharacter } from '@shared'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { analyzeSourceConformance } from '../repo-analysis-src/Source/source-conformance'
 
 /** readConformanceMessages collects finding text for assertions that span several rules. */

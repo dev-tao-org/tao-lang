@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 const NativeJsonOwner = 'ts/shared/shared-src/universal/Json/Native.ts'
 

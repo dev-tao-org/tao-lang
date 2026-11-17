@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isExcludedSource } from './source-size'
 
 /** platformGlobalIssue keeps host globals within their platform bridge owner. */

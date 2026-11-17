@@ -1,5 +1,5 @@
 import { Source } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as SourceConformanceApi from './source-conformance-api'
 
 type OptionalApiName = string | undefined

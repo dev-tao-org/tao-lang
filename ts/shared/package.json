@@ -27,7 +27,8 @@
     "./tests": "./test-shared/Shared.test-utils.ts",
     "./preview": "./shared-src/Preview.ts",
     "./errors/external": "./shared-src/universal/Errors/external.ts",
-    "./os/metro": "./shared-src/os/MetroPlatform.ts"
+    "./os/metro": "./shared-src/os/MetroPlatform.ts",
+    "./typescript": "./shared-src/bridges/Bridge_typescript.ts"
   },
   "tao": {
     "publicApi": {
@@ -148,6 +149,10 @@
       "./os/metro": {
         "alias": "@shared/os/metro",
         "namespace": "MetroPlatform"
+      },
+      "./typescript": {
+        "alias": "@tao/shared/typescript",
+        "namespace": "TypeScript"
       }
     }
   }

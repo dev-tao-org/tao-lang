@@ -1,6 +1,6 @@
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isExcludedSource } from './source-size'
 
 /** conformanceSources lists current implementation and agent-script sources for checking and fixing. */

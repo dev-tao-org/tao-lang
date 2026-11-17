@@ -1,6 +1,6 @@
 import * as Tests from '@shared-tests'
 import { Repo } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { createSourceBridgeContext } from '../repo-analysis-src/Source/source-bridge-owners'
 import { sourceBridgeIssue, sourceBridgeLoaderAliases } from '../repo-analysis-src/Source/source-bridges'
 import { createFixtureProgram } from './Source.test-fixtures'

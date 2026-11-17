@@ -1,7 +1,7 @@
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { analyzeTestOnlyUsage } from '../repo-analysis-src/Workspace/TestOnlyUsage'
 
 Tests.test('test-only usage follows re-exports and keeps static callers and external contracts', async () => {

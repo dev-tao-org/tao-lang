@@ -1,6 +1,6 @@
 import { Errors, Regxs } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 type PackageTestManifest = {
   tao?: { publicApi?: Record<string, { namespace: string }>; testInputs?: string[] }

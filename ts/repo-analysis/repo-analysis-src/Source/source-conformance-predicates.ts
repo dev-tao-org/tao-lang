@@ -1,4 +1,4 @@
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** predicateOperatorIssue confines runtime identity and property-presence checks to named predicates. */
 export function predicateOperatorIssue(node: TypeScript.Node): string | undefined {

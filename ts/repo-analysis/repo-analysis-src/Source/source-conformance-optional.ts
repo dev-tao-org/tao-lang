@@ -1,5 +1,5 @@
 import { Errors } from '@shared'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 
 /** optionalAccessIssue reports ternary member reads whose truthiness check is equivalent to a nullish check. */
 export function optionalAccessIssue(node: TypeScript.Node, checker: TypeScript.TypeChecker): string | undefined {

@@ -1,7 +1,7 @@
 import { S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { analyzeConstantOrder } from '../repo-analysis-src/Source/source-conformance-constant-order'
 import { fixSourceConformance } from '../repo-analysis-src/Source/source-conformance-fix'
 import * as ConformanceProgram from '../repo-analysis-src/Source/source-conformance-program'

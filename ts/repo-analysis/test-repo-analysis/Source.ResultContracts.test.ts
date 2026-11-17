@@ -1,7 +1,7 @@
 import { S } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as SourceConformanceResultContracts from '../repo-analysis-src/Source/source-conformance-result-contracts'
 
 Tests.test('result contract conformance > names concrete return types and preserves generic substitution', () => {

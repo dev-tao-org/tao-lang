@@ -21,7 +21,8 @@
   },
   "exports": {
     ".": "./repo-analysis-src/RepoAnalysis.ts",
-    "./performance": "./repo-analysis-src/Performance/Performance.ts"
+    "./performance": "./repo-analysis-src/Performance/Performance.ts",
+    "./fix": "./repo-analysis-src/RepoAnalysisFix.ts"
   },
   "tao": {
     "publicApi": {
@@ -33,6 +34,10 @@
         "alias": "@repo-analysis/performance",
         "namespace": "Performance",
         "entities": ["ReloadTimings"]
+      },
+      "./fix": {
+        "alias": "@tao/repo-analysis/fix",
+        "namespace": "RepoAnalysisFix"
       }
     }
   }

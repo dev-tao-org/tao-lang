@@ -1,6 +1,6 @@
 import { Regxs, Sort } from '@shared'
 import { Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { isExcludedSource } from '../Source/source-size'
 import * as OptionalArguments from './OptionalArgumentUsage'
 import { readModuleReference } from './TestOnlyUsage-Modules'

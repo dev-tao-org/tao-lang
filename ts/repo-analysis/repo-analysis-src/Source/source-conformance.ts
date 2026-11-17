@@ -1,6 +1,6 @@
 import { Errors, Regxs } from '@shared'
 import { Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { readTestOnlyUsageReport, type TestOnlyUsageReport } from '../Workspace/TestOnlyUsageReport'
 import { sourceBridgeEmissionIssues } from './source-bridge-emissions'
 import { platformGlobalIssue } from './source-bridge-globals'
