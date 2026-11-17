@@ -5,7 +5,7 @@ import * as Typecheck from '@typecheck'
 
 import { S } from '@shared'
 
-import { collectLibraryPublications } from '../compile-src/Compile/LibraryPublications'
+import { collectLibraryPublications } from '../compile-src/Compile'
 
 Tests.test('library publication lists require commas and accept aliases and trailing commas', () => {
   const parser = Grammar.createParser()

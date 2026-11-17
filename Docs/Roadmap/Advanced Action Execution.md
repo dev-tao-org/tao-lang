@@ -1,6 +1,6 @@
 # Advanced Action Execution — post-MVP design
 
-Post-MVP design for invocation handles and history, retained results, cancellation targeting, progress reporting, concurrency policies and safe retries. This document preserves accepted directions and, at the developer's explicit request, unresolved alternatives and relevant examples. MVP inspection supports aggregate `when ACTION` and first-match render `pick ACTION`; prior acceptance of richer inspection does not put it in MVP. Nothing here establishes implemented or verified behavior.
+Post-MVP design for invocation handles and history, retained results, cancellation targeting, progress reporting, concurrency policies and safe retries. This document preserves accepted directions and, at the developer's explicit request, unresolved alternatives and relevant examples. MVP inspection is limited to `when ACTION`; prior acceptance of richer inspection does not put it in MVP. Nothing here establishes implemented or verified behavior.
 
 ## Scope and dependency boundary
 
@@ -30,7 +30,7 @@ Provider SDKs may perform their own documented transaction or transport retries.
 
 ### Open decisions and examples to resume
 
-- Direct action predicates such as `Action is pending`, boolean `when Action is concluded`, and separately named status values were explored alongside direct `when Action`. Aggregate `when Action` and first-match render `pick Action` remain in MVP; precise richer syntax can resume later.
+- Direct action predicates such as `Action is pending`, boolean `when Action is concluded`, and separately named status values were explored alongside direct `when Action`. Only the latter remains in MVP; precise richer syntax can resume later.
 - Explicit invocation capture through `on started`, action-result slots and their relation to latest-status selection remain unresolved.
 - Exact public access to retained invocations: proposed actionStatus fields Pending, LastConcluded and LastCompleted versus selection expressions. These field names were NOT accepted.
 - Exact invocation handle type, typed return access, captured argument exposure, capability inference and mixed-operation collections. Earlier Action result slots, return-value-plus-operation wrappers and resource/results abstractions are context, not selected MVP APIs.

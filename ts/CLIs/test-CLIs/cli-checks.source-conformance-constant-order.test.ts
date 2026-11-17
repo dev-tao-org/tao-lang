@@ -37,10 +37,7 @@ async function verifySource(root: string, path: string): Promise<void> {
 async function verifyFixedSource(root: string, path: string, fixed: string): Promise<void> {
   expectFixedOrdering(fixed)
   await fixSourceConformance(root)
-  const secondFixed = await FS.readFile(path, 'utf8')
-  Tests.expect(secondFixed).toContain('(receiver?.run)?.(firstArgument, secondArgument)')
-  await fixSourceConformance(root)
-  Tests.expect(await FS.readFile(path, 'utf8')).toBe(secondFixed)
+  Tests.expect(await FS.readFile(path, 'utf8')).toBe(fixed)
   Tests.expect(analyzeConstantOrder(createConformanceProgram(root, [path])).size).toBe(0)
 }
 
@@ -52,7 +49,7 @@ function expectFixedOrdering(fixed: string): void {
   Tests.expect(fixed.indexOf('const commandValue')).toBeLessThan(fixed.indexOf('export default registerCommand'))
   Tests.expect(fixed.indexOf('const earlierValue')).toBeGreaterThan(fixed.indexOf('function unrelatedDeclaration'))
   Tests.expect(fixed.indexOf('const earlierValue')).toBeLessThan(fixed.indexOf('function readEarlierValue'))
-  Tests.expect(fixed).toContain('(receiver?.run)?.(\n  firstArgument,\n  secondArgument,\n)')
+  Tests.expect(fixed).toContain('(receiver?.run)?.(firstArgument, secondArgument)')
   Tests.expect(fixed.indexOf('const sharedValue')).toBeGreaterThan(fixed.indexOf('function readSharedSecond'))
   Tests.expect(fixed.indexOf('const effectfulValue')).toBeGreaterThan(fixed.indexOf('function readEffectful'))
   Tests.expect(fixed.indexOf('const blockedValue')).toBeGreaterThan(fixed.indexOf("record('barrier')"))

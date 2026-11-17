@@ -1,13 +1,10 @@
-import { areValueSnapshotsEqual } from './ValueSnapshots'
-
 /** ReactiveValue is Preact's internal equality-preserving representation of Tao values. */
 export type ReactiveValue = unknown
 
-/** encodeReactiveValue retains equivalent snapshots and adapts numeric edge values to Preact's equality. */
-export function encodeReactiveValue(value: unknown, previous?: ReactiveValue): ReactiveValue {
+/** encodeReactiveValue adapts Preact's strict equality to Object.is for numeric edge values. */
+export function encodeReactiveValue(value: unknown): ReactiveValue {
   if (typeof value !== 'number') {
-    const isObject = typeof value === 'object' && value !== null
-    return isObject && areValueSnapshotsEqual(value, previous) ? previous : value
+    return value
   }
   if (Object.is(value, -0)) {
     return NegativeZero

@@ -1,4 +1,4 @@
-import { Json, Schema, Try } from '@shared'
+import { Schema, Try } from '@shared'
 import { Artifacts, FileLock, FS, Hash, Path, Platform, Repo } from '@shared/os'
 import type { TestFileTiming } from '../../cli-checks/slow-tests'
 import type { TestDurationEstimates } from './TypeScriptShardPlan'
@@ -55,8 +55,8 @@ export async function rememberShardTimings(
 
 async function readSamples(cachePath: string): Promise<TimingSample[]> {
   return await Try.WithDefault([], async () => {
-    const source = await FS.readFile(cachePath, 'utf8')
-    return Json.Parse(source, { schema: cacheSchema }).samples
+    const cache = await FS.readJson(cachePath, { schema: cacheSchema })
+    return cache.samples
   })
 }
 
@@ -96,7 +96,7 @@ async function appendSample(cachePath: string, sample: TimingSample): Promise<vo
   const samples = [...await readSamples(cachePath), sample].slice(-SampleLimit)
   const pending = cachePath + '.pending'
   await Try(async () => {
-    await FS.writeFile(pending, Json.Print({ version: 1, samples }), 'utf8')
+    await FS.writeJson(pending, { version: 1, samples })
     await FS.rename(pending, cachePath)
   }, { finally: () => FS.rm(pending, { force: true }) })
 }

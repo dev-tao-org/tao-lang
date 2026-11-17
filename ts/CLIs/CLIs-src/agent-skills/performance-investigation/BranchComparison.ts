@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as Perf from '@perf'
-import { Errors, Json, Objects, Time, Try } from '@shared'
+import { Errors, Objects, Time, Try } from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as Metrics from './BranchMetrics'
 import { formatBranchComparison } from './BranchReport'
@@ -194,6 +194,6 @@ function requireComparableSession(report: PreviewReport, history: ScenarioSessio
 async function saveComparison(comparison: BranchComparison): Promise<void> {
   const path = Path.join(comparison.directory, 'comparison.json')
   const pending = `${path}.pending`
-  await FS.writeFile(pending, Json.Print(comparison))
+  await FS.writeJson(pending, comparison)
   await FS.rename(pending, path)
 }

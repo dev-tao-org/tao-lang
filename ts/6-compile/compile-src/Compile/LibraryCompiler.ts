@@ -5,7 +5,7 @@ import { emitStringLiteral } from '../codegen-util'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
 import { projectViewParameterTypes } from './ForeignViewContractCompiler'
-import { collectLibraryPublications, compilePublicationExportName, type PublishedView } from './LibraryPublications'
+import { collectLibraryPublications, type PublishedView } from './LibraryPublications'
 import { type CompiledFiles, compileModuleSources } from './ModulesCompiler'
 
 /** CompiledLibrary holds shared generated sources and explicit public component subpaths. */
@@ -54,8 +54,7 @@ function compilePublicComponent(view: PublishedView, index: number): string {
   const types = projectViewParameterTypes(view.declaration)
   const props = Object.entries(types).map(([name, type]) => `${emitStringLiteral(name)}: ${type}`)
   const parameters = Object.keys(types).map(emitStringLiteral)
-  const exportName = compilePublicationExportName(index)
-  return `export const ${exportName} = createViewComponent<ViewProps & { ${props.join('; ')} }>(library, ${
+  return `export const Published${index} = createViewComponent<ViewProps & { ${props.join('; ')} }>(library, ${
     emitStringLiteral(view.path)
   }, [${parameters.join(', ')}]);`
 }

@@ -1,8 +1,7 @@
-import { S } from '@shared'
+import { Json, S } from '@shared'
 
-import { emitJsonDocument } from '../codegen-util'
 import { projectViewParameterTypes } from './ForeignViewContractCompiler'
-import { compilePublicationExportName, type PublishedView } from './LibraryPublications'
+import type { PublishedView } from './LibraryPublications'
 import type { CompiledFiles } from './ModulesCompiler'
 
 /** LibraryPackageConfiguration supplies the resolved package name and dependency versions. */
@@ -27,7 +26,7 @@ export function compileLibraryPackageFiles(
     const entry = `${stem}.js`
     const declaration = `${stem}.d.ts`
     exports[`./${view.path}`] = { types: `./${declaration}`, default: `./${entry}` }
-    files[entry] = `export { ${compilePublicationExportName(index)} as default } from './_Library.js';\n`
+    files[entry] = `export { Published${index} as default } from './_Library.js';\n`
     files[declaration] = compileViewDeclaration(view)
   }
   files['package.json'] = serializeLibraryPackage(configuration, exports)
@@ -39,7 +38,7 @@ type LibraryPackageExports = Record<string, { types: string; default: string }>
 type LibraryPackageFiles = Record<string, string>
 
 function serializeLibraryPackage(configuration: LibraryPackageConfiguration, exports: LibraryPackageExports): string {
-  return emitJsonDocument({
+  return Json.Print({
     name: configuration.name,
     version: '0.0.0',
     type: 'module',

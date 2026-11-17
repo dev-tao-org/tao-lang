@@ -65,6 +65,7 @@ function readRequirementsFromSource(source: string, path: string): DependencyReq
   if (!document) {
     Errors.ThrowUserInput(`Cannot read requirements from invalid Tao source: ${path}.`)
   }
+  Typecheck.assertValidStatements(document, path)
   const requirements = AST.GetDeclarations(document)
     .filter(isSourceRequirement)
     .map(declaration => requirementFromDeclaration(declaration, path))

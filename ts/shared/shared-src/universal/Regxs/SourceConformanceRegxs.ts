@@ -29,8 +29,8 @@ const DocOpeningLine = /^\/\*\* \S+ \S/
 const DocClosingLine = /\S \*\/$/
 /** NonWhitespaceStart matches a line starting with content. */
 const NonWhitespaceStart = /^\S/
-/** NewlineCharacter matches either newline character. */
-const NewlineCharacter = /[\r\n]/
+/** NewlineCharacter matches the line terminators recognized by the TypeScript scanner. */
+const NewlineCharacter = /[\r\n\u2028\u2029]/
 /** OptionalCarriageNewline matches newline sequences with optional carriage returns. */
 const OptionalCarriageNewline = /\r?\n/
 /** RelativePathPrefix matches an explicit relative-path prefix. */

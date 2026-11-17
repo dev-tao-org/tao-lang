@@ -35,8 +35,6 @@ Incompatible loaded definitions of the same nominal declaration are rejected wit
 
 #### Generated sidecar contracts
 
-The following describes agreed future behavior, including the owning-module implementation API and one-sidecar-per-file contract. Current foreign-view compilation generates React prop checks.
-
 The compiler generates the interfaces and function or method signatures a sidecar implementation must satisfy from its Tao declaration. The sidecar conforms to that generated contract rather than separately defining the requirements exposed to Tao callers.
 
 The owning `.tao` module is the canonical TypeScript import surface for generated types, factories and implementation contracts. Pure callbacks and action callbacks have distinct generated contracts: pure callbacks participate in evaluation, while action callbacks explicitly invoke effects.
@@ -65,8 +63,6 @@ Compiler/SDK-defined imports use lowercase names, while authored Tao declaration
 
 #### Managed sidecar execution
 
-This section describes agreed future execution boundaries for action and pure-function wrappers.
-
 All sidecar execution belongs to Tao-managed execution. Returned promises and additional asynchronous work or callbacks must participate through managed interfaces and helpers, so runtime exceptions become defined Tao failures and reach declared application handling. Generated contracts, documentation and discoverable defaults guide authors through this path; arbitrary detached work that bypasses it is outside that guarantee.
 
 Network and storage effects occur inside invoked sidecar actions, not during module loading. Module scope contains declarations and configuration; module-loading exceptions still enter defined Tao failure handling. An asynchronous module-initialization lifecycle is not part of this initial contract.
@@ -84,8 +80,6 @@ In the agreed future contract, pure function sidecars receive immutable input sn
 The compiler and runtime automatically create and own reactive evaluation wrappers. Pure sidecar authors implement ordinary snapshot-in/result-out functions without constructing those wrappers. Tao-authored callbacks invoked synchronously within an evaluation retain their captured reactive dependencies. Callback identity alone is insufficient to determine whether the enclosing computation is current. Per-item caching is a separate optimization, not required for correctness.
 
 #### Pure callback lifetime
-
-This section describes the agreed future lifetime contract for pure callbacks.
 
 Callbacks supplied to a pure sidecar evaluation may be invoked only during their owning evaluation. The generated runtime wrapper rejects invocation after that evaluation has ended; retaining a callback does not extend its lifetime. View event handlers and action callbacks have separately declared lifetimes. This rule does not by itself define the contract for pure functions returned as values.
 
@@ -143,14 +137,8 @@ attach an observation; abandoned renders and unmounted components retain no subs
 #### `expression.jsValue()`
 
 Returns the underlying raw, non-reactive JavaScript value, evaluating the expression when needed.
-Receiving that value does not itself subscribe the caller to later changes. Ordinary lists and
-records are deeply readonly snapshots. Tao copies them when an initializer, write or calculation
-supplies an external value. Later changes to the external object cannot affect the snapshot.
-Expressions reuse snapshots already owned by the runtime. Capabilities such as writable
-expressions and observation handles retain identity inside a collection. Spreading a handle creates
-an ordinary record. Ordinary records use own enumerable string fields, and lists use indexed data.
-Tao rejects symbol keys and cycles in ordinary collections. Opaque host objects with custom
-prototypes are outside the ordinary snapshot contract.
+Receiving that value does not itself subscribe the caller to later changes. Object-valued results
+are shared read-only snapshots, without copying on each read; writes use Tao's writable APIs.
 
 #### `writable.update(value)`
 
@@ -161,9 +149,7 @@ follows the enclosing batch's settlement.
 
 Calls the callback immediately with the current raw JavaScript value, then with changed values after
 each batch. Returns an object with an `unobserve()` method that stops observation.
-Lists compare in order, including duplicates. Records compare by fields regardless of field order.
-Equal calculation results retain their previous snapshot and do not trigger downstream evaluations.
-Primitive values and capability handles use `Object.is`.
+The current implementation compares values with `Object.is`. The agreed future [value equality](Reactive%20Expressions.md#value-equality) compares ordinary lists and records by contents while preserving explicit entity and operation identity.
 
 #### Immutable and changing values
 
@@ -181,7 +167,7 @@ In the agreed future contract, view-owned observations automatically stop when t
 
 In the agreed future contract, sidecars receive deeply read-only types for ordinary Tao list and record snapshots, backed by runtime-owned immutable snapshots. They publish replacements or use an explicit reactive mutation interface. Types and API names distinguish observation from write authority.
 
-When accepting ordinary external lists and records, the runtime copies them into owned immutable snapshots so retained external references cannot mutate published values. Already-owned snapshots can be reused; reads need not copy. Entity and operation handles remain distinct capabilities rather than values recursively copied or frozen. Runtime snapshot ownership is implemented; generated sidecar reader contracts remain future work.
+When accepting ordinary external lists and records, the runtime copies them into owned immutable snapshots so retained external references cannot mutate published values. Already-owned snapshots can be reused; reads need not copy. Entity and operation handles remain distinct capabilities rather than values recursively copied or frozen. The precise representation and protection mechanism remain implementation-design work.
 
 ```ts
 const observation = expression.observe(value => console.log(value))

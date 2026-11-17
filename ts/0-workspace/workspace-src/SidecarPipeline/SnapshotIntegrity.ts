@@ -5,7 +5,6 @@ import { NewlineCharacter, Try } from '@shared'
 import { Text } from '@shared/os'
 import { FS, Path } from '@shared/os'
 import { ForeignViewContractOwnership } from '../sidecars/ForeignViewContracts'
-import { SidecarAssetDeclarations } from '../sidecars/SidecarAssets'
 import type { SidecarGroup } from './Snapshots'
 
 /** cachedSnapshotMatches verifies captured content, inventory, and the managed package links. */
@@ -72,7 +71,7 @@ function collectExpectedSnapshotFiles(input: CacheValidationInput): Map<string, 
       Path.join(modulePath, 'tsconfig.json'),
       encodeSnapshotText(createTypeScriptConfigContent(input.defaultsPath)),
     )
-    files.set(Path.join(modulePath, 'tao-assets.d.ts'), encodeSnapshotText(SidecarAssetDeclarations))
+    files.set(Path.join(modulePath, 'tao-assets.d.ts'), encodeSnapshotText(Compile.SidecarAssetDeclarations))
     for (const view of group.views) {
       const contractPath = Path.join(modulePath, `.tao-${AST.GetViewName(view.declaration)}.contract.ts`)
       files.set(

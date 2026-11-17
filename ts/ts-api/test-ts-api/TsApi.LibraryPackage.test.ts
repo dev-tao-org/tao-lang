@@ -20,7 +20,6 @@ Tests.test('compiled Tao library emits explicit own-project public component pat
       './Greeting',
       './Panel',
       './LanguageFeatures',
-      './ValueSnapshots',
       './DisabledPreview',
       './Catalog/Greeting',
     ])

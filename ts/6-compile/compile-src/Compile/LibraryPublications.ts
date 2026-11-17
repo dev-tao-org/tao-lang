@@ -7,11 +7,6 @@ import { hasSupportedViewParameters } from '../ValuesCompiler'
 /** PublishedView retains source ownership and the public package subpath of a Tao view. */
 export type PublishedView = { path: string; source: string; declaration: AST.ViewDeclaration }
 
-/** compilePublicationExportName identifies a public component consistently across package entrypoints. */
-export function compilePublicationExportName(index: number): string {
-  return `Published${index}`
-}
-
 /** collectLibraryPublications resolves explicit own-project public views and selected module lists. */
 export function collectLibraryPublications(
   program: Typecheck.LinkedProgram,

@@ -3,13 +3,54 @@ import * as Grammar from '@grammar'
 import { S, Source, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { compileLibraryPackage, createWorkspace } from '../workspace-src/Workspace'
+import * as Workspace from '../workspace-src/Workspace'
 
 const PlacementMessage = 'Root declarations belong directly inside an app.'
 const LibraryPlacementRegx = /Root declarations belong directly inside an app\./
 const RootRender = 'render inject ```ts return null ```'
 
 const MisplacedRoot = 'root Main'
+
+Tests.test('dependency readiness rejects misplaced statements before inspecting runtime setup', async () => {
+  const directory = Artifacts.resolvePath('tmp', `setup-placement-${Platform.randomUUID()}`)
+  const entry = Path.join(directory, 'Main.tao')
+  const source = S`
+    app Example { root Main }
+    view Main {
+      ${MisplacedRoot}
+      ${RootRender}
+    }
+  `
+  await Try(async () => {
+    await Workspace.createProject({ directory })
+    await FS.writeFile(entry, source)
+    await Tests.rejects(Workspace.inspectProjectPreparation(entry, { runtime: false }), LibraryPlacementRegx)
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
+})
+
+Tests.test('setup diagnoses invalid siblings before resolving their imports', async () => {
+  const directory = Artifacts.resolvePath('tmp', `sibling-placement-${Platform.randomUUID()}`)
+  const feature = Path.join(directory, 'Feature')
+  const entry = Path.join(feature, 'Main.tao')
+  const source = S`
+    view Broken {
+      root Broken
+      ${RootRender}
+    }
+  `
+  const main = S`
+    app Example { root Main }
+    view Main { ${RootRender} }
+  `
+  await Try(async () => {
+    await Workspace.createProject({ directory })
+    await FS.mkdir(feature)
+    await FS.writeFile(entry, main)
+    await FS.writeFile(Path.join(feature, 'A.tao'), 'use missing@widgets Widget')
+    await FS.writeFile(Path.join(feature, 'Z.tao'), source)
+    await Tests.rejects(Workspace.inspectProjectPreparation(entry, { runtime: false }), LibraryPlacementRegx)
+  }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
+})
 
 Tests.test('misplaced statements retain their AST ranges and block app publication until corrected', async () => {
   const source = S`
@@ -32,7 +73,7 @@ Tests.test('misplaced statements retain their AST ranges and block app publicati
   })
   const misplaced = view.body.kind === 'Block' && view.body.statements[0]!
   Tests.expect(misplaced && Source.slice(source, misplaced)).toBe(MisplacedRoot)
-  const workspace = createWorkspace({})
+  const workspace = Workspace.createWorkspace({})
   await Try(async () => {
     const outcome = await workspace.update(source)
     Tests.expect(outcome.status).toBe('failed')
@@ -62,7 +103,10 @@ Tests.test('library compilation rejects placements before emitting a package', a
   await Try(async () => {
     await FS.mkdir(directory)
     await FS.writeFile(entry, source)
-    await Tests.rejects(compileLibraryPackage({ entry, out: output, name: '@example/placement' }), LibraryPlacementRegx)
+    await Tests.rejects(
+      Workspace.compileLibraryPackage({ entry, out: output, name: '@example/placement' }),
+      LibraryPlacementRegx,
+    )
     Tests.expect(await FS.exists(output)).toBe(false)
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
@@ -83,7 +127,7 @@ Tests.test('linking reports required statements, view ordering and expectation p
   `
   const parser = Grammar.createParser()
   Tests.expect(parser.parse(source).rootNode.hasError).toBe(false)
-  const workspace = createWorkspace({})
+  const workspace = Workspace.createWorkspace({})
   await Try(async () => {
     const outcome = await workspace.update(source)
     Tests.expect(outcome.status).toBe('failed')
@@ -108,7 +152,7 @@ Tests.test('lowercase declarations keep their syntax and block compilation at th
     view helper { ${RootRender} }
   `
   Tests.expect(Grammar.createParser().parse(source).rootNode.hasError).toBe(false)
-  const workspace = createWorkspace({})
+  const workspace = Workspace.createWorkspace({})
   await Try(async () => {
     const invalid = await workspace.update(source)
     Tests.expect(invalid.status).toBe('failed')
@@ -130,7 +174,7 @@ Tests.test('bare and tagged qualified views accept package-derived keyword names
     app Example { root Main }
     view Main { render Col { root.Leaf #edge input.Leaf } }
   `
-  const workspace = createWorkspace({ directory })
+  const workspace = Workspace.createWorkspace({ directory })
   await Try(async () => {
     await FS.mkdirs(Path.join(directory, 'root'), Path.join(directory, 'input'))
     await FS.writeFile(entry, source)

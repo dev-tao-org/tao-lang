@@ -6,7 +6,6 @@ import type * as Typecheck from '@typecheck'
 
 import { checkForeignViewContract } from '../sidecars/ForeignViewContracts'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
-import { SidecarAssetDeclarations } from '../sidecars/SidecarAssets'
 import * as SnapshotIntegrity from './SnapshotIntegrity'
 
 /** SidecarGroup contains all validated source files and views owned by one module root. */
@@ -21,6 +20,22 @@ export type SnapshotOptions = {
   executor: ContractExecutor
   compiler?: string
 }
+
+/** sidecarAssetExtensions lists supported copied binary asset suffixes. */
+export const sidecarAssetExtensions = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.mp4',
+  '.mp3',
+  '.ttf',
+  '.woff',
+  '.woff2',
+  '.pdf',
+]
 
 /** snapshotModuleDirectory maps a source module root to its isolated snapshot directory. */
 export function snapshotModuleDirectory(snapshotRoot: string, moduleRoot: string): string {
@@ -206,7 +221,7 @@ async function writeModuleMetadata(destination: string, defaultsPath: string): P
     Path.join(destination, 'tsconfig.json'),
     SnapshotIntegrity.createTypeScriptConfigContent(defaultsPath),
   )
-  await FS.writeFile(Path.join(destination, 'tao-assets.d.ts'), SidecarAssetDeclarations)
+  await FS.writeFile(Path.join(destination, 'tao-assets.d.ts'), Compile.SidecarAssetDeclarations)
 }
 
 async function copyModuleFiles(group: SidecarGroup, destination: string): Promise<void> {

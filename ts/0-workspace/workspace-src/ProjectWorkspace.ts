@@ -2,10 +2,11 @@ import { Errors, Try } from '@shared'
 import { Path, Storage } from '@shared/os'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { ProjectDependencies } from './ProjectDependencies'
-import { createProjectPipeline, type ProjectPipelineResult, type WorkspacePreparation } from './ProjectPipeline'
+import { createProjectPipeline, type ProjectPipelineResult } from './ProjectPipeline'
 import { discoverProject } from './projects/Projects'
 import { acquireSession, type SessionOptions } from './projects/Sessions'
 import { createWorkspace, type WorkspaceOptions, type WorkspaceSession } from './Workspace'
+import type { WorkspacePreparation } from './Workspace'
 
 /** ProjectWorkspaceOptions configures a managed project workspace and its session lifetime. */
 export type ProjectWorkspaceOptions = Omit<WorkspaceOptions, ProjectWorkspaceOption> & SessionOptions

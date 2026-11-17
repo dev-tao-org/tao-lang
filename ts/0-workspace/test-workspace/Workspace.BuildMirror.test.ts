@@ -2,7 +2,7 @@ import type * as Runtime from '@runtime'
 import { Timings, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
-import { publishBuild } from '../workspace-src/Workspace/WorkspaceBuild'
+import { publishBuild } from '../workspace-src/Workspace'
 
 Tests.test('repairs a missing or dangling memory-build mirror', async () => {
   const root = Artifacts.resolvePath('tmp', `workspace-build-repair-${Platform.randomUUID()}`)

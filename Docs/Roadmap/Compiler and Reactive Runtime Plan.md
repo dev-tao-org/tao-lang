@@ -178,8 +178,8 @@ interface Expression<T> {
   observe(receive: (value: T) => void): Observation
 }
 
-interface WritableExpression<T> extends Expression<ValueSnapshot<T>> {
-  update(value: T | ValueSnapshot<T>): void
+interface WritableExpression<T> extends Expression<T> {
+  update(value: T): void
 }
 
 interface Observation {
@@ -188,12 +188,9 @@ interface Observation {
 ```
 
 - `jsValue()` returns the raw, nonreactive JS value. Reading a function value does not invoke it.
-- Ordinary lists and records are deeply readonly runtime-owned snapshots. Copy external data at
-  ingress and reuse owned snapshots on reads. Preserve capability identity.
+- Object results are shared read-only snapshots, with no defensive copying per read.
 - `observe` delivers the current value immediately and subsequent changed values after settlement.
-- Compare ordinary lists by ordered content and records by fields. Equal calculations reuse the
-  previous snapshot and keep dependent computations cached. Primitives and capabilities compare
-  with `Object.is`. Release observations on `unobserve` and owner disposal.
+- Compare delivered values with `Object.is`; release observations on `unobserve` and owner disposal.
 - Avoid per-read wrapper allocations. Retain dependency tracking on cached reads.
 - Pure computed expressions track the inputs actually read, including dynamic branches. Release
   obsolete dependencies when a branch changes. Future pure calls may read captured state as well
@@ -262,12 +259,6 @@ A uniform expression contract does not require a graph node per AST expression. 
 dependencies; references can retain existing expression identity; cheap pure intermediate work can
 stay inside a tracked evaluator. Compare selective graph construction and observation granularity
 against universal node construction before introducing either as a mandatory compiler pattern.
-
-### Immutable ordinary values
-
-The current runtime exposes snapshot ownership and structural equality through its TypeScript
-expression API, including compiled Tao render injections. Native Tao list and record syntax and
-typed sidecar contracts remain future compiler work. See [Runtime TypeScript API](../Specification/Runtime%20TypeScript%20API.md).
 
 ## 6. Independent batching policies
 
