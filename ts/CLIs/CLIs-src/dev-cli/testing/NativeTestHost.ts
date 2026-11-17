@@ -6,6 +6,7 @@ import Exec, { type PipedChildProcess, type ProcessOutput } from '@shared/os/exe
 import { Addr, Http } from '@shared/web'
 import { expoGoApplicationId, type NativeTestPlatform } from './NativeTestDevice'
 import { type NativeWebDriver, openNativeWebDriver, waitForNativeObservation } from './NativeWebDriver'
+import { openIosWebDriver } from './NativeWebDriverAgent'
 
 /** withNativeTestHost installs Expo Go on an isolated device and owns its Appium session. */
 export async function withNativeTestHost(
@@ -237,8 +238,7 @@ async function withAppium(target: NativeTarget, run: RunNativeCases): Promise<vo
   const url = Addr.localhostUrl(port)
   await Try(async () => {
     await waitForAppium(child, url)
-    const capabilities = await capabilitiesForTarget(target)
-    const driver = await openNativeWebDriver(url, capabilities)
+    const driver = await openTargetWebDriver(url, target)
     const clearAppData = target.platform === 'android' ? () => clearAndroidExpoGo(target) : undefined
     await Try(() => run(driver, clearAppData), { finally: () => driver.close() })
   }, {
@@ -288,26 +288,14 @@ function reservePort(): number {
   return port
 }
 
-async function capabilitiesForTarget(target: NativeTarget) {
+function openTargetWebDriver(url: string, target: NativeTarget): Promise<NativeWebDriver> {
   const appId = expoGoApplicationId(target.platform)
   return target.platform === 'ios'
-    ? iosCapabilities(target, appId, await prepareWebDriverAgentCache())
-    : androidCapabilities(target, appId)
+    ? openIosWebDriver(url, target.id, iosCapabilities(target, appId))
+    : openNativeWebDriver(url, androidCapabilities(target, appId))
 }
 
-async function prepareWebDriverAgentCache(): Promise<string> {
-  const [xcode, sdk, lock] = await Promise.all([
-    Exec.captureStdout('xcrun', ['xcodebuild', '-version'], { timeoutMs: 10_000 }),
-    Exec.captureStdout('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-build-version'], { timeoutMs: 10_000 }),
-    FS.readFile(Repo.resolvePath('ts/bun.lock'), 'utf8'),
-  ])
-  const fingerprint = Platform.hashText(Shared.joinTextLines(Platform.systemInfo().architecture, xcode, sdk, lock))
-  const cache = Artifacts.resolvePath('cache', 'native-journeys', 'wda', fingerprint)
-  await FS.mkdir(cache)
-  return cache
-}
-
-function iosCapabilities(target: NativeTarget, bundleId: string, derivedDataPath: string) {
+function iosCapabilities(target: IosTestTarget, bundleId: string) {
   return {
     'platformName': 'iOS',
     'appium:automationName': 'XCUITest',
@@ -318,7 +306,6 @@ function iosCapabilities(target: NativeTarget, bundleId: string, derivedDataPath
     'appium:forceSimulatorSoftwareKeyboardPresence': true,
     'appium:newCommandTimeout': 120,
     'appium:wdaLocalPort': reservePort(),
-    'appium:derivedDataPath': derivedDataPath,
   }
 }
 
