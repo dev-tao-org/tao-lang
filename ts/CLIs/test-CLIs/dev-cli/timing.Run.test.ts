@@ -1,8 +1,24 @@
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path } from '@shared/os'
+import { Artifacts, FS, Path, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 import timingWatch from '../../CLIs-src/dev-cli/commands/timing-watch'
 import { runTiming } from '../../CLIs-src/dev-cli/timing/TimingRun'
+
+Tests.test('the timing recipe selects the configured runner unless a local diagnostic is explicit', async () => {
+  const cwd = Repo.getWorkspaceRoot()
+  const addEnv = { TAO_TIMING_HOST: 'runner.invalid', TAO_TIMING_CHECKOUT: '/runner/checkout' }
+  const remote = await Exec.captureStdout('just', ['timing', '--dry-run'], { cwd, addEnv })
+  Tests.expect(remote).toContain('5 sessions × 24 edits on runner.invalid, checkout /runner/checkout')
+
+  const local = await Exec.captureStdout('just', ['timing', '--local', '--dry-run'], { cwd, addEnv })
+  Tests.expect(local).toContain('Would run a local preview diagnostic in the current checkout.')
+
+  const unconfigured = { TAO_TIMING_HOST: undefined, TAO_TIMING_CHECKOUT: undefined }
+  const failure = await Exec.capture('just', ['timing', '--dry-run'], { cwd, addEnv: unconfigured, check: false })
+  Tests.expect(failure.status).not.toBe(0)
+  Tests.expect(failure.stdout + failure.stderr).toContain('Set TAO_TIMING_HOST and TAO_TIMING_CHECKOUT')
+})
 
 Tests.test.skipIf(Path.sep === '\\')('timing resolves the fixture in the runner candidate tree', async () => {
   const temporary = Artifacts.resolvePath('tmp')
