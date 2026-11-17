@@ -36,7 +36,7 @@ Select the next two bounded implementation slices from the existing projects bef
 
 Owner: [Language decisions](Tao%20Language%20Design%20Decisions.md), [Runtime PoC](Tao%20Runtime%20PoC.md).
 
-Design Boolean, text and numeric types as one coherent foundation, rather than adding Boolean support as an incidental prerequisite for disabled. Resolve the remaining numeric representation, arithmetic, comparison, optional-value and time/duration questions. Specify consistent sidecar and TypeScript-library contracts. Use the accepted [Type Conversions](../Specification/Type%20Conversions.md) examples as input to that work.
+Design Boolean, text and numeric types as one coherent foundation, rather than adding Boolean support as an incidental prerequisite for disabled. Resolve the remaining questions about numeric representation, precision and limits, named-type construction and validation, arithmetic, comparison and logical expressions, optional values and `none`/`missing`, and time and duration. Specify consistent sidecar and TypeScript-library contracts. Refresh one annotated example spanning the core types and use the accepted [Type Conversions](../Specification/Type%20Conversions.md) examples as input.
 
 Implementation remains a sequence of small reviewable pieces beneath that shared design; this queue does not select unsettled numeric representations or spellings.
 
@@ -105,7 +105,7 @@ These follow-ups are grouped, not assigned a strict implementation priority beyo
 
 [Advanced action execution](Advanced%20Action%20Execution.md) retains retry, cancellation, concurrency, progress and individual-operation inspection. Also preserve deferred scheduled actions with explicit execution providers, local project linking, piping reconsideration, callable conveniences and detailed [developer-overlay design](App%20Developer%20Overlay.md).
 
-- **Structural interfaces.** Implement the agreed [interface design](../Specification/Structural%20Interfaces.md) after MVP. Build on associated methods and typed matching. Prove inherited methods, compatible parameter and result types, unambiguous label mapping, and action and view dispatch with their ordinary lifecycle contracts.
+- **Structural interfaces.** Implement the agreed [interface design](../Specification/Structural%20Interfaces.md) after MVP. Build on associated methods and typed matching. Prove inherited methods, compatible parameter and result types, unique matching across different ordinary parameter labels, explicit role matching, and action and view dispatch with their ordinary lifecycle contracts.
 
 ## Slice completion
 

@@ -21,13 +21,13 @@ let Title = Caption(Route) // "Chicago → Boston"
 
 #### Inferred conformance
 
-Tao checks the associated methods when a value is used at an interface type. Methods declared on the type and inherited methods can satisfy the contract. Inside an associated method, the owning type name refers to the receiver. For example, `DeliveryRoute.Origin` reads the route supplied to `ToText()`.
+Tao checks the associated methods when a value is used at an interface type. Conformance is inferred from methods declared on the type and inherited methods. Inside an associated method, the owning type name refers to the receiver. For example, `DeliveryRoute.Origin` reads the route supplied to `ToText()`.
 
 #### Compatible signatures
 
 A method can return a more specific type than the interface requires. A read-only input can accept a broader type than the interface promises to pass. When a method writes back through a parameter, the values it can write must fit the interface's write type, and it must have the required write authority. Signature matching uses type compatibility without invoking converters.
 
-Parameter names may differ when Tao can map the parameters unambiguously. Callers use the interface's labels. Explicit roles constrain the mapping, and ambiguous mappings are errors.
+Callers use the interface's parameter names as argument labels. For conformance, ordinary parameter names can differ when Tao finds a unique mapping by type. Matching names can distinguish parameters of the same type. Explicit roles constrain the mapping, and ambiguous mappings are errors.
 
 #### Functions, actions and views
 

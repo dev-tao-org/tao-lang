@@ -68,7 +68,13 @@ type Category is { Title text }
 type PreviewItem is Product or Category
 
 let Featured = Product { Name: "Notebook" }
-state Preview = Featured as PreviewItem
+let Stationery = Category { Title: "Stationery" }
+
+view Catalog {
+   state Preview = Featured as PreviewItem
+
+   action ShowStationery() { set Preview = Stationery }
+}
 ```
 
 `Preview` starts with `Featured` and can later hold a `Category`. A union-to-member conversion needs a converter or a value whose type has already been narrowed.
@@ -78,6 +84,9 @@ type ProductID is text
 
 view ProductPicker {
    state Selected = none as ProductID?
+
+   action SelectProduct(ID ProductID) { set Selected = ID }
+   action ClearSelection() { set Selected = none }
 }
 ```
 
@@ -103,7 +112,16 @@ let Original = Label "start"
 
 #### Grouping
 
-`Score 2 as number` groups as `(Score 2) as number`. Conversion also follows arithmetic, so `1 + 2 as Score` groups as `(1 + 2) as Score`. Use parentheses inside the constructor when the conversion supplies its input, as in `Score (Input as number)`.
+`as` groups after construction and arithmetic. Parentheses can put the conversion inside the constructor argument.
+
+```tao
+type Score is number
+
+let Points = Score 2 as number // (Score 2) as number, yielding number 2.
+let Input = Score 2
+let Rebuilt = Score (Input as number) // Converts Input to number, then constructs Score 2.
+// let Total = 1 + 2 as Score // (1 + 2) as Score. Needs a number as Score converter.
+```
 
 #### Availability
 
