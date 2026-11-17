@@ -1,8 +1,50 @@
 import type * as Runtime from '@runtime'
-import { Timings, Try } from '@shared'
+import { Json, S, Timings, Try } from '@shared'
 import * as Tests from '@shared-tests'
-import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
+import Exec from '@shared/os/exec'
 import { publishBuild } from '../workspace-src/Workspace/WorkspaceBuild'
+
+Tests.test('a failed old-build cleanup preserves the installed revision inventory', async () => {
+  const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/workspace-build-cleanup-'))
+  await Try(async () => {
+    const script = createCleanupFailureProbe(root, 'mock')
+    const result = await Exec.captureStdout('bun', ['-e', script], { cwd: Repo.resolvePath('ts/0-workspace') })
+    Tests.expect(result).toBe('1 second third')
+    Tests.expect(await FS.exists(Path.join(root, 'runtime/src/Removed.ts'))).toBe(false)
+    Tests.expect(await FS.readFile(Path.join(root, 'build/App.tsx'), 'utf8')).toBe('third')
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
+function createCleanupFailureProbe(root: string, mockExport: keyof Pick<typeof Tests, 'mock'>): string {
+  const workspaceBuild = Repo.resolvePath('ts/0-workspace/workspace-src/Workspace/WorkspaceBuild.ts')
+  return S`
+    const { ${mockExport}: mock } = await import('@shared-tests');
+    const os = await import('@shared/os');
+    const { FS, Path } = os;
+    const remove = FS.rm;
+    let failures = 0;
+    mock.module('@shared/os', () => ({ ...os, FS: { ...FS, async rm(path, options) {
+      if (path.endsWith('.previous') && failures === 0) {
+        failures++;
+        throw new Error('the displaced tree is locked');
+      }
+      return remove(path, options);
+    }}}));
+    const { Timings } = await import('@shared');
+    const { publishBuild } = await import(${Json.Print(workspaceBuild)});
+    const root = ${Json.Print(root)};
+    const directory = Path.join(root, 'runtime');
+    const runtime = { directory, appPath: Path.join(directory, 'src/App.tsx') };
+    const publish = (revision, files) => Timings.createTopLevelTimer(timings =>
+      publishBuild(Path.join(root, 'build'), files, revision, async () => runtime, () => true, timings))();
+    await publish('first', { 'App.tsx': 'first' });
+    await publish('second', { 'App.tsx': 'second', 'Removed.ts': 'export {}' });
+    const installed = runtime.generated.revision;
+    await publish('third', { 'App.tsx': 'third' });
+    console.log(failures, installed, runtime.generated.revision);
+  `
+}
 
 Tests.test('repairs a missing or dangling memory-build mirror', async () => {
   const root = Artifacts.resolvePath('tmp', `workspace-build-repair-${Platform.randomUUID()}`)

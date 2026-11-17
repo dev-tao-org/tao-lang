@@ -20,6 +20,9 @@ export const describe = testApi('describe')
 /** expect exposes test assertions and their matcher helpers. */
 export const expect = testApi('expect')
 
+/** mock exposes Bun's test mocking API for isolated failure probes. */
+export const mock = testApi('mock')
+
 /** test registers a test when invoked by the test runner. */
 export const test = testApi('test')
 
@@ -54,7 +57,7 @@ function resolveEnvironmentScopes(): EnvironmentScopes {
 }
 
 type TestsModule = BunTestModule
-type TestApiName = 'describe' | 'expect' | 'test'
+type TestApiName = 'describe' | 'expect' | 'mock' | 'test'
 
 function testApi<Name extends TestApiName>(name: Name): TestsModule[Name] {
   return new Proxy<(...args: unknown[]) => unknown>(function(...args: unknown[]) {
