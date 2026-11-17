@@ -17,5 +17,5 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "Unselected", TR.ViewDeclaration("Unselected", [], _Views.TaoView_Unselected_a6f315dbebd4, _Scope));
+  TR.LetDeclaration(_Scope, "Unselected", TR.ViewDeclaration("Unselected", [], _Views.TaoView_Unselected_6e43c6a20700, _Scope));
 }

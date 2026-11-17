@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import * as _Views from "./LanguageFeatures.views";
-import { ForeignGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/package-graph/tao-lang/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
+import { ForeignGreeting as _taoForeignView0 } from "/Users/ro/.codex/worktrees/partial-review-next/tao-lang/Apps/TS Lib App/src/ts/ForeignGreeting.tsx";
 import type { Scope as ImportedScope0 } from "../tao/ui/Views";
 import type { Scope as ImportedScope1 } from "./cards/Card";
 import type { Scope as ImportedScope2 } from "./cards/Other";
@@ -53,7 +53,7 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_a2b02828914f, _Scope));
+  TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_458541f9dcf3, _Scope));
   TR.LetDeclaration(_Scope, "ForeignGreeting", TR.ForeignView("ForeignGreeting", ["Value"], _taoForeignView0, _Scope));
 }
 
