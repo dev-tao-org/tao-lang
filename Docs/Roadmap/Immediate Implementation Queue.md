@@ -19,6 +19,7 @@ Status: complete. Independently reviewed rollback `1d95d7b9` integrated here; re
 - Synchronous-batch repair integrated from `bc5d463a`: ordinary synchronous results with a noncallable `then` field are accepted. Disabled and Boolean support remain removed. Human review is still separate.
 - Reactive runtime follow-up remains under review. The read-only observation boundary replaces selective feedback containment in the runtime and its authored TypeScript API. Collection-publication benchmarks retain work counts and timings. Authored runtime type mappings remain stable across source rebuilds, avoiding unnecessary npm setup; preview validation and execution share one pinned runtime generation. Verification and measurement evidence live in the implementation checkpoint.
 - Finish the native CI worker's exact-tip verification and performance report; independently review, integrate and verify that branch separately. Earlier green CI is not evidence for a later tip.
+- [Studio output reconciliation](../Dev%20Env/Generated%20Output.md#reconciliation-of-the-studio-output-experiment) records the superseded pipeline and its retained evidence. The package layout slice owns foreign-view path relocation. Retain the old worktree pending durable evidence preservation and verification.
 - Preserve performance and review evidence, back up commits, and retire worktrees only when their unique evidence is safe. Remote archive publication remains separately deferred for this consolidation.
 
 ## 3. Reconcile the complete design ledger

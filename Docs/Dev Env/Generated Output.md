@@ -36,3 +36,22 @@ The authored standalone consumer's ordinary file dependency selects `.cli` expli
 Compilation respects session ownership and reports a busy session when that same session is active.
 Outputs remain after commands exit. Explicit project cleanup removes inactive session outputs;
 the next build recreates them. No session name has special retention behavior.
+
+## Reconciliation of the Studio output experiment
+
+The dirty `feat/tracked-studio-output` checkout at `17c2c529b` experimented with opt-in target
+manifests, a second publication from accepted Studio builds, cleanup retention and byte comparison
+in `check`. Commit `403bdfb65` established ordinary named-session compilation. Commit
+`6861204dc` tracked the resulting examples, and `e7b92c6af` added generated-project typechecking.
+Use the named-session workflow above.
+
+Keep the portability result from the experiment. At `bfc14aa2`, generated Kitchen Sink and Demo
+foreign-view imports named the checkout that compiled them. The committed layout checkpoint
+`c7fab3ec` still showed those imports after moving the modules. The generated package layout
+work owns relocation proof. Regenerate and typecheck from another checkout, and verify both
+the app and the library resolve foreign views without imports into the original checkout.
+
+The local [evidence inventory](../../.artifacts/notes/tracked-output-reconciliation/17c2c529b/README.md)
+records the dirty snapshot, per-file dispositions, generated specimens and available test results.
+Retain the old checkout until the evidence is durably archived and verified. The patch and
+generated specimens are historical evidence for that archive.
