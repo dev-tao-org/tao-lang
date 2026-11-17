@@ -1,5 +1,6 @@
 import z from '../../bridges/Bridge_zod'
-import { Errors, Json, Regxs, Try } from '../../universal/universal'
+import { Json, Regxs, Try } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import * as Native from '../bridges/Bridge_node/Bridge_node'
@@ -150,7 +151,7 @@ export async function writeJson(
 ): Promise<void> {
   const contents = Json.Print(value, options) as OptionalJsonContents
   if (contents === undefined) {
-    Errors.ThrowUserInput(`JSON value cannot be written to a file: ${path}`)
+    UserInput.fail(`JSON value cannot be written to a file: ${path}`)
   }
   await Native.writeFile(path, contents, {
     encoding: options.encoding ?? 'utf8',

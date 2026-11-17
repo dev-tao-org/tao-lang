@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Errors, Json, NewlineCharacter, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, HeadlessBrowser, Path, Platform, Repo } from '@shared/os'
 import { prepareProject } from '../workspace-src/ProjectPreparation'
@@ -42,7 +42,7 @@ Tests.test('external npm-backed foreign view renders through the default Expo Me
     async catch(error) {
       const output = await expo?.output()
       const details = Json.Print(Errors.describe(error))
-      Errors.ThrowUserInput(
+      UserInput.fail(
         `Headless Metro acceptance failed. ${
           output ? `${output.stdout}${NewlineCharacter}${output.stderr}` : ''
         } ${details}`,

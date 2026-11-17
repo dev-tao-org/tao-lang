@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try, UserInput } from '@shared'
 import { FileLock, FS, Path } from '@shared/os'
 import * as Lifecycle from './Lifecycle'
 import { deriveProjectLayout, type ProjectLayout } from './Projects'
@@ -21,9 +21,7 @@ export async function acquireSession(
   }
   const layout = deriveProjectLayout(Path.resolve(projectRoot))
   const lifecycle = await Lifecycle.acquireProjectLifecycle(layout.root, 2_000)
-  if (!lifecycle) {
-    Errors.ThrowUserInput('Project maintenance is active. Retry session startup when it finishes.')
-  }
+  UserInput.require(!!lifecycle, 'Project maintenance is active. Retry session startup when it finishes.')
   return await Try(async () => {
     const lock = await acquireSessionLock(layout, id)
     return await Try(() => prepareSession(id, layout, lock), {
@@ -49,7 +47,7 @@ type SessionKind = 'cli' | 'studio'
 
 function validateSessionId(id: string): void {
   if (!isUserSessionId(id)) {
-    Errors.ThrowUserInput(`Invalid project session ID: ${id}`)
+    UserInput.fail(`Invalid project session ID: ${id}`)
   }
 }
 
@@ -84,11 +82,11 @@ async function acquireSessionLock(layout: ProjectLayout, id: string): Promise<Fi
   )
   const lockPath = Path.join(layout.sessionLocksDirectory, `${id}.lock`)
   if (Lifecycle.pathExists(lockPath) && !Lifecycle.isRegularFile(lockPath)) {
-    Errors.ThrowUserInput(`Project session lock is not a regular file: ${lockPath}`)
+    UserInput.fail(`Project session lock is not a regular file: ${lockPath}`)
   }
   const lock = await FileLock.tryAcquire(lockPath)
   if (lock === undefined) {
-    Errors.ThrowUserInput(`Project session is already active: ${id}`)
+    UserInput.fail(`Project session is already active: ${id}`)
   }
   return lock
 }
@@ -111,7 +109,7 @@ async function clearPreviousSidecarSnapshots(directory: string): Promise<void> {
     return
   }
   if (!Lifecycle.isRealDirectory(snapshots)) {
-    Errors.ThrowUserInput(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
+    UserInput.fail(`Project sidecar snapshot path is not a real directory: ${snapshots}`)
   }
   await FS.rm(snapshots, { recursive: true, force: true })
 }

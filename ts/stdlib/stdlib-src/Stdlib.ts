@@ -1,5 +1,5 @@
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { NewlineCharacter, Regxs, Try } from '@shared'
 import { FS, Path, Platform, Storage } from '@shared/os'
 import ProjectIgnore from './.tao/.gitignore' with { type: 'text' }
 import ProjectMetadata from './.tao/store/project.json' with { type: 'json' }
@@ -74,14 +74,13 @@ function serializeStdlibResourceEntries(entries: StdlibResourceEntries): string 
 }
 
 function validateResources(entries: StdlibResourceEntries): void {
-  if (
-    entries.length === 0 || entries.some(([path]) => {
+  UserInput.require(
+    !(entries.length === 0 || entries.some(([path]) => {
       return Path.isAbsolute(path)
         || path.split(Regxs.PathSeparatorRegx).some(part => !part || part === '.' || part === '..')
-    })
-  ) {
-    Errors.ThrowUserInput('Embedded stdlib project contains an unsafe resource path.')
-  }
+    })),
+    'Embedded stdlib project contains an unsafe resource path.',
+  )
 }
 
 async function isReadyProject(
@@ -141,6 +140,6 @@ function assertContainedPath(path: string, parent: string): void {
   const resolvedParent = Try.WithDefault(undefined, () => FS.realpathSync(parent))
   const canonicalPath = Try.WithDefault(undefined, () => FS.realpathSync(path))
   if (!resolvedParent || !canonicalPath || !Path.isWithin(resolvedParent, canonicalPath)) {
-    Errors.ThrowUserInput(`Stdlib project cache path escapes its cache root: ${path}`)
+    UserInput.fail(`Stdlib project cache path escapes its cache root: ${path}`)
   }
 }

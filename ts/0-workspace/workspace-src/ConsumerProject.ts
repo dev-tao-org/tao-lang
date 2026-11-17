@@ -1,5 +1,5 @@
 import * as Expo from '@runtime/expo'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Path } from '@shared/os'
 import { resolveCompileTarget } from './CompileTarget'
 import { withDependencySession } from './ModuleDependencies'
@@ -19,7 +19,7 @@ export async function withConsumerProject(
   const manifest = await readTypeScriptProjectPackage(packageDirectory)
   const project = await discoverProject(packageDirectory)
   if (!project) {
-    Errors.ThrowUserInput(`No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
+    UserInput.fail(`No Tao project owns ${packageDirectory}. Run tao init <project-directory>.`)
   }
   await ensureProjectMetadata(project.root)
   await withDependencySession(project.root, sessionId, async session => {
@@ -41,16 +41,14 @@ async function compileConsumerLibrary(
   }
   const target = await resolveCompileTarget(manifest.directory)
   if (target.kind !== 'library' || !target.name) {
-    return Errors.ThrowUserInput(
-      'A React consumer tao.compile configuration must select a named TypeScript library output.',
-    )
+    return UserInput.fail('A React consumer tao.compile configuration must select a named TypeScript library output.')
   }
   const directory = await publishLibrary(target, session)
   return { name: target.name, directory }
 }
 
 function createHostOptions(manifest: TypeScriptProjectPackage, directory: string, library: OptionalConsumerLibrary) {
-  const run = manifest.run ?? Errors.ThrowUserInput('Configure tao.run.entry in the authored package.json.')
+  const run = manifest.run ?? UserInput.fail('Configure tao.run.entry in the authored package.json.')
   return {
     directory,
     packageDirectory: manifest.directory,

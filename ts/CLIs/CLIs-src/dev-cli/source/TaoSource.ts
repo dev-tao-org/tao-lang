@@ -5,7 +5,7 @@ import type * as Embedded from '@fix/embedded'
 import * as Grammar from '@grammar'
 import * as Typecheck from '@typecheck'
 
-import { Errors, Timings } from '@shared'
+import { Timings, UserInput } from '@shared'
 import { FS } from '@shared/os'
 
 import { prepareParser } from '../../cli-checks/parser-build'
@@ -50,7 +50,7 @@ function applySourceFixes(
 ): Fix.FormatInput {
   const ast = timings.run(AST.transform, input.tree)
   if (!ast) {
-    Errors.ThrowUserInput(`Fixing requires a complete Tao document: ${path}`)
+    UserInput.fail(`Fixing requires a complete Tao document: ${path}`)
   }
   const result = timings.run(Fix.fix, { source: input.source, tree: input.tree, ast })
   if (result.text === input.source) {

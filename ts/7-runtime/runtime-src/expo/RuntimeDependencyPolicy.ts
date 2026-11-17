@@ -1,6 +1,5 @@
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { Lists } from '@shared'
-import { Errors } from '@shared'
 import { FS, Path } from '@shared/os'
 import { readRuntimePatches, type RuntimePatches } from './RuntimePatches'
 
@@ -11,7 +10,7 @@ export type RuntimeDependencyLock = Record<string, unknown> & { packages: Record
 export function parseRuntimeDependencyLock(contents: string, path: string): RuntimeDependencyLock {
   const parsed: unknown = Json.Parse(contents)
   if (!isRuntimeDependencyLock(parsed)) {
-    Errors.ThrowUserInput(`Runtime dependency lock ${path} must contain package records with string identities.`)
+    UserInput.fail(`Runtime dependency lock ${path} must contain package records with string identities.`)
   }
   return parsed
 }
@@ -42,7 +41,7 @@ export async function readRuntimeDependencyPolicy(directory: string): Promise<Ru
   for (const identity of Object.keys(patchedDependencies)) {
     const versionAt = identity.lastIndexOf('@')
     if (versionAt <= 0) {
-      Errors.ThrowUserInput(`Runtime dependency patch must identify an exact package: ${identity}`)
+      UserInput.fail(`Runtime dependency patch must identify an exact package: ${identity}`)
     }
     const name = identity.slice(0, versionAt)
     if (name !== 'metro') {
@@ -71,7 +70,7 @@ function readLockedPackageVersion(lock: RuntimeDependencyLock, packageName: stri
   }
   const identityPrefix = `${packageName}@`
   if (!packageIdentity.startsWith(identityPrefix)) {
-    Errors.ThrowUserInput(`Runtime dependency lock entry for ${packageName} has an invalid identity.`)
+    UserInput.fail(`Runtime dependency lock entry for ${packageName} has an invalid identity.`)
   }
   return packageIdentity.slice(identityPrefix.length)
 }

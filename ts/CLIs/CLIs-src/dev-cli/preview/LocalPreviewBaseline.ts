@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as Performance from '@repo-analysis/performance'
-import { Errors, NewlineCharacter, Objects, Schema } from '@shared'
+import { NewlineCharacter, Objects, Schema, UserInput } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -54,9 +54,7 @@ async function measureFreshProcess(): Promise<string> {
     },
   })
   const line = output.split(NewlineCharacter).findLast(text => text.startsWith(PreviewPerformanceReportPrefix))
-  if (!line) {
-    Errors.ThrowUserInput('Preview process did not print its raw report path.')
-  }
+  UserInput.require(!!line, 'Preview process did not print its raw report path.')
   return line.slice(PreviewPerformanceReportPrefix.length)
 }
 
@@ -87,18 +85,20 @@ async function readReport(path: string): Promise<PreviewReport> {
 
 async function requireUnchangedSource(root: string, commit: string): Promise<void> {
   const status = await captureGit(root, ['status', '--porcelain=v1', '--untracked-files=all'])
-  if (status || await resolveCommit(root, 'HEAD') !== commit) {
-    Errors.ThrowUserInput('Commit local changes and keep the checkout at one revision throughout baseline capture.')
-  }
+  UserInput.require(
+    !(status || await resolveCommit(root, 'HEAD') !== commit),
+    'Commit local changes and keep the checkout at one revision throughout baseline capture.',
+  )
 }
 
 function requireComparableSessions(reports: PreviewReport[], commit: string): void {
   const first = reports[0]!
   const uniqueSessions = new Set(reports.map(report => report.sessionId))
   const valid = reports.every(report => isBaselineSample(report, commit) && sameConditions(first, report))
-  if (!valid || uniqueSessions.size !== BaselineSessions) {
-    Errors.ThrowUserInput('Baseline needs five independent sessions of the same complete workload.')
-  }
+  UserInput.require(
+    !(!valid || uniqueSessions.size !== BaselineSessions),
+    'Baseline needs five independent sessions of the same complete workload.',
+  )
 }
 
 function isBaselineSample(report: PreviewReport, commit: string): boolean {

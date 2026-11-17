@@ -1,4 +1,4 @@
-import { Errors, Regxs } from '@shared'
+import { Regxs, UserInput } from '@shared'
 import { Path, Platform } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 import { emitStringLiteral } from './codegen-util'
@@ -22,7 +22,7 @@ export function createGeneratedPaths(program: Typecheck.LinkedProgram): Generate
     const path = resolveGeneratedModulePath(module.path, root, directory)
     const stem = path.replace(Regxs.TypeScriptFileExtensionRegx, '')
     if (outputs.has(stem)) {
-      Errors.ThrowUserInput(`Generated source paths collide: ${path}.`)
+      UserInput.fail(`Generated source paths collide: ${path}.`)
     }
     outputs.add(stem)
     outputs.add(stem + '.views')

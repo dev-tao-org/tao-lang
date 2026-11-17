@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 import * as BridgeExpoConfig from '@runtime/bridges/Bridge_expo/Bridge_expo-config'
-import { Errors, Try, UserInput } from '@shared'
+import { Try, UserInput } from '@shared'
 import { Terminal } from '@shared/os'
 import * as Workspace from '@workspace'
 
@@ -31,13 +31,12 @@ export default registerCommand({
       await Workspace.withConsumerProject(directory, options.session, host => startExpo(host, options))
       return
     }
-    if (options.package) {
-      Errors.ThrowUserInput('Use --package for a React consumer, or provide a Tao app entry file.')
-    }
+    UserInput.require(!options.package, 'Use --package for a React consumer, or provide a Tao app entry file.')
     const target = await Workspace.resolveCompileTarget(CLIKit.resolveCallerPath('.'), entry)
-    if (target.kind !== 'app') {
-      Errors.ThrowUserInput('Run a TypeScript library through its React consumer package with --package.')
-    }
+    UserInput.require(
+      target.kind === 'app',
+      'Run a TypeScript library through its React consumer package with --package.',
+    )
     const workspace = await prepareCompiledApplication(target, options.session, options.yes)
     await Try(() => startExpo(workspace.runtime!.directory, options), { finally: () => workspace.dispose() })
   },

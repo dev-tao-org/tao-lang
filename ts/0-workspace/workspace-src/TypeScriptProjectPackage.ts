@@ -1,6 +1,5 @@
 import type * as Runtime from '@runtime'
-import { Json } from '@shared'
-import { Errors } from '@shared'
+import { Json, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 
 /** TypeScriptProjectPackage retains authored dependency and Tao configuration at its package directory. */
@@ -23,7 +22,7 @@ export async function readTypeScriptProjectPackage(directory: string): Promise<T
   const root = Path.resolve(directory)
   const path = Path.join(root, 'package.json')
   if (!FS.existsSync(path)) {
-    return Errors.ThrowUserInput(`No package.json at ${root}; select the authored TypeScript package with --package.`)
+    return UserInput.fail(`No package.json at ${root}; select the authored TypeScript package with --package.`)
   }
   return parseTypeScriptProjectPackage(await FS.readFile(path, 'utf8'), root)
 }
@@ -45,9 +44,10 @@ function parseTypeScriptProjectPackage(source: string, directory: string): TypeS
 
 function readCompileConfiguration(value: unknown): PackageCompileConfiguration {
   const configuration = requirePackageRecord(value, 'tao.compile')
-  if (configuration.out !== undefined) {
-    Errors.ThrowUserInput('Remove tao.compile.out; build output is owned by the selected session.')
-  }
+  UserInput.require(
+    configuration.out === undefined,
+    'Remove tao.compile.out; build output is owned by the selected session.',
+  )
   return {
     entry: requireString(configuration.entry, 'tao.compile.entry'),
     name: readOptionalString(configuration.name, 'tao.compile.name'),
@@ -64,7 +64,7 @@ function readRunConfiguration(value: unknown, name: string): PackageRunConfigura
 
 function requirePackageRecord(value: unknown, field: string): PackageRecord {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return Errors.ThrowUserInput(`${field} must be an object.`)
+    return UserInput.fail(`${field} must be an object.`)
   }
   return value as PackageRecord
 }
@@ -79,7 +79,7 @@ function readPackageVersions(value: unknown): Runtime.RuntimePackageVersions {
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value) {
-    return Errors.ThrowUserInput(`${field} must be a non-empty string.`)
+    return UserInput.fail(`${field} must be a non-empty string.`)
   }
   return value
 }

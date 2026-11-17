@@ -1,4 +1,4 @@
-import { Errors, Regxs, Try } from '@shared'
+import { Regxs, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import type * as Typecheck from '@typecheck'
 import * as Catalog from './Catalog'
@@ -31,7 +31,7 @@ export async function importTargets(
     return await resolveExternalTargets(address, specifier, importer, context)
   }
   if (!physicalImporter) {
-    Errors.ThrowUserInput(`Cannot resolve module ${specifier} from virtual source ${importer}.`)
+    UserInput.fail(`Cannot resolve module ${specifier} from virtual source ${importer}.`)
   }
   if (address) {
     const files = await resolvePackageFiles(address, specifier, context.projectRoot)
@@ -54,7 +54,7 @@ function parsePackageAddress(specifier: string): PackageAddress | undefined {
     return undefined
   }
   if (!Regxs.ModuleAliasRegx.test(name)) {
-    Errors.ThrowUserInput(`Invalid package path ${specifier}.`)
+    UserInput.fail(`Invalid package path ${specifier}.`)
   }
   return { name, parts }
 }
@@ -68,11 +68,11 @@ async function resolveExternalTargets(
   const alias = address.projectAlias!
   const dependency = await context.options.resolveProject?.(importer, alias)
   if (!dependency) {
-    Errors.ThrowUserInput(`Project dependency ${alias} is not available while resolving ${specifier}.`)
+    UserInput.fail(`Project dependency ${alias} is not available while resolving ${specifier}.`)
   }
   const projectRoot = Paths.resolveCanonicalProjectRoot(dependency.root)
   if (!projectRoot) {
-    Errors.ThrowUserInput(`Project dependency ${alias} has no valid project root.`)
+    UserInput.fail(`Project dependency ${alias} has no valid project root.`)
   }
   const files = await resolvePackageFiles(address, specifier, projectRoot)
   return files.map(path => ({ path, relation: 'package-api', projectRoot, projectAlias: alias }))
@@ -86,7 +86,7 @@ async function resolvePackageFiles(
   const root = await requirePackageRoot(address, specifier, projectRoot)
   const target = Path.resolve(root, ...address.parts)
   if (Paths.findNamedPackageRoot(target, projectRoot) !== root) {
-    Errors.ThrowUserInput(`Package path ${specifier} crosses a named package boundary.`)
+    UserInput.fail(`Package path ${specifier} crosses a named package boundary.`)
   }
   if (target !== root) {
     requireImportDirectory(target, specifier, projectRoot)
@@ -101,12 +101,12 @@ async function requirePackageRoot(
 ): Promise<string> {
   const roots = await Catalog.findNamedPackageDirectories(projectRoot, address.name)
   if (roots.length > 1) {
-    Errors.ThrowUserInput(`Package ${address.name} is ambiguous in project ${projectRoot}.`)
+    UserInput.fail(`Package ${address.name} is ambiguous in project ${projectRoot}.`)
   }
   const root = roots[0]
   if (root === undefined) {
     const imported = address.projectAlias ? `Project module ${specifier}` : `Package ${address.name}`
-    Errors.ThrowUserInput(`${imported} was not found in project ${projectRoot}.`)
+    UserInput.fail(`${imported} was not found in project ${projectRoot}.`)
   }
   return root
 }
@@ -117,13 +117,13 @@ async function resolveRelativeTargets(
   projectRoot: string,
 ): Promise<ModuleTarget[]> {
   if (!isRelativeImport(specifier)) {
-    Errors.ThrowUserInput(`Import path ${specifier} must be relative or name a package.`)
+    UserInput.fail(`Import path ${specifier} must be relative or name a package.`)
   }
   const directory = Path.dirname(importer)
   const target = Path.resolve(directory, specifier)
   requireImportDirectory(target, specifier, projectRoot)
   if (Paths.findNamedPackageRoot(target, projectRoot) !== Paths.findNamedPackageRoot(directory, projectRoot)) {
-    Errors.ThrowUserInput(`Relative module ${specifier} crosses a named package boundary.`)
+    UserInput.fail(`Relative module ${specifier} crosses a named package boundary.`)
   }
   const files = await Catalog.listDirectSourceFiles(target, projectRoot)
   return files.map(path => localTarget(importer, path))
@@ -135,13 +135,13 @@ function isRelativeImport(specifier: string): boolean {
 
 function requireImportDirectory(target: string, specifier: string, projectRoot: string): void {
   if (!FS.existsSync(target)) {
-    Errors.ThrowUserInput(`Import folder ${specifier} was not found.`)
+    UserInput.fail(`Import folder ${specifier} was not found.`)
   }
   if (!Paths.resolveRealPathInsideProject(target, projectRoot)) {
-    Errors.ThrowUserInput(`Module ${specifier} leaves the owning Tao project.`)
+    UserInput.fail(`Module ${specifier} leaves the owning Tao project.`)
   }
   if (!Try.WithDefault(false, () => FS.lstatSync(target).isDirectory())) {
-    Errors.ThrowUserInput(`Import path ${specifier} must name a folder.`)
+    UserInput.fail(`Import path ${specifier} must name a folder.`)
   }
 }
 

@@ -1,4 +1,4 @@
-import { Errors, Json, NewlineCharacter, Regxs, Sort, Try } from '@shared'
+import { Json, NewlineCharacter, Regxs, Sort, Try, UserInput } from '@shared'
 import { FileLock, FS, Path, Platform } from '@shared/os'
 import type { Correction, LearningFileHashes, LearningSnapshot, LearningState } from './LearningTypes'
 
@@ -20,17 +20,16 @@ export async function withLearningState<Value>(
   const directory = Path.join(root, '.artifacts/notes/review-learning')
   await ensureProjectMetadataDirectory(root, directory)
   const lock = await FileLock.tryAcquire(Path.join(directory, 'operation.lock'))
-  if (!lock) {
-    Errors.ThrowUserInput('Another review learning operation is active.')
-  }
+  UserInput.require(!!lock, 'Another review learning operation is active.')
   return await Try(async () => {
     const path = Path.join(directory, 'state.json')
     const state: LearningState = await FS.exists(path)
       ? await readLearningState(path)
       : { version: 1, root, corrections: [], scans: [], proposals: [], protectedFiles: [], events: [] }
-    if (state.version !== 1 || state.root !== root) {
-      Errors.ThrowUserInput('Review learning state belongs to another checkout or version.')
-    }
+    UserInput.require(
+      !(state.version !== 1 || state.root !== root),
+      'Review learning state belongs to another checkout or version.',
+    )
     const result = await action(state)
     await saveLearningState(state)
     return result
@@ -50,13 +49,13 @@ export function safeSourcePath(root: string, input: string, allowRoot = false): 
   const absolute = Path.resolve(root, input)
   const relative = Path.relative(root, absolute).replaceAll('\\', '/')
   if (isUnsafeSourcePath(relative, allowRoot)) {
-    Errors.ThrowUserInput(`Unsafe source path: ${input}`)
+    UserInput.fail(`Unsafe source path: ${input}`)
   }
   let current = root
   for (const segment of relative.split('/').filter(Boolean)) {
     current = Path.join(current, segment)
     if (FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()) {
-      Errors.ThrowUserInput(`Symbolic links are outside review learning scope: ${input}`)
+      UserInput.fail(`Symbolic links are outside review learning scope: ${input}`)
     }
   }
   return relative
@@ -97,9 +96,10 @@ export async function ensureProjectMetadataDirectory(root: string, directory: st
   let current = root
   for (const segment of relative.replaceAll('\\', '/').split('/')) {
     current = Path.join(current, segment)
-    if (FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()) {
-      Errors.ThrowUserInput('Review learning metadata directories must not be symbolic links.')
-    }
+    UserInput.require(
+      !(FS.existsSync(current) && FS.lstatSync(current).isSymbolicLink()),
+      'Review learning metadata directories must not be symbolic links.',
+    )
     await FS.mkdir(current)
   }
 }

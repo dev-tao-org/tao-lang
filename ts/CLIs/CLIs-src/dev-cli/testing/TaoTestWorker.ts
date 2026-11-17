@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
-import { Errors, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { Try } from '@shared'
 import { FS, Platform, Process } from '@shared/os'
 import { Cancellation } from '@shared/web'
 import type { TaoWorkerReport } from './TestPlan'
@@ -41,8 +41,9 @@ function workerArguments(args: readonly string[]): { reportPath: string; paths: 
   const paths = separator < 0 ? [] : args.slice(separator + 1)
   const reportIndex = options.indexOf('--report')
   const reportPath = reportIndex < 0 ? undefined : options[reportIndex + 1]
-  if (!reportPath || paths.length === 0) {
-    Errors.ThrowUserInput('Tao test worker requires --report <path> and at least one test file.')
-  }
-  return { reportPath: reportPath ?? Errors.ThrowUserInput('Tao test worker requires a report path.'), paths }
+  UserInput.require(
+    !(!reportPath || paths.length === 0),
+    'Tao test worker requires --report <path> and at least one test file.',
+  )
+  return { reportPath: reportPath ?? UserInput.fail('Tao test worker requires a report path.'), paths }
 }

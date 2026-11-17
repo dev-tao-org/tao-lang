@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs, S } from '@shared'
+import { Errors, NewlineCharacter, Regxs, S, UserInput } from '@shared'
 import type { HeadlessBrowser } from '@shared/os'
 
 import type { PreviewScenario } from './PreviewScenarios'
@@ -78,9 +78,7 @@ const RenderIndent = '    '
 
 function renderEntry(canonical: string, step: PreviewRenderStep, cycle: number): string {
   const marker = `Text("${InitialMarker}")`
-  if (!canonical.includes(marker)) {
-    Errors.ThrowUserInput('Performance entry is missing its initial render marker.')
-  }
+  UserInput.require(!!canonical.includes(marker), 'Performance entry is missing its initial render marker.')
   const blocks = [`Text("${entryMarker(step, cycle)}")`]
   blocks.push(...Array.from({ length: step.localBranches }, () => LocalBranch))
   const branches = PreviewImportGroupRoots.map(root => `Load${root * PreviewViewsPerFile}`)

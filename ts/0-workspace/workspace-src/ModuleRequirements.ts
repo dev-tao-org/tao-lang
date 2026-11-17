@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import * as SourceValidation from '@source-validation'
 import { valid } from './bridges/Bridge_semver'
 import type { ManagedModuleRequirement } from './sidecars/ManagedModule/ManagedModules'
@@ -24,7 +24,7 @@ function createModuleRequirement(
 ): ManagedModuleRequirement {
   const version = declaration.version
   if (!version || valid(version) !== version) {
-    Errors.ThrowUserInput(`npm dependency ${declaration.identifier} needs an exact version in ${path}.`)
+    UserInput.fail(`npm dependency ${declaration.identifier} needs an exact version in ${path}.`)
   }
   if (declaration.alias) {
     SourceValidation.requireValidDeclarationName(declaration.alias, path)

@@ -1,4 +1,5 @@
 import { Errors, Switch, Time, Try } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
 import * as Node from '../bridges/Bridge_node/Bridge_node'
 import type { Dirent } from '../bridges/Bridge_node/Bridge_node'
 import { dirname, join, posix, readdir, win32 } from '../bridges/Bridge_node/Bridge_node'
@@ -150,7 +151,7 @@ function xdgPath(value: EnvironmentValue, fallback: string): string {
 function resolveBelow(root: string, segments: readonly string[]): string {
   const result = Node.resolve(root, ...segments)
   if (!Path.isWithin(root, result)) {
-    Errors.ThrowUserInput(`Storage path escapes its configured root: ${result}`)
+    UserInput.fail(`Storage path escapes its configured root: ${result}`)
   }
   return result
 }

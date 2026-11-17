@@ -1,17 +1,16 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Errors, Regxs } from '@shared'
+import { Errors, Regxs, UserInput } from '@shared'
 import { FS, Path, Platform, Storage, Terminal } from '@shared/os'
 import { Http } from '@shared/web'
 
 /** installTailscale installs the official standalone macOS package without replacing an existing app variant. */
 export async function installTailscale(dryRun: boolean): Promise<void> {
   const io = createSystemInstallIO()
-  if (io.platform !== 'Darwin') {
-    Errors.ThrowUserInput(
-      'tailscale-install currently supports macOS. See https://tailscale.com/docs/install for other systems.',
-    )
-  }
+  UserInput.require(
+    io.platform === 'Darwin',
+    'tailscale-install currently supports macOS. See https://tailscale.com/docs/install for other systems.',
+  )
   if (await io.exists(TailscaleApp)) {
     io.print('Tailscale is already installed; keeping the existing app. Open it to sign in or connect.')
     printNextSteps(io.print)
@@ -25,11 +24,10 @@ export async function installTailscale(dryRun: boolean): Promise<void> {
     )
     return
   }
-  if (!io.interactive) {
-    Errors.ThrowUserInput(
-      'Run just tailscale-install in an interactive terminal for macOS administrator authorization.',
-    )
-  }
+  UserInput.require(
+    !!io.interactive,
+    'Run just tailscale-install in an interactive terminal for macOS administrator authorization.',
+  )
   const directory = Storage.resolveCacheDirectory('downloads', 'tailscale', Platform.randomUUID())
   await FS.mkdir(directory)
   const path = Path.join(directory, packageName)

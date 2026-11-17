@@ -1,5 +1,5 @@
-import * as Errors from '../Errors'
 import * as Sort from '../Sort'
+import * as UserInput from '../UserInput'
 import { Print } from './Native'
 
 /** Canonical serializes strict JSON data with recursive ordinal UTF-16 object-key order.
@@ -20,7 +20,7 @@ function serializeValue(value: unknown, ancestors: Set<object>): string {
     return Print(value)
   }
   if (typeof value !== 'object') {
-    return Errors.ThrowUserInput('Canonical JSON requires JSON data without unsupported values.')
+    return UserInput.fail('Canonical JSON requires JSON data without unsupported values.')
   }
   requireAcyclic(value, ancestors)
   ancestors.add(value)
@@ -30,23 +30,17 @@ function serializeValue(value: unknown, ancestors: Set<object>): string {
 }
 
 function requireFiniteNumber(value: number): void {
-  if (!Number.isFinite(value)) {
-    Errors.ThrowUserInput('Canonical JSON requires finite numbers.')
-  }
+  UserInput.require(!!Number.isFinite(value), 'Canonical JSON requires finite numbers.')
 }
 
 function requireAcyclic(value: object, ancestors: Set<object>): void {
-  if (ancestors.has(value)) {
-    Errors.ThrowUserInput('Canonical JSON cannot serialize cycles.')
-  }
+  UserInput.require(!ancestors.has(value), 'Canonical JSON cannot serialize cycles.')
 }
 
 function serializeArray(value: unknown[], ancestors: Set<object>): string {
   requirePrototype(value, Array.prototype)
   const keys = Reflect.ownKeys(value)
-  if (keys.length !== value.length + 1) {
-    Errors.ThrowUserInput('Canonical JSON requires dense arrays without extra properties.')
-  }
+  UserInput.require(keys.length === value.length + 1, 'Canonical JSON requires dense arrays without extra properties.')
   const values: string[] = []
   for (let index = 0; index < value.length; index++) {
     values.push(serializeValue(requireDataProperty(value, String(index)), ancestors))
@@ -66,24 +60,24 @@ function serializeRecord(value: object, ancestors: Set<object>): string {
 }
 
 function requirePrototype(value: object, expected: object): void {
-  if (Object.getPrototypeOf(value) !== expected) {
-    Errors.ThrowUserInput('Canonical JSON requires plain records and arrays without custom prototypes.')
-  }
+  UserInput.require(
+    Object.getPrototypeOf(value) === expected,
+    'Canonical JSON requires plain records and arrays without custom prototypes.',
+  )
 }
 
 type PropertyKey = string | symbol
 
 function requireStringKey(key: PropertyKey): string {
-  if (typeof key !== 'string') {
-    Errors.ThrowUserInput('Canonical JSON cannot serialize symbol keys.')
-  }
+  UserInput.require(typeof key === 'string', 'Canonical JSON cannot serialize symbol keys.')
   return key
 }
 
 function requireDataProperty(value: object, name: string): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(value, name)
-  if (!descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) {
-    Errors.ThrowUserInput('Canonical JSON requires enumerable data properties without holes or accessors.')
-  }
+  UserInput.require(
+    !(!descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')),
+    'Canonical JSON requires enumerable data properties without holes or accessors.',
+  )
   return descriptor.value as unknown
 }

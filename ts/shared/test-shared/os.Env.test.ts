@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, Env, Path } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -37,12 +37,12 @@ Tests.test('environment scopes isolate concurrent work, nesting, failures and ch
       Tests.expect(Env.KeyValuePairs([key])).toEqual([[key, value]])
       const child = await Exec.capture('bun', ['-e', 'process.stdout.write(process.env.TAO_ENV_SCOPE_PROBE)'])
       Tests.expect(child.stdout).toBe(value)
-      Tests.throws(() => Tests.withEnv({ [key]: 'nested' }, () => Errors.ThrowUserInput('scope failure')))
+      Tests.throws(() => Tests.withEnv({ [key]: 'nested' }, () => UserInput.fail('scope failure')))
       Tests.expect(Env.get(key)).toBe(value)
       const rejectScope = Promise.withResolvers<void>()
       const failedScope = Tests.withEnv({ [key]: 'rejected' }, async () => {
         await rejectScope.promise
-        Errors.ThrowUserInput('async scope failure')
+        UserInput.fail('async scope failure')
       })
       rejectScope.resolve()
       await Tests.rejects(failedScope)

@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
-import { Errors, NullCharacter, Regxs, S, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { NullCharacter, Regxs, S, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -63,16 +63,15 @@ export async function discoverHosts(): Promise<DiscoveredHosts> {
 
 /** requireHost rejects SSH options and shell expressions where a host is expected. */
 export function requireHost(host: string): void {
-  if (!Regxs.SshHostRegx.test(host)) {
-    Errors.ThrowUserInput('Use an SSH alias or user@hostname. Run the skill helper hosts to discover candidates.')
-  }
+  UserInput.require(
+    !!Regxs.SshHostRegx.test(host),
+    'Use an SSH alias or user@hostname. Run the skill helper hosts to discover candidates.',
+  )
 }
 
 function createRemoteCommand(args: readonly string[], directory: string, log?: string): string {
   requireAbsoluteRemotePath(directory)
-  if (!args.length) {
-    Errors.ThrowUserInput('Provide a remote executable and its arguments.')
-  }
+  UserInput.require(!!args.length, 'Provide a remote executable and its arguments.')
   const command = args.map(quoteShellArgument).join(' ')
   if (log) {
     requireAbsoluteRemotePath(log)
@@ -86,14 +85,13 @@ function createRemoteCommand(args: readonly string[], directory: string, log?: s
 }
 
 function requireAbsoluteRemotePath(path: string): void {
-  if (!path.startsWith('/') || Regxs.RemotePathControlCharacterRegx.test(path)) {
-    Errors.ThrowUserInput('Use an absolute POSIX path on the runner, without control characters or ~ expansion.')
-  }
+  UserInput.require(
+    !(!path.startsWith('/') || Regxs.RemotePathControlCharacterRegx.test(path)),
+    'Use an absolute POSIX path on the runner, without control characters or ~ expansion.',
+  )
 }
 
 function quoteShellArgument(value: string): string {
-  if (value.includes(NullCharacter)) {
-    Errors.ThrowUserInput('Remote arguments cannot contain a null character.')
-  }
+  UserInput.require(!value.includes(NullCharacter), 'Remote arguments cannot contain a null character.')
   return "'" + value.replaceAll("'", "'\\''") + "'"
 }

@@ -1,4 +1,4 @@
-import { Errors, Regxs, Switch, Try } from '@shared'
+import { Errors, Regxs, Switch, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import type { DependencyRequirement, DependencyStoreOptions, LockedSource } from './Types'
 
@@ -42,7 +42,7 @@ type PreviousSource = LockedSource | undefined
 type OptionalSubdirectory = string | undefined
 
 function preparationNeeded(message: string): never {
-  Errors.ThrowUserInput(message)
+  UserInput.fail(message)
 }
 
 function canonicalFileSource(parent: string, identifier: string): string {
@@ -207,10 +207,10 @@ function githubCoordinates(identifier: string): { repository: string; subdirecto
   // ex: x/foo/ui/forms -> owner x, name foo, subdirectory [ui, forms]
   const [owner, name, ...subdirectory] = normalized.split('/')
   if (!owner || !name) {
-    Errors.ThrowUserInput(`Invalid GitHub dependency identifier ${identifier}.`)
+    UserInput.fail(`Invalid GitHub dependency identifier ${identifier}.`)
   }
   if (!Regxs.GithubCoordinateRegx.test(owner) || !Regxs.GithubCoordinateRegx.test(name)) {
-    Errors.ThrowUserInput(`Invalid GitHub dependency identifier ${identifier}.`)
+    UserInput.fail(`Invalid GitHub dependency identifier ${identifier}.`)
   }
   return {
     repository: `https://github.com/${owner}/${name}.git`,

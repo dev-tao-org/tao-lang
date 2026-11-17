@@ -1,4 +1,5 @@
-import { Errors } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
+
 import { Buffer as NodeBuffer, type IncomingRequest } from '../bridges/Bridge_node/Bridge_node'
 
 /** IncomingRequest describes a streaming Node HTTP request. */
@@ -16,7 +17,7 @@ export async function readRequestText(request: IncomingRequest, limit: number, l
     size += bytes.length
     if (size > limit) {
       request.destroy()
-      Errors.ThrowUserInput(limitMessage)
+      UserInput.fail(limitMessage)
     }
     chunks.push(bytes)
   }

@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { FS, Path } from '@shared/os'
 import { withConsumerProject } from '../workspace-src/ConsumerProject'
@@ -47,7 +47,7 @@ Tests.test('managed consumer host borrows authored dependencies and protects act
     const protectedState = await cleanProject(root)
     Tests.expect(protectedState.skippedActive).toEqual(['ownership'])
     Tests.expect(protectedState.sharedProtected).toBe(true)
-    Errors.ThrowUserInput('Recorded host process failure')
+    UserInput.fail('Recorded host process failure')
   })).rejects.toThrow('Recorded host process failure')
   const session = await acquireSession(root, { id: 'ownership' })
   session.release()

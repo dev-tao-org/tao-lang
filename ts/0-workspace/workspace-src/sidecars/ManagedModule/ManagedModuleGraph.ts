@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Errors, Lists, Sort, Try } from '@shared'
+import { Lists, Sort, Try, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import { satisfies, valid, validRange } from '../../bridges/Bridge_semver'
@@ -26,7 +26,7 @@ export function collectAllRequirements(
   for (const [name, choices] of versions) {
     if (choices.size > 1) {
       const details = [...choices].map(([version, owners]) => `${version} from ${[...owners].join(', ')}`)
-      Errors.ThrowUserInput(`Managed modules require incompatible versions of ${name}: ${details.join('; ')}.`)
+      UserInput.fail(`Managed modules require incompatible versions of ${name}: ${details.join('; ')}.`)
     }
   }
   return Object.fromEntries(
@@ -50,11 +50,10 @@ export function validateGraphContents(
   requirements: readonly ManagedTypes.NormalizedManagedRequirement[],
   runtimePins: ManagedTypes.ManagedRuntimePins,
 ): void {
-  if (!graphContentsMatch(source, requirements, runtimePins)) {
-    Errors.ThrowUserInput(
-      'Managed npm lock does not match exact top-level requirements; repair it with: tao setup --repair.',
-    )
-  }
+  UserInput.require(
+    !!graphContentsMatch(source, requirements, runtimePins),
+    'Managed npm lock does not match exact top-level requirements; repair it with: tao setup --repair.',
+  )
 }
 
 /** graphContentsMatch checks whether a serialized Bun lock has the required direct package pins. */
@@ -135,13 +134,13 @@ type InstalledPackageGraph = { packages: InstalledPackage[]; visited: Set<string
 
 function validatePackageName(name: string, owner: string): void {
   if (!isNpmPackageName(name)) {
-    Errors.ThrowUserInput(`Managed npm package name ${name} in ${owner} is invalid.`)
+    UserInput.fail(`Managed npm package name ${name} in ${owner} is invalid.`)
   }
 }
 
 function requireExactVersion(name: string, version: string, origin: string): void {
   if (valid(version) !== version) {
-    Errors.ThrowUserInput(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
+    UserInput.fail(`Managed npm requires an exact version for ${name} in ${origin}; received ${version}.`)
   }
 }
 
@@ -163,7 +162,7 @@ function validateSingleton(name: string, packages: InstalledPackage[], expected?
   const canonical = new Set(instances.map(item => FS.realpathSync(item.directory)))
   if (canonical.size > 1 || expected && instances.some(item => item.version !== expected)) {
     const details = instances.map(item => `${item.directory}@${item.version}`).join(', ')
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm graph has incompatible singleton ${name}: ${details}. Change owning npm requirements to compatible versions, then run tao setup --repair.`,
     )
   }
@@ -216,9 +215,7 @@ async function findPackageDirectory(
     () => Promise.resolve(FS.resolvePackageDirectory(name, from)),
   )
   if (directory === undefined && !optional) {
-    Errors.ThrowUserInput(
-      `Managed npm ${peer ? 'peer incompatibility' : 'graph'}: missing ${name}, required by ${from}.`,
-    )
+    UserInput.fail(`Managed npm ${peer ? 'peer incompatibility' : 'graph'}: missing ${name}, required by ${from}.`)
   }
   return directory
 }
@@ -233,14 +230,14 @@ function validateInstalledMetadata(
   from: string,
 ): asserts metadata is PackageMetadata.InstalledPackageMetadata {
   if (!PackageMetadata.hasPackageIdentity(metadata)) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
       } ${name} required by ${from} resolved invalid metadata at ${directory}.`,
     )
   }
   if (metadata.name !== expectedName) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm ${
         peer ? 'peer' : 'dependency'
       } ${name} required by ${from} resolved package ${metadata.name} at ${directory}.`,
@@ -290,7 +287,7 @@ function validateRange(name: string, actual: string, range: DependencyVersionRan
     return
   }
   if (!satisfies(actual, range, { includePrerelease: true })) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm ${peer ? 'peer incompatibility' : 'package mismatch'}: ${name}@${actual} does not satisfy ${range}.`,
     )
   }
@@ -311,7 +308,7 @@ function parseNpmAlias(
   const targetName = separator > 0 ? target.slice(0, separator) : target
   const targetRange = separator > 0 ? target.slice(separator + 1) : undefined
   if (!isNpmPackageName(targetName) || targetRange === '') {
-    Errors.ThrowUserInput(`Managed npm alias ${name} required by ${from} has invalid target ${range}.`)
+    UserInput.fail(`Managed npm alias ${name} required by ${from} has invalid target ${range}.`)
   }
   return { name: targetName, range: targetRange }
 }

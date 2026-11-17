@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Env } from '@shared/os'
 
 import { DefaultTimingEdits, DefaultTimingSamples } from '../timing/TimingCommandOptions'
@@ -25,20 +25,20 @@ export default registerCommand({
     }
     const host = options.host ?? Env.get('TAO_TIMING_HOST')
     const repo = checkout ?? Env.get('TAO_TIMING_CHECKOUT')
-    if (!host || !repo) {
-      Errors.ThrowUserInput(
-        'Set TAO_TIMING_HOST and TAO_TIMING_CHECKOUT, or pass --host and a prepared runner checkout.',
-      )
-    }
+    UserInput.require(
+      !(!host || !repo),
+      'Set TAO_TIMING_HOST and TAO_TIMING_CHECKOUT, or pass --host and a prepared runner checkout.',
+    )
     const { runTiming } = await import('../timing/TimingRun')
     await runTiming({ host, repo, samples: DefaultTimingSamples, edits: DefaultTimingEdits, dryRun: options.dryRun })
   },
 })
 
 async function runLocalDiagnostic(checkout: RunnerCheckout, options: TimingOptions): Promise<void> {
-  if (checkout !== undefined || options.host !== undefined) {
-    Errors.ThrowUserInput('--local measures the current checkout. Omit the runner checkout and --host.')
-  }
+  UserInput.require(
+    !(checkout !== undefined || options.host !== undefined),
+    '--local measures the current checkout. Omit the runner checkout and --host.',
+  )
   // Formal speed tests run on the dedicated timing machine in an isolated checkout under its timing lock.
   if (options.dryRun) {
     IO.print('Would run a local preview diagnostic in the current checkout.')

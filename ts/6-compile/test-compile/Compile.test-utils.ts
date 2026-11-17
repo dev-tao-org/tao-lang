@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, UserInput } from '@shared'
 import { Path } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import type { CompiledFiles } from '../compile-src/Compile'
@@ -78,7 +78,7 @@ function transpile(source: string, path: string): string {
   })
   const errors = collectTranspileErrors(output)
   if (errors.length > 0) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Generated TypeScript failed to transpile in ${path}: ${errors.map(error => error.messageText).join('; ')}`,
     )
   }

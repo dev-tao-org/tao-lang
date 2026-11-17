@@ -1,4 +1,4 @@
-import { ControlCCharacter, Errors, Time, Try } from '@shared'
+import { ControlCCharacter, Time, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HttpServer, Path, Platform, Streams, Text } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -62,7 +62,7 @@ async function waitForReady(read: () => string): Promise<void> {
     return output.includes('show all commands') && output.includes('Ctrl+C') ? success(true) : undefined
   }, { timeout: 45_000 })
   if (ready === undefined) {
-    Errors.ThrowUserInput('Interactive Expo did not become ready:\n' + read())
+    UserInput.fail('Interactive Expo did not become ready:\n' + read())
   }
 }
 
@@ -71,6 +71,6 @@ async function waitForCommands(read: () => string): Promise<void> {
     timeout: 5000,
   })
   if (ready === undefined) {
-    Errors.ThrowUserInput('Expo did not show its web shortcut:\n' + read())
+    UserInput.fail('Expo did not show its web shortcut:\n' + read())
   }
 }

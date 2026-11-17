@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Json, NewlineCharacter, Regxs } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs, UserInput } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform } from '@shared/os'
 import { JobFileName, JobsDirectory } from '../../agent-skills/performance-investigation/JobFiles'
 import { describeTimingComparison } from './TimingComparison'
@@ -43,9 +43,7 @@ export async function readTimingReport(
   controlPath: string,
 ): Promise<TimingReport> {
   const { parseTimingReport } = await import('./TimingReportContract')
-  if (!Path.posix.isAbsolute(request.tooling)) {
-    Errors.ThrowUserInput('Use an absolute runner tooling checkout path.')
-  }
+  UserInput.require(!!Path.posix.isAbsolute(request.tooling), 'Use an absolute runner tooling checkout path.')
   const remote = { host: request.host, directory: request.tooling, controlPath }
   const job = request.job ?? await readLatestJob(remote)
   requireJobPath(job, request.tooling)
@@ -100,9 +98,7 @@ async function readLatestJob(remote: Omit<TimingRemoteRequest, 'args'>): Promise
   const args = ['/bin/ls', '-1t', jobs]
   const listing = await readTimingRemote(withTimingArguments(remote, args))
   const latest = listing.split(Regxs.TimingListingLineBreakRegx).find(name => Regxs.TimingJobIdRegx.test(name))
-  if (!latest) {
-    Errors.ThrowUserInput('No timing jobs were found in this tooling checkout.')
-  }
+  UserInput.require(!!latest, 'No timing jobs were found in this tooling checkout.')
   return Path.posix.join(jobs, latest)
 }
 
@@ -112,7 +108,8 @@ function withTimingArguments(remote: Omit<TimingRemoteRequest, 'args'>, args: re
 
 function requireJobPath(job: string, tooling: string): void {
   const parent = Path.posix.join(tooling, JobsDirectory)
-  if (Path.posix.dirname(job) !== parent || !Regxs.TimingJobIdRegx.test(Path.posix.basename(job))) {
-    Errors.ThrowUserInput('Select a job directly inside this tooling checkout’s retained jobs directory.')
-  }
+  UserInput.require(
+    !(Path.posix.dirname(job) !== parent || !Regxs.TimingJobIdRegx.test(Path.posix.basename(job))),
+    'Select a job directly inside this tooling checkout’s retained jobs directory.',
+  )
 }

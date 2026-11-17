@@ -1,7 +1,7 @@
 import type * as Compile from '@compile'
 import * as Runtime from '@runtime'
 
-import { Errors, Timings, Try } from '@shared'
+import { Errors, Timings, Try, UserInput } from '@shared'
 import * as Shared from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { Document } from '../Document'
@@ -66,7 +66,7 @@ async function runAppTestSession(app: string, state: Session, context: DriverCon
   const result = await state.workspace.update(new Document(path, source))
   assertActive(signal)
   if (result.status !== 'published') {
-    Errors.ThrowUserInput(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
+    UserInput.fail(result.status === 'failed' ? result.error : `App test compilation was ${result.status}.`)
   }
   onProgress?.('Starting Expo…')
   state.expo = await Runtime.start(state.workspace.runtime!, { signal })

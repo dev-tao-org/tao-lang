@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as Performance from '@repo-analysis/performance'
-import { Errors, S } from '@shared'
+import { S, UserInput } from '@shared'
 import { Path } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
 import { isRegularTreeFile, parseTreeEntries } from '../../agent-skills/performance-investigation/SourceTree'
@@ -49,20 +49,23 @@ export async function runTiming(options: TimingRun, summary: (message: string) =
 /** requireTimingRun rejects invalid workloads and paths before authentication or measurement. */
 export function requireTimingRun(options: TimingRun): void {
   requireHost(options.host)
-  if (!Path.posix.isAbsolute(options.repo)) {
-    Errors.ThrowUserInput('Use absolute paths for the runner checkout and optional tooling checkout.')
-  }
-  if (options.tooling !== undefined && !Path.posix.isAbsolute(options.tooling)) {
-    Errors.ThrowUserInput('Use absolute paths for the runner checkout and optional tooling checkout.')
-  }
+  UserInput.require(
+    !!Path.posix.isAbsolute(options.repo),
+    'Use absolute paths for the runner checkout and optional tooling checkout.',
+  )
+  UserInput.require(
+    !(options.tooling !== undefined && !Path.posix.isAbsolute(options.tooling)),
+    'Use absolute paths for the runner checkout and optional tooling checkout.',
+  )
   if (!hasValidWorkload(options)) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Use a positive session count and an edit count that is a positive multiple of ${Performance.PreviewCycleSize}.`,
     )
   }
-  if (options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)) {
-    Errors.ThrowUserInput('Use an absolute runner fixture path.')
-  }
+  UserInput.require(
+    !(options.fixture !== undefined && !Path.posix.isAbsolute(options.fixture)),
+    'Use an absolute runner fixture path.',
+  )
 }
 
 function hasValidWorkload(options: TimingRun): boolean {
@@ -79,7 +82,7 @@ async function readCandidateFixture(repo: string, remote: TimingRunner): Promise
     isRegularTreeFile(entry) && entry.path.endsWith(PerformanceFixtureSuffix)
   )
   if (candidates.length !== 1) {
-    Errors.ThrowUserInput(`Expected one committed performance fixture in ${repo}. Supply --fixture to select it.`)
+    UserInput.fail(`Expected one committed performance fixture in ${repo}. Supply --fixture to select it.`)
   }
   return Path.posix.join(repo, candidates[0]!.path)
 }

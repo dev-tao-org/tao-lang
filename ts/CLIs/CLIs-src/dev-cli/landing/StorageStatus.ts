@@ -1,4 +1,4 @@
-import { Errors, NullCharacter, Regxs } from '@shared'
+import { NullCharacter, Regxs, UserInput } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords } from './PreviewRecords'
 
@@ -21,11 +21,12 @@ export async function requireOwnedStorageChanges(io: LandingIO): Promise<void> {
   for (const entry of status.split(NullCharacter).filter(Boolean)) {
     const path = entry.slice(3)
     const expected = allowed.get(path)
-    if (expected === undefined || Regxs.GitStatusChangeCodeRegx.test(entry.slice(0, 2))) {
-      Errors.ThrowUserInput('Storage contains changes outside this task; preserve and resolve them before landing.')
-    }
+    UserInput.require(
+      !(expected === undefined || Regxs.GitStatusChangeCodeRegx.test(entry.slice(0, 2))),
+      'Storage contains changes outside this task; preserve and resolve them before landing.',
+    )
     if (!await io.exists(`.storage/${path}`) || await io.read(`.storage/${path}`) !== expected) {
-      Errors.ThrowUserInput(`Storage retry bytes differ from the validated pending record: ${path}.`)
+      UserInput.fail(`Storage retry bytes differ from the validated pending record: ${path}.`)
     }
   }
 }

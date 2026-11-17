@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { NewlineCharacter, Regxs, UserInput } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { assertNewWorkspaceTree } from './check'
@@ -48,7 +48,7 @@ async function formatRequestedTarget(mode: FormatMode, root: string, path: strin
   Repo.assertNewWorkspacePath(absolute, root)
   if (!FS.existsSync(absolute) || !FS.statSync(absolute).isFile()) {
     if (!Regxs.CliGlobTokenRegx.test(path)) {
-      Errors.ThrowUserInput(`Formatting requires a file or glob: ${path}`)
+      UserInput.fail(`Formatting requires a file or glob: ${path}`)
     }
     await formatDprintSelection(mode, root, path)
     return
@@ -105,12 +105,12 @@ function assertDprintSelection(root: string, output: string, exactPath?: string)
   const paths = output.endsWith(NewlineCharacter) ? output.slice(0, -1) : output
   for (const path of paths.split(NewlineCharacter)) {
     if (!Path.isAbsolute(path) || !Path.isWithin(canonicalRoot, path)) {
-      Errors.ThrowUserInput(`dprint reported a path outside ${root}: ${path}`)
+      UserInput.fail(`dprint reported a path outside ${root}: ${path}`)
     }
     const selectedPath = Path.resolve(root, Path.relative(canonicalRoot, path))
     Repo.assertNewWorkspacePath(selectedPath, root)
     if (canonicalExactPath !== undefined && FS.realpathSync(selectedPath) !== canonicalExactPath) {
-      Errors.ThrowUserInput(`dprint selected another file for ${exactPath}: ${selectedPath}`)
+      UserInput.fail(`dprint selected another file for ${exactPath}: ${selectedPath}`)
     }
   }
 }

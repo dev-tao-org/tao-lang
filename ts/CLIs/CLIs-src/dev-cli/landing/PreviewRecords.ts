@@ -1,5 +1,5 @@
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Json, UserInput } from '@shared'
+import { NewlineCharacter, Regxs } from '@shared'
 import { Platform } from '@shared/os'
 import { git, type LandingIO } from './LandingIO'
 
@@ -18,9 +18,7 @@ export async function pendingPreviewRecords(io: LandingIO): Promise<PreviewRecor
     '--',
     'AGENTS.md',
   ])).split(NewlineCharacter)[0]
-  if (!introduced) {
-    Errors.ThrowUserInput('Cannot locate the preview-record policy introduction in this branch.')
-  }
+  UserInput.require(!!introduced, 'Cannot locate the preview-record policy introduction in this branch.')
   const commits = await git(io, [
     'rev-list',
     '--reverse',
@@ -65,14 +63,14 @@ async function readRecord(io: LandingIO, source: string): Promise<PreviewRecord>
   const tree = await git(io, ['rev-parse', `${source}^{tree}`])
   const fixture = await git(io, ['show', `${source}:${metadata.fixture?.path}`], { trim: false })
   if (!validMetadata(metadata, source, tree, report, fixture)) {
-    Errors.ThrowUserInput(`Preview record ${source} is failed, unavailable, inconsistent or incomplete.`)
+    UserInput.fail(`Preview record ${source} is failed, unavailable, inconsistent or incomplete.`)
   }
   return { source, record, report, directory }
 }
 
 async function requirePreviewRecordFiles(io: LandingIO, base: string, source: string): Promise<void> {
   if (!await io.exists(`${base}/record.json`) || !await io.exists(`${base}/report.json`)) {
-    Errors.ThrowUserInput(`Missing preview measurement for ${source}; historical capture is not available.`)
+    UserInput.fail(`Missing preview measurement for ${source}; historical capture is not available.`)
   }
 }
 

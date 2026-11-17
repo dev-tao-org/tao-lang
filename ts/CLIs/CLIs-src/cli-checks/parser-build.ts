@@ -1,5 +1,5 @@
 import * as CLIKit from '@cli-kit'
-import { Errors, Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
@@ -21,7 +21,7 @@ export async function assertParserOutputTrees(root: string): Promise<void> {
     const linked = FS.lstatSync(directory).isSymbolicLink()
       || (await FS.readdir(directory, { recursive: true, withFileTypes: true })).some(entry => entry.isSymbolicLink())
     if (linked) {
-      Errors.ThrowUserInput(`Parser output must remain in a real workspace directory: ${directory}`)
+      UserInput.fail(`Parser output must remain in a real workspace directory: ${directory}`)
     }
   }
 }

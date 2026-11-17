@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { TypeScript } from '@tao/shared/typescript'
 
 /** assertUniqueSecretStoreKeys rejects JSONC keys that conversion would overwrite or discard. */
@@ -15,7 +15,7 @@ function visit(node: TypeScript.Node): void {
       }
       const name = property.name.text
       if (name === '__proto__' || names.has(name)) {
-        Errors.ThrowUserInput(`The secret store contains a duplicate or reserved key: ${name}`)
+        UserInput.fail(`The secret store contains a duplicate or reserved key: ${name}`)
       }
       names.add(name)
     }

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, Switch } from '@shared'
+import { Switch, UserInput } from '@shared'
 import type { ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import { isTextExpression } from './ValuesCompiler'
@@ -40,11 +40,11 @@ function compileContextCapture(
   if (reference.value === 'children' || reference.value === 'press') {
     return RuntimeEmitter.InjectionCapture(node, reference.value, `${names.render}.${reference.value}`)
   }
-  return Errors.ThrowUserInput(`Unsupported injection context @@${reference.value}.`)
+  return UserInput.fail(`Unsupported injection context @@${reference.value}.`)
 }
 
 function assertCaptureName(name: string): void {
   if (name === 'TR' || name === 'Tao') {
-    Errors.ThrowUserInput(`Injection capture name ${name} conflicts with generated JavaScript.`)
+    UserInput.fail(`Injection capture name ${name} conflicts with generated JavaScript.`)
   }
 }

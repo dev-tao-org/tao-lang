@@ -1,4 +1,4 @@
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try, UserInput } from '@shared'
 import { Artifacts, Path, Platform, Repo } from '@shared/os'
 import { Process } from '@shared/os'
 import { IO } from '../cli-kit/cli-kit'
@@ -70,9 +70,10 @@ function readTestFileTimings(report: string): TestFileTiming[] {
 /** parseSlowTestSeconds validates a per-run warning threshold without changing test selection or outcomes. */
 export function parseSlowTestSeconds(value = '0.075'): number {
   const seconds = Number(value)
-  if (!value.trim() || !Number.isFinite(seconds) || seconds < 0) {
-    Errors.ThrowUserInput('--slow requires a finite, non-negative duration in seconds.')
-  }
+  UserInput.require(
+    !(!value.trim() || !Number.isFinite(seconds) || seconds < 0),
+    '--slow requires a finite, non-negative duration in seconds.',
+  )
   return seconds
 }
 

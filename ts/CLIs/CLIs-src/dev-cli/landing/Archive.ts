@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs } from '@shared'
+import { Errors, NewlineCharacter, Regxs, UserInput } from '@shared'
 import { git, type LandingIO } from './LandingIO'
 import { pendingPreviewRecords, type PreviewRecord } from './PreviewRecords'
 import { pinArchive, requireSourceHead } from './SourceIdentity'
@@ -59,9 +59,10 @@ async function reconcileArchive(io: LandingIO, remote: string, records: PreviewR
     }
     return
   }
-  if (base !== tip) {
-    Errors.ThrowUserInput('Storage history diverged; resolve it without rewriting history before retrying land.')
-  }
+  UserInput.require(
+    base === tip,
+    'Storage history diverged; resolve it without rewriting history before retrying land.',
+  )
   const local = (await git(io, ['log', '--format=', '--name-only', `${tip}..HEAD`], { storage: true })).split(
     NewlineCharacter,
   )
@@ -70,7 +71,7 @@ async function reconcileArchive(io: LandingIO, remote: string, records: PreviewR
     records.flatMap(record => [`${record.directory}/record.json`, `${record.directory}/report.json`]),
   )
   if (local.some(path => !allowed.has(path))) {
-    Errors.ThrowUserInput(`Storage has unpublished changes outside this task on ${remote}; refusing to publish them.`)
+    UserInput.fail(`Storage has unpublished changes outside this task on ${remote}; refusing to publish them.`)
   }
 }
 
@@ -80,7 +81,7 @@ async function copyRecords(io: LandingIO, records: PreviewRecord[]): Promise<voi
       const path = `.storage/${record.directory}/${name}`
       if (await io.exists(path)) {
         if (await io.read(path) !== content) {
-          Errors.ThrowUserInput(`The immutable archive already contains different bytes at ${path}.`)
+          UserInput.fail(`The immutable archive already contains different bytes at ${path}.`)
         }
       } else {
         await io.write(path, content)

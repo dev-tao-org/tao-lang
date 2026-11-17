@@ -1,5 +1,5 @@
 import * as Compile from '@compile'
-import { Errors, Regxs } from '@shared'
+import { Errors, Regxs, UserInput } from '@shared'
 import { Path, Text } from '@shared/os'
 import * as Typecheck from '@typecheck'
 
@@ -53,7 +53,7 @@ const EmptyFacadeSpecifiers: ReadonlySet<string> = new Set()
 
 function prepareSidecarBytes(path: string, bytes: Uint8Array, facadeSpecifiers: ReadonlySet<string>): Uint8Array {
   if (Regxs.TaoSourceExtensionRegx.test(path)) {
-    Errors.ThrowUserInput(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
+    UserInput.fail(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
   }
   if (!isScriptSource(path)) {
     return bytes
@@ -68,7 +68,7 @@ function prepareSidecarBytes(path: string, bytes: Uint8Array, facadeSpecifiers: 
 
 function resolveModuleSpecifier(path: string, specifier: string, facadeSpecifiers: ReadonlySet<string>): string {
   if (Path.isAbsolute(specifier) || specifier.startsWith('file:')) {
-    Errors.ThrowUserInput(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
+    UserInput.fail(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
   }
   if (specifier === '@tao/runtime-api') {
     return '@tao/runtime/runtime-api'
@@ -77,7 +77,7 @@ function resolveModuleSpecifier(path: string, specifier: string, facadeSpecifier
     return specifier
   }
   if (Path.posix.normalize(specifier) !== specifier) {
-    Errors.ThrowUserInput(`Invalid published Tao package subpath: ${specifier}.`)
+    UserInput.fail(`Invalid published Tao package subpath: ${specifier}.`)
   }
   return Compile.resolveModuleSpecifier(path, `ts/${specifier}.ts`)
 }

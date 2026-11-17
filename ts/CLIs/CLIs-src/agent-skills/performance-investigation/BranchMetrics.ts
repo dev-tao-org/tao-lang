@@ -1,5 +1,5 @@
 import * as Performance from '@repo-analysis/performance'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import type { PreviewReport } from './ReportContract'
 import { median } from './Summary'
 
@@ -68,9 +68,10 @@ export function describeWarmWork(reports: PreviewReport[]): WarmPreviewWork {
 
 /** compareBranchMetrics uses whole sessions as units and validates equal pair counts. */
 export function compareBranchMetrics(sessions: BranchSessions): BranchMetric[] {
-  if (sessions.baseline.length !== sessions.candidate.length || !sessions.baseline.length) {
-    Errors.ThrowUserInput('Branch comparison requires equal, nonempty sets of paired sessions.')
-  }
+  UserInput.require(
+    !(sessions.baseline.length !== sessions.candidate.length || !sessions.baseline.length),
+    'Branch comparison requires equal, nonempty sets of paired sessions.',
+  )
   return Metrics.map(metric => compareMetric(metric, sessions))
 }
 

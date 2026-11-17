@@ -1,4 +1,4 @@
-import { Errors, Switch, Try } from '@shared'
+import { Errors, Switch, Try, UserInput } from '@shared'
 import { Platform } from '@shared/os'
 import { inspectProjectPreparation, type PreparationOptions, prepareProject } from './ProjectPreparation'
 import { discoverProject } from './projects/Projects'
@@ -145,7 +145,7 @@ async function openWorkflowWorkspace(
       if (initialResult.status === 'failed' && initialResult.setupRequired) {
         requireSetup(initialResult.error)
       }
-      Errors.ThrowUserInput(
+      UserInput.fail(
         initialResult.status === 'failed'
           ? initialResult.error
           : `Workflow compilation was ${initialResult.status}: ${request.entry}`,
@@ -167,14 +167,10 @@ function createWorkflowWorkspaceOptions(request: Extract<WorkflowRequest, { kind
 }
 
 async function confirmSetup(entry: string, message: string, ui: WorkflowUI): Promise<void> {
-  if (!await ui.confirm({ entry, message })) {
-    Errors.ThrowUserInput('Dependency setup was declined.')
-  }
+  UserInput.require(!!(await ui.confirm({ entry, message })), 'Dependency setup was declined.')
   assertActive(ui)
 }
 
 function assertActive(ui: WorkflowUI): void {
-  if (ui.cancelled?.()) {
-    Errors.ThrowUserInput('Workflow cancelled.')
-  }
+  UserInput.require(!ui.cancelled?.(), 'Workflow cancelled.')
 }

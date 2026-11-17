@@ -1,5 +1,5 @@
 import * as Compile from '@compile'
-import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
+import { NewlineCharacter, Regxs, Try, UserInput } from '@shared'
 import { Files, FS, Path } from '@shared/os'
 import type { SidecarCommandResult } from './ManagedModule/ManagedModuleTypes'
 
@@ -28,15 +28,15 @@ export async function checkForeignViewContract(
   executor: ContractExecutor,
 ): Promise<string> {
   if (!Regxs.JavaScriptIdentifierRegx.test(contract.name)) {
-    Errors.ThrowUserInput(`Invalid foreign view export name: ${contract.name}`)
+    UserInput.fail(`Invalid foreign view export name: ${contract.name}`)
   }
   const exportRelativePath = Path.relative(contract.directory, contract.exportFile)
   if (!Path.isWithin(contract.directory, contract.exportFile)) {
-    Errors.ThrowUserInput(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
+    UserInput.fail(`Foreign view export must be inside its Tao module: ${contract.exportFile}`)
   }
   for (const name of Object.keys(contract.parameters)) {
     if (!Regxs.JavaScriptIdentifierRegx.test(name)) {
-      Errors.ThrowUserInput(`Invalid foreign view parameter name: ${name}`)
+      UserInput.fail(`Invalid foreign view parameter name: ${name}`)
     }
   }
   const file = Path.join(contract.directory, `.tao-${contract.name}.contract.ts`)
@@ -54,7 +54,7 @@ export async function checkForeignViewContract(
     Path.join(contract.directory, 'tsconfig.json'),
   ], contract.directory)
   if (result.status !== 0) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Foreign view ${contract.name} does not satisfy its declared props contract. ${result.stderr || result.stdout}`,
     )
   }
@@ -65,7 +65,7 @@ async function writeOwnedContract(path: string, contents: string): Promise<void>
   const marker = `${path}.tao-managed`
   const ownership = await Try.WithDefault(undefined, () => FS.readFile(marker, 'utf8'))
   if (await FS.exists(path) && ownership !== ForeignViewContractOwnership) {
-    Errors.ThrowUserInput(`Foreign view contract path is already owned: ${path}`)
+    UserInput.fail(`Foreign view contract path is already owned: ${path}`)
   }
   if (ownership === undefined) {
     await Files.writeReadOnly(marker, ForeignViewContractOwnership)

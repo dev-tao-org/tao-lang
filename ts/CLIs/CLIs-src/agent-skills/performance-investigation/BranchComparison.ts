@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as Performance from '@repo-analysis/performance'
-import { Errors, Objects, Time, Try } from '@shared'
+import { Errors, Objects, Time, Try, UserInput } from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as Metrics from './BranchMetrics'
 import { formatBranchComparison } from './BranchReport'
@@ -96,7 +96,7 @@ export async function runBranchComparison(options: BranchComparisonOptions): Pro
 /** requireBranchPairCount validates the sample count before connecting or measuring. */
 export function requireBranchPairCount(pairs: number): void {
   if (!Number.isInteger(pairs) || pairs < Metrics.MinimumBranchPairs) {
-    Errors.ThrowUserInput(`Use at least ${Metrics.MinimumBranchPairs} independent pairs per round.`)
+    UserInput.fail(`Use at least ${Metrics.MinimumBranchPairs} independent pairs per round.`)
   }
 }
 
@@ -183,20 +183,23 @@ async function measureRound(
 
 async function readComparableReport(path: string, comparison: BranchComparison, side: Side): Promise<PreviewReport> {
   const { job, reports } = await readCompletedJob(path)
-  if (job.commit !== comparison.commits[side] || job.fixtureSha256 !== comparison.fixtureSha256) {
-    Errors.ThrowUserInput('The branch or fixture changed after the comparison started.')
-  }
+  UserInput.require(
+    !(job.commit !== comparison.commits[side] || job.fixtureSha256 !== comparison.fixtureSha256),
+    'The branch or fixture changed after the comparison started.',
+  )
   return reports[0]
 }
 
 function requireComparableSession(report: PreviewReport, history: ScenarioSessions): void {
-  if (history.seenIds.has(report.sessionId)) {
-    Errors.ThrowUserInput('Duplicate preview sessions cannot count as independent pairs.')
-  }
+  UserInput.require(
+    !history.seenIds.has(report.sessionId),
+    'Duplicate preview sessions cannot count as independent pairs.',
+  )
   const conditions = describeMeasurementConditions(report)
-  if (history.conditions && !Objects.equal(conditions, history.conditions)) {
-    Errors.ThrowUserInput('Runner, toolchain or preview conditions differ across paired sessions.')
-  }
+  UserInput.require(
+    !(history.conditions && !Objects.equal(conditions, history.conditions)),
+    'Runner, toolchain or preview conditions differ across paired sessions.',
+  )
   history.conditions ??= conditions
   history.seenIds.add(report.sessionId)
 }

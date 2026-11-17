@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { Errors, UserInput } from '@shared'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
 export type TestExecutionOptions = { serial?: boolean; parallel?: ParallelBudget; yes?: boolean }
@@ -41,9 +41,7 @@ const DefaultTypeScriptWorkers = 5
 export function planTestExecution(options: TestExecutionRequest): TestPlan {
   const serial = options.serial ?? false
   const parallel = options.parallel
-  if (serial && parallel !== undefined) {
-    Errors.ThrowUserInput('--serial cannot be combined with --parallel.')
-  }
+  UserInput.require(!(serial && parallel !== undefined), '--serial cannot be combined with --parallel.')
   const typescriptSelected = options.typescriptArgs !== undefined
   const taoSelected = options.taoTarget !== undefined
   const sections = Number(typescriptSelected) + Number(taoSelected)
@@ -135,9 +133,10 @@ function parseParallelBudget(value: ParallelBudget): number {
     return DefaultTypeScriptWorkers + 1
   }
   const budget = Number(value)
-  if (!Number.isSafeInteger(budget) || budget < 1) {
-    Errors.ThrowUserInput('--parallel requires a positive whole-number worker budget.')
-  }
+  UserInput.require(
+    !(!Number.isSafeInteger(budget) || budget < 1),
+    '--parallel requires a positive whole-number worker budget.',
+  )
   return budget
 }
 

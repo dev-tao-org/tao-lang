@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors, Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { assertDoctorReady, type DoctorReport, doctorReport } from '../../cli-checks/doctor'
 import { registerCommand } from './_command-runner'
 
@@ -10,9 +10,10 @@ export default registerCommand({
   arguments: [{ name: 'args', variadic: true }],
   allowUnknownOptions: true,
   async action(args: string[]) {
-    if (args.some(arg => arg !== '--json' && arg !== '--fingerprint')) {
-      Errors.ThrowUserInput('Usage: doctor [--json] [--fingerprint]')
-    }
+    UserInput.require(
+      !args.some(arg => arg !== '--json' && arg !== '--fingerprint'),
+      'Usage: doctor [--json] [--fingerprint]',
+    )
     const fingerprintOnly = args.includes('--fingerprint')
     const report = await doctorReport(fingerprintOnly)
     if (fingerprintOnly) {

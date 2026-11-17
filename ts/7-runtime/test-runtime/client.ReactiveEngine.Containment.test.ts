@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Time, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { createReactiveEngine } from '../runtime-src/client/ReactiveEngine'
 
@@ -55,7 +55,7 @@ Tests.test('a rejected promise return stops its observer and releases the writin
   const receive = (value: number) => {
     calls += 1
     if (value === 1) {
-      return Promise.resolve().then(() => Errors.ThrowUserInput('late failure'))
+      return Promise.resolve().then(() => UserInput.fail('late failure'))
     }
     return undefined
   }

@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, Switch } from '@shared'
+import { Errors, NewlineCharacter, Switch, UserInput } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import { compileActionDeclaration, compilePressBinding } from './ActionsCompiler'
@@ -41,7 +41,7 @@ const RenderCompilation = (result: string, components: string): RenderCompilatio
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
   if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
-    Errors.ThrowUserInput(`Foreign view ${node.name.value} parameters must all use the text type.`)
+    UserInput.fail(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
   if (component === undefined) {

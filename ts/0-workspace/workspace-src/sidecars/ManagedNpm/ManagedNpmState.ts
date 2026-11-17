@@ -1,6 +1,6 @@
 import * as Runtime from '@runtime'
-import { Json, Objects } from '@shared'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Json, Objects, UserInput } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { collectAllRequirements } from '../ManagedModule/ManagedModuleGraph'
 import { typeScriptDefaultsHash } from '../ManagedModule/ManagedModuleMetadata'
@@ -23,9 +23,7 @@ export async function validateProfileMetadata(
 ): Promise<void> {
   if (!profileMetadataMatches(metadata, input, fingerprint, requirements, graphFingerprint)) {
     const owner = requirements[0]?.origin ?? 'project runtime'
-    Errors.ThrowUserInput(
-      `Managed npm dependencies changed. Repair with: tao setup --repair (owning declaration: ${owner})`,
-    )
+    UserInput.fail(`Managed npm dependencies changed. Repair with: tao setup --repair (owning declaration: ${owner})`)
   }
 }
 
@@ -59,7 +57,7 @@ function profileMetadataMatches(
 export async function ensureOwnedFile(path: string, contents: string, repair: boolean): Promise<void> {
   const current = await optionalText(path)
   if (current !== undefined && current !== contents && !repair) {
-    Errors.ThrowUserInput(`Managed npm metadata drifted. Repair with: tao setup --repair.`)
+    UserInput.fail(`Managed npm metadata drifted. Repair with: tao setup --repair.`)
   }
   if (current !== contents) {
     await writeReadOnly(path, contents)
@@ -79,7 +77,7 @@ export async function claimManagedProfile(
   const owner = `${fingerprint}${NewlineCharacter}`
   const current = await optionalText(marker)
   if (current !== undefined && current !== owner) {
-    Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+    UserInput.fail(`Managed npm cache path is already owned: ${profile}`)
   }
   const metadataText = await optionalText(metadataPath)
   if (metadataText !== undefined) {
@@ -89,26 +87,26 @@ export async function claimManagedProfile(
     }
     if (!repair || durableLock === undefined) {
       if (durableLock === undefined) {
-        Errors.ThrowUserInput(
+        UserInput.fail(
           `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control.`,
         )
       }
-      Errors.ThrowUserInput(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
+      UserInput.fail(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
     }
     if (
       hasConflictingProfileFingerprint(metadata, fingerprint)
       || !await profileContentsMatch(profile, durableLock, expectedManifest)
     ) {
-      Errors.ThrowUserInput(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
+      UserInput.fail(`Managed npm cache path is already owned or cannot be verified: ${profile}`)
     }
     return
   }
   if (current !== owner && !await FS.isEmptyDir(profile)) {
     if (!repair || durableLock === undefined) {
-      Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+      UserInput.fail(`Managed npm cache path is already owned: ${profile}`)
     }
     if (!await profileContentsMatch(profile, durableLock, expectedManifest)) {
-      Errors.ThrowUserInput(`Managed npm cache path is already owned: ${profile}`)
+      UserInput.fail(`Managed npm cache path is already owned: ${profile}`)
     }
     return
   }
@@ -143,21 +141,22 @@ export async function validateManagedManifest(
 ): Promise<void> {
   const expected = createManagedProfileManifest(requirements, runtimePins, runtimePolicy)
   const path = Path.join(profile, 'package.json')
-  if (!await FS.exists(path) || await FS.readFile(path, 'utf8') !== expected) {
-    Errors.ThrowUserInput('Managed npm manifest drifted. Repair with: tao setup --repair.')
-  }
+  UserInput.require(
+    !(!await FS.exists(path) || await FS.readFile(path, 'utf8') !== expected),
+    'Managed npm manifest drifted. Repair with: tao setup --repair.',
+  )
 }
 
 /** validateManagedProfilePath rejects links and escapes within the generated cache path. */
 export function validateManagedProfilePath(projectRoot: string, profile: string): void {
   if (!Path.isWithin(projectRoot, profile)) {
-    Errors.ThrowUserInput(`Managed npm cache path is outside the project: ${profile}`)
+    UserInput.fail(`Managed npm cache path is outside the project: ${profile}`)
   }
   let directory = profile
   while (Path.resolve(directory) !== Path.resolve(projectRoot)) {
     const stat = Try.WithDefault(undefined, () => FS.lstatSync(directory))
     if (stat?.isSymbolicLink()) {
-      Errors.ThrowUserInput(`Managed npm cache path cannot be a symbolic link: ${directory}`)
+      UserInput.fail(`Managed npm cache path cannot be a symbolic link: ${directory}`)
     }
     directory = Path.dirname(directory)
   }
@@ -180,7 +179,7 @@ export async function readOwnedMetadata(
     return parsed
   }
   if (durableLock === undefined) {
-    Errors.ThrowUserInput(`Managed npm metadata ownership cannot be verified for ${profile}.`)
+    UserInput.fail(`Managed npm metadata ownership cannot be verified for ${profile}.`)
   }
   return { fingerprint, lockHash: Platform.hashText(durableLock) }
 }
@@ -188,7 +187,7 @@ export async function readOwnedMetadata(
 /** optionalText reads an owned state file after rejecting symbolic links. */
 export async function optionalText(path: string): Promise<string | undefined> {
   if (FS.existsSync(path) && FS.lstatSync(path).isSymbolicLink()) {
-    Errors.ThrowUserInput(`Managed npm path cannot be a symbolic link: ${path}`)
+    UserInput.fail(`Managed npm path cannot be a symbolic link: ${path}`)
   }
   return await FS.exists(path) ? await FS.readFile(path, 'utf8') : undefined
 }
@@ -200,10 +199,10 @@ export async function optionalJson(path: string): Promise<ManagedProfileMetadata
     return undefined
   }
   const value = await Try(() => parseManagedProfileMetadata(text), {
-    catch: () => Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`),
+    catch: () => UserInput.fail(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`),
   })
   if (!isObjectRecord(value)) {
-    Errors.ThrowUserInput(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`)
+    UserInput.fail(`Managed npm state is invalid at ${path}. Repair with: tao setup --repair.`)
   }
   return value
 }

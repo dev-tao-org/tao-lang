@@ -1,4 +1,4 @@
-import { Errors, Time, Try } from '@shared'
+import { Time, Try, UserInput } from '@shared'
 import * as Shared from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, HttpServer, Path, Platform, Repo } from '@shared/os'
@@ -69,5 +69,5 @@ async function waitForAppServer(url: string, child: ChildProcess): Promise<void>
     }
     await Time.sleep(50)
   }
-  Errors.ThrowUserInput('The Tao app Expo session did not become ready.')
+  UserInput.fail('The Tao app Expo session did not become ready.')
 }

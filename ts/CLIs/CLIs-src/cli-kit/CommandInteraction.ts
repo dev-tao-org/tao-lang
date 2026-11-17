@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import type { FS } from '@shared/os'
 import type { Command, CommandArgs, CommandOptions } from '@shared/os/exec'
 import type { OutputChannel } from './output/Output'
@@ -42,9 +42,10 @@ export function createCommandRunners(operations: CommandInteractionOperations) {
       args: CommandArgs = [],
       options: InteractiveCommandOptions = {},
     ): Promise<void> {
-      if (!operations.isInteractive()) {
-        Errors.ThrowUserInput('Interactive commands require a terminal. Run this operation in Terminal.')
-      }
+      UserInput.require(
+        !!operations.isInteractive(),
+        'Interactive commands require a terminal. Run this operation in Terminal.',
+      )
       await operations.prompt(() => operations.execute(command, args, options, 'interactive'))
     },
     runNonInteractiveCommand: (command: Command, args: CommandArgs = [], options: CommandRunOptions = {}) =>

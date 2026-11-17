@@ -3,7 +3,7 @@ import type * as Grammar from '@grammar'
 import * as SourceValidation from '@source-validation'
 import type * as Typecheck from '@typecheck'
 
-import { Errors, Timings } from '@shared'
+import { Timings, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 
 import { listDirectSourceFiles } from './Catalog'
@@ -296,7 +296,7 @@ function parseDocument(
 ): AST.Document {
   const document = timings.run(AST.transform, timings.run(parser.parse, source))
   if (!document) {
-    Errors.ThrowUserInput(`Cannot load Tao module with invalid syntax: ${path}.`)
+    UserInput.fail(`Cannot load Tao module with invalid syntax: ${path}.`)
   }
   return document
 }

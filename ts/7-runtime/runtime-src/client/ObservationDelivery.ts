@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Try, UserInput } from '@shared'
 import Preact from './Bridge_preact-signals-core'
 import { isThenable } from './ReactiveBatch'
 
@@ -60,11 +60,9 @@ function requireSynchronousResult(result: unknown, stop: () => void): void {
 }
 
 function throwAsynchronousObservation(): never {
-  return Errors.ThrowUserInput('Observation callbacks must finish synchronously. Do not use async or return a promise.')
+  return UserInput.fail('Observation callbacks must finish synchronously. Do not use async or return a promise.')
 }
 
 function throwObservationWrite(): never {
-  return Errors.ThrowUserInput(
-    'Observation callbacks cannot write Tao state. Move the write to an action or external event.',
-  )
+  return UserInput.fail('Observation callbacks cannot write Tao state. Move the write to an action or external event.')
 }

@@ -1,4 +1,4 @@
-import { Errors, Objects } from '@shared'
+import { Objects, UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
 import { LetDeclaration, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
@@ -142,7 +142,7 @@ function applyTestID(result: React.ReactNode, testID: OptionalTestID): React.Rea
 function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
   const missingIndex = view.parameters.findIndex((_parameter, index) => index >= args.values.length)
   if (missingIndex >= 0) {
-    Errors.ThrowUserInput(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
+    UserInput.fail(`${view.name} is missing required argument "${view.parameters[missingIndex]}"`)
   }
   const scope = Scope(view.scope)
   for (const [index, parameter] of view.parameters.entries()) {
@@ -152,9 +152,7 @@ function bindValues(view: View, args: ViewRenderArguments): RuntimeScope {
 }
 
 function requireView(value: unknown): View {
-  if (!isView(value)) {
-    Errors.ThrowUserInput('Cannot render an unknown Tao view.')
-  }
+  UserInput.require(!!isView(value), 'Cannot render an unknown Tao view.')
   return value
 }
 

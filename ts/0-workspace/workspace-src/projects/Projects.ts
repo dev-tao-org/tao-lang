@@ -1,5 +1,5 @@
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import * as Shared from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { isDiscoverableProjectDirectory } from '../modules/Paths'
@@ -17,13 +17,13 @@ export type ProjectLayout = {
 export async function initializeProject(path: string): Promise<ProjectLayout> {
   const root = canonicalProjectTarget(path)
   if (isProjectDirectory(root)) {
-    Errors.ThrowUserInput(`A Tao project is already initialized at ${root}`)
+    UserInput.fail(`A Tao project is already initialized at ${root}`)
   }
   await rejectNestedProject(root)
   await FS.mkdir(root)
   const nested = await Files.findProjectMarker(root)
   if (nested) {
-    Errors.ThrowUserInput(`Cannot initialize a Tao project containing another project at ${Path.dirname(nested)}`)
+    UserInput.fail(`Cannot initialize a Tao project containing another project at ${Path.dirname(nested)}`)
   }
   const tao = Path.join(root, '.tao')
   await FS.mkdir(tao)
@@ -34,7 +34,7 @@ export async function initializeProject(path: string): Promise<ProjectLayout> {
 export async function ensureProjectMetadata(path: string): Promise<ProjectLayout> {
   const root = Path.resolve(path)
   if (!isProjectDirectory(root)) {
-    Errors.ThrowUserInput(`No initialized Tao project exists at ${root}`)
+    UserInput.fail(`No initialized Tao project exists at ${root}`)
   }
   const tao = Path.join(root, '.tao')
   await FS.mkdirs(Path.join(tao, 'cache'), Path.join(tao, 'locks', 'sessions'), Path.join(tao, 'store'))
@@ -91,7 +91,7 @@ async function rejectNestedProject(root: string): Promise<void> {
   let current = Path.dirname(root)
   while (current !== Path.dirname(current)) {
     if (isProjectAncestor(current)) {
-      Errors.ThrowUserInput(`Cannot initialize a nested Tao project inside ${current}`)
+      UserInput.fail(`Cannot initialize a nested Tao project inside ${current}`)
     }
     current = Path.dirname(current)
   }
@@ -110,7 +110,7 @@ function canonicalProjectTarget(path: string): string {
   }
   const physical = Try.WithDefault(undefined, () => FS.realpathSync(current))
   if (physical === undefined) {
-    Errors.ThrowUserInput(`Cannot resolve Tao project path: ${path}`)
+    UserInput.fail(`Cannot resolve Tao project path: ${path}`)
   }
   return missing.reduce((directory, name) => Path.join(directory, name), physical)
 }

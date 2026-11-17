@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, Regxs, TabCharacter } from '@shared'
+import { Errors, NewlineCharacter, Regxs, TabCharacter, UserInput } from '@shared'
 import { FS } from '@shared/os'
 import Exec from '@shared/os/exec'
 import type { GitSourceAdapter } from './Types'
@@ -23,7 +23,7 @@ async function resolveGitHubCommit(repository: string, version: string): Promise
 
 async function fetchGitHubCommit(repository: string, commit: string, destination: string): Promise<void> {
   if (!isCommit(commit)) {
-    Errors.ThrowUserInput(`Invalid immutable Git commit ID ${commit}.`)
+    UserInput.fail(`Invalid immutable Git commit ID ${commit}.`)
   }
   await FS.mkdir(destination)
   await Exec.captureStdout('git', ['init', '--quiet', destination])
@@ -43,7 +43,7 @@ type CandidateCommit = string | undefined
 
 function validateCommit(commit: CandidateCommit, repository: string, version: string): string {
   if (!isCommit(commit)) {
-    Errors.ThrowUserInput(`Cannot resolve ${repository} version ${version} to an immutable commit.`)
+    UserInput.fail(`Cannot resolve ${repository} version ${version} to an immutable commit.`)
   }
   return commit.toLowerCase()
 }

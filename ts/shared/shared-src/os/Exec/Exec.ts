@@ -1,5 +1,6 @@
 import * as ExternalErrors from '../../universal/Errors/external'
 import { Errors, Regxs, Try } from '../../universal/universal'
+import * as UserInput from '../../universal/UserInput'
 import * as WebHost from '../bridges/Bridge_browser/Bridge_browser'
 import * as BunHost from '../bridges/Bridge_bun/Bridge_bun'
 import * as Node from '../bridges/Bridge_node/Bridge_node'
@@ -170,9 +171,7 @@ function resolveCommand<Options extends CommandOptions>(
   command: Command,
   [argsOrOptions, explicitOptions]: CommandParameters<Options>,
 ) {
-  if (typeof command !== 'string' || !command.trim()) {
-    Errors.ThrowUserInput('A command is required.')
-  }
+  UserInput.require(!(typeof command !== 'string' || !command.trim()), 'A command is required.')
   const hasArgs = isCommandArgs(argsOrOptions)
   const args = hasArgs ? resolveCommandArgs(argsOrOptions) : []
   const options = hasArgs ? explicitOptions : argsOrOptions

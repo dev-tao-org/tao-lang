@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { Errors, NewlineCharacter } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { requireSetup } from '../../SetupRequired'
@@ -54,7 +54,7 @@ export async function readManagedModules(input: Types.ManagedModulesInput): Prom
   const durableHash = Identity.resolveManagedDurableLockHashPath(input, graphFingerprint)
   const lock = await Lock.readManagedProfileLock(lockfile, durableLock, durableHash, graphFingerprint)
   if (metadata.lockHash !== Platform.hashText(lock)) {
-    Errors.ThrowUserInput(`Managed npm lock changed. Repair with: tao setup --repair.`)
+    UserInput.fail(`Managed npm lock changed. Repair with: tao setup --repair.`)
   }
   validateLockPolicy(lock, input)
   await State.validateManagedManifest(profile, normalized, input.runtimePins, input.runtimePolicy)
@@ -153,7 +153,7 @@ function validateExistingState(
     return
   }
   if (storedLock === undefined) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `Managed npm durable lock is missing for ${fingerprint}; restore it and its SHA-256 file from version control or an exact source reference.`,
     )
   }
@@ -173,9 +173,10 @@ async function ensureProfileManifest(
 }
 
 function validateLockPolicy(lock: string, input: Types.ManagedModulesInput): void {
-  if (!managedLockPolicyMatches(lock, input)) {
-    Errors.ThrowUserInput('Managed npm lock does not match the runtime patch policy. Repair with: tao setup --repair.')
-  }
+  UserInput.require(
+    !!managedLockPolicyMatches(lock, input),
+    'Managed npm lock does not match the runtime patch policy. Repair with: tao setup --repair.',
+  )
 }
 
 async function installFrozenGraph(
@@ -199,7 +200,7 @@ async function installFrozenGraph(
   }
   const resultingLock = await FS.readFile(lockfile, 'utf8')
   if (storedLock !== undefined && resultingLock !== storedLock) {
-    Errors.ThrowUserInput(`Frozen Bun install changed the durable npm lock. Repair with: tao setup --repair.`)
+    UserInput.fail(`Frozen Bun install changed the durable npm lock. Repair with: tao setup --repair.`)
   }
 }
 

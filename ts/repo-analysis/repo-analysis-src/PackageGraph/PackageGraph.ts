@@ -1,4 +1,4 @@
-import { Errors, Json, NewlineCharacter, S, Schema, Sort } from '@shared'
+import { Json, NewlineCharacter, S, Schema, Sort, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import { readWorkspaceManifestPaths } from '../Workspace/WorkspaceManifests'
@@ -43,9 +43,10 @@ export async function analyzePackageGraph(workspace: string): Promise<PackageGra
     undefined,
     { tsConfig },
   )
-  if (result.exitCode !== 0 || typeof result.output === 'string') {
-    Errors.ThrowUserInput('Dependency-cruiser did not return an import graph.')
-  }
+  UserInput.require(
+    !(result.exitCode !== 0 || typeof result.output === 'string'),
+    'Dependency-cruiser did not return an import graph.',
+  )
   return collectPackageGraph(workspace, packages, result.output.modules)
 }
 

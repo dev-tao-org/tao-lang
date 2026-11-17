@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
 import { collectReferencedNames } from '../LinkModuleValidation'
 import { createModuleValueResolver } from '../ModuleValueResolution'
@@ -10,7 +10,7 @@ import * as Modules from './Modules'
 export function linkModules(entry: string, sources: readonly Modules.SourceModule[]): Modules.LinkedProgram {
   const modules: SourceModulesByPath = new Map(sources.map(source => [source.path, source]))
   if (!modules.has(entry)) {
-    Errors.ThrowUserInput(`Entry module is unavailable: ${entry}`)
+    UserInput.fail(`Entry module is unavailable: ${entry}`)
   }
   const bindings: ModuleBindingsBySourcePath = new Map(
     sources.map(source => [source.path, [] as Modules.ModuleBinding[]]),
@@ -57,7 +57,7 @@ function assertUniqueOwnDeclarations(source: Modules.SourceModule): void {
   for (const declaration of AST.GetValueDeclarations(source.document)) {
     const name = declaration.name.value
     if (names.has(name)) {
-      Errors.ThrowUserInput(`Module ${source.path} declares ${name} more than once.`)
+      UserInput.fail(`Module ${source.path} declares ${name} more than once.`)
     }
     names.add(name)
   }
@@ -89,7 +89,7 @@ function addImplicitSiblingBindings(
   for (const [name, matches] of candidates) {
     if (matches.length > 1) {
       if (references.has(name)) {
-        Errors.ThrowUserInput(`Module ${source.path} has ambiguous sibling name ${name}.`)
+        UserInput.fail(`Module ${source.path} has ambiguous sibling name ${name}.`)
       }
       continue
     }
@@ -123,12 +123,12 @@ function addExplicitBindings(
     const statement = resolved.statement
     const statementKey = createImportStatementKey(statement)
     if (seenStatements.has(statementKey)) {
-      Errors.ThrowUserInput(`Module ${source.path} repeats an import statement.`)
+      UserInput.fail(`Module ${source.path} repeats an import statement.`)
     }
     seenStatements.add(statementKey)
     if (resolved.targets.length === 0) {
       const imported = statement.imports.map(item => item.target.value).join(', ')
-      Errors.ThrowUserInput(`Cannot resolve ${imported} imported by ${source.path}.`)
+      UserInput.fail(`Cannot resolve ${imported} imported by ${source.path}.`)
     }
     for (const imported of statement.imports) {
       addNamedBinding(source, resolved.targets, modules, imported, bindings, ownNames, seenImports)
@@ -160,7 +160,7 @@ function addNamedBinding(
   const matches = targets.flatMap(target => {
     const targetModule = modules.get(target.path)
     if (!targetModule) {
-      Errors.ThrowUserInput(`Imported module is unavailable: ${target.path}`)
+      UserInput.fail(`Imported module is unavailable: ${target.path}`)
     }
     return AST.GetValueDeclarations(targetModule.document)
       .filter(declaration => declaration.name.value === targetName && isVisible(declaration, target.relation))
@@ -169,10 +169,10 @@ function addNamedBinding(
   if (matches.length === 0) {
     const nameExists = targets.some(target => declaresValue(modules.get(target.path)!, targetName))
     const reason = nameExists ? 'is not visible' : 'does not exist'
-    Errors.ThrowUserInput(`Cannot import ${targetName} from ${importer.path}: it ${reason}.`)
+    UserInput.fail(`Cannot import ${targetName} from ${importer.path}: it ${reason}.`)
   }
   if (matches.length > 1) {
-    Errors.ThrowUserInput(`Import ${targetName} from ${importer.path} is ambiguous.`)
+    UserInput.fail(`Import ${targetName} from ${importer.path} is ambiguous.`)
   }
   const matchedTarget = matches[0]!.target
   const localName = imported.alias?.value ?? targetName
@@ -194,11 +194,11 @@ function addBinding(
 ): void {
   const identity = `${binding.name}:${binding.source}:${binding.target}`
   if (seenImports.has(identity)) {
-    Errors.ThrowUserInput(`Module ${importer.path} imports ${binding.name} more than once.`)
+    UserInput.fail(`Module ${importer.path} imports ${binding.name} more than once.`)
   }
   seenImports.add(identity)
   if (ownNames.has(binding.name)) {
-    Errors.ThrowUserInput(`Module ${importer.path} imports ${binding.name}, which it also declares.`)
+    UserInput.fail(`Module ${importer.path} imports ${binding.name}, which it also declares.`)
   }
   bindings.push(binding)
 }
@@ -210,7 +210,7 @@ function assertUniqueBindings(
   const names = new Set<string>()
   for (const binding of sourceBindings) {
     if (names.has(binding.name)) {
-      Errors.ThrowUserInput(`Module ${source.path} has more than one binding named ${binding.name}.`)
+      UserInput.fail(`Module ${source.path} has more than one binding named ${binding.name}.`)
     }
     names.add(binding.name)
   }

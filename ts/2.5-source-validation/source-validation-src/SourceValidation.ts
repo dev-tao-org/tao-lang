@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, NewlineCharacter, type Range, Regxs } from '@shared'
+import { NewlineCharacter, type Range, Regxs, UserInput } from '@shared'
 
 /** assertValidStatements rejects invalid declaration names and statement placements in a complete document. */
 export function assertValidStatements(document: AST.Document, path: string): void {
@@ -37,7 +37,7 @@ function requireNoStatementDiagnostics(diagnostics: readonly StatementDiagnostic
   }
   const message = diagnostics.map(diagnostic => `${diagnostic.message} (${path}, offset ${diagnostic.range.start})`)
     .join(NewlineCharacter)
-  Errors.ThrowUserInput(message, { path, diagnostics })
+  UserInput.fail(message, { path, diagnostics })
 }
 
 type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'action' | 'library' | 'tests' | 'test' | 'expect'

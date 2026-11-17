@@ -1,4 +1,4 @@
-import { Errors, Try } from '@shared'
+import { Errors, Try, UserInput } from '@shared'
 import { Path, Storage } from '@shared/os'
 import { createProjectDependencyOptions } from './dependencies/Options'
 import { ProjectDependencies } from './ProjectDependencies'
@@ -16,7 +16,7 @@ export async function openProjectWorkspace(
 ): Promise<WorkspaceSession> {
   const project = await discoverProject(entry)
   if (!project) {
-    Errors.ThrowUserInput(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
+    UserInput.fail(`No Tao project owns ${entry}. Run tao init <project-directory>.`)
   }
   const session = await acquireSession(project.root, options)
   const identity = `${project.root}:${session.id}`

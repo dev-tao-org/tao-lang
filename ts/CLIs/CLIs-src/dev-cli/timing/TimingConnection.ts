@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 import { Errors } from '@shared'
 import { DevelopmentStorage, FS, Path, Platform, Terminal } from '@shared/os'
 import { requireHost } from '../../agent-skills/performance-investigation/Remote'
@@ -33,9 +33,10 @@ export async function connectTiming(options: TimingConnection): Promise<void> {
     io.print(`Existing SSH connection is ready for ${options.host}.`)
     return
   }
-  if (!io.interactive) {
-    Errors.ThrowUserInput('Run just timing-connect HOST in Terminal to verify the host and enter your SSH password.')
-  }
+  UserInput.require(
+    !!io.interactive,
+    'Run just timing-connect HOST in Terminal to verify the host and enter your SSH password.',
+  )
   await io.mkdir(Path.dirname(socket))
   io.print('SSH may ask for the timing Mac’s login password. Input is hidden; Ctrl+C cancels.')
   await io.executeInteractive('ssh', [

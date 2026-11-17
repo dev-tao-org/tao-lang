@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { Terminal } from '@shared/os'
 import type * as Workspace from '@workspace'
 
@@ -16,7 +16,7 @@ export function workflowUI(
         return true
       }
       if (!Terminal.isInteractive()) {
-        Errors.ThrowUserInput(
+        UserInput.fail(
           `Setup is required for ${entry}: ${message} Use tao setup or pass --yes to authorize setup non-interactively.`,
         )
       }

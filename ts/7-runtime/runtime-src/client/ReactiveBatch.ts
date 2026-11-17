@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import Preact from './Bridge_preact-signals-core'
 
 /** runSynchronousReactiveBatch settles authored writes and rejects asynchronous batch callbacks. */
@@ -7,9 +7,7 @@ export function runSynchronousReactiveBatch<T>(perform: () => T): T {
   Preact.batch(() => {
     result = perform()
   })
-  if (isThenable(result)) {
-    Errors.ThrowUserInput('Reactive batches must finish synchronously; do not return a Promise.')
-  }
+  UserInput.require(!isThenable(result), 'Reactive batches must finish synchronously; do not return a Promise.')
   return result
 }
 

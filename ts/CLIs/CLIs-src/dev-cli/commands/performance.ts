@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Errors, Timings, Try } from '@shared'
+import { Timings, Try, UserInput } from '@shared'
 import { FS, Process } from '@shared/os'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
@@ -23,9 +23,10 @@ export default registerCommand({
     { flags: '--report-only', description: 'Print the raw preview report path without a baseline comparison.' },
   ],
   action: Timings.createTopLevelTimer(async function(timings, target: string, options: PerformanceOptions) {
-    if (target !== 'preview' && hasPreviewOptions(options)) {
-      Errors.ThrowUserInput('--fixture, --baseline, and --report-only are available only for performance preview.')
-    }
+    UserInput.require(
+      !(target !== 'preview' && hasPreviewOptions(options)),
+      '--fixture, --baseline, and --report-only are available only for performance preview.',
+    )
     if (target === 'modules') {
       return runModules()
     }
@@ -38,11 +39,10 @@ export default registerCommand({
     if (target === 'extension') {
       return runExtension()
     }
-    if (!['parser', 'preview', 'editor', 'record'].includes(target)) {
-      Errors.ThrowUserInput(
-        'Available performance targets: parser, formatter, reactivity, modules, extension, preview, editor, record',
-      )
-    }
+    UserInput.require(
+      !!['parser', 'preview', 'editor', 'record'].includes(target),
+      'Available performance targets: parser, formatter, reactivity, modules, extension, preview, editor, record',
+    )
     await timings.run(prepareParser, target === 'parser')
     if (target === 'record') {
       const Performance = await import('@repo-analysis/performance')
@@ -118,9 +118,7 @@ async function runExtension(): Promise<void> {
 async function runPreviewTarget(options: PerformanceOptions): Promise<void> {
   const LocalBaseline = await import('../preview/LocalPreviewBaseline')
   if (options.baseline) {
-    if (options.fixture) {
-      Errors.ThrowUserInput('Capture the baseline on the fixed performance project.')
-    }
+    UserInput.require(!options.fixture, 'Capture the baseline on the fixed performance project.')
     return await LocalBaseline.recordLocalPreviewBaseline()
   }
   const source = options.fixture

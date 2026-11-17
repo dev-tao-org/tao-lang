@@ -1,4 +1,4 @@
-import { Errors, NewlineCharacter, S, Try } from '@shared'
+import { Errors, NewlineCharacter, S, Try, UserInput } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import Exec from '@shared/os/exec'
 
@@ -14,9 +14,10 @@ export async function installSshConfig(host: string, identity: string, configPat
   await Try(async () => {
     await FS.writeFile(pending, updated, { flag: 'wx', mode: 0o600 })
     await Exec.capture('/usr/bin/ssh', ['-G', '-F', pending, '--', host])
-    if (await readConfig(path) !== original) {
-      Errors.ThrowUserInput('SSH config changed during setup. Run ssh-key-setup again to preserve those edits.')
-    }
+    UserInput.require(
+      await readConfig(path) === original,
+      'SSH config changed during setup. Run ssh-key-setup again to preserve those edits.',
+    )
     await FS.rename(pending, path)
   }, { finally: () => FS.rm(pending, { force: true }) })
 }
@@ -38,9 +39,10 @@ function withSshKeyEntry(config: string, host: string, identity: string): string
     return appendEntry(config, entry)
   }
   const endPosition = config.indexOf(end + NewlineCharacter, start)
-  if (endPosition < 0) {
-    Errors.ThrowUserInput('The Tao SSH config entry is incomplete. Restore its end marker before rerunning setup.')
-  }
+  UserInput.require(
+    !(endPosition < 0),
+    'The Tao SSH config entry is incomplete. Restore its end marker before rerunning setup.',
+  )
   const original = config.slice(0, start) + config.slice(endPosition + end.length + NewlineCharacter.length)
   return appendEntry(original, entry)
 }

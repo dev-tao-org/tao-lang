@@ -1,6 +1,6 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 
 import { Errors, EscapeCharacter, NewlineCharacter, TabCharacter, Time, Try } from '@shared'
 import { Artifacts, FS, HeadlessBrowser, Path, Platform, Process, Repo } from '@shared/os'
@@ -104,10 +104,8 @@ async function executeTestPlan(
   }
   const failures = [outcomes.typescript, outcomes.tao].filter((failure): failure is string => !!failure)
   if (failures.length > 0) {
-    if (!plan.typescript && outcomes.tao) {
-      Errors.ThrowUserInput('Tao app tests failed.')
-    }
-    Errors.ThrowUserInput(`Test execution failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
+    UserInput.require(!(!plan.typescript && outcomes.tao), 'Tao app tests failed.')
+    UserInput.fail(`Test execution failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
   reportTestSuccess(groups, !plan.serial, startedAtMs)
 }
@@ -158,7 +156,7 @@ async function executeTaoTests(
   const files = await findTaoTestFiles(Path.resolve(plan.tao.target))
   TestPlanModule2.assertTestRunActive(signal)
   if (files.length === 0) {
-    Errors.ThrowUserInput(`No Tao test suites found in ${plan.tao.target}.`)
+    UserInput.fail(`No Tao test suites found in ${plan.tao.target}.`)
   }
   for (const entry of files) {
     if (await Workspace.discoverProject(entry)) {

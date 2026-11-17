@@ -1,6 +1,6 @@
 import type * as Runtime from '@runtime'
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Json, UserInput } from '@shared'
+import { NewlineCharacter, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
@@ -33,7 +33,7 @@ async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: s
   const target = Path.join(runtimeDirectory, 'node_modules')
   const existing = Try.WithDefault(undefined, () => FS.lstatSync(link))
   if (existing && !existing.isSymbolicLink()) {
-    Errors.ThrowUserInput(`Generated build dependency path is not a symbolic link: ${link}`)
+    UserInput.fail(`Generated build dependency path is not a symbolic link: ${link}`)
   }
   const relativeTarget = Path.relative(buildDirectory, target)
   await FS.replaceDirectoryLink(relativeTarget, link)

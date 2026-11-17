@@ -1,4 +1,4 @@
-import { Errors, Json, Lists, Objects, Try } from '@shared'
+import { Errors, Json, Lists, Objects, Try, UserInput } from '@shared'
 import { Files, FS, Path, Platform } from '@shared/os'
 import { isNpmPackageName } from '../../NpmPackageName'
 import { withManagedModuleLock } from './ManagedModuleLock'
@@ -167,9 +167,7 @@ async function isOwnedProfileOrMissing(profile: string): Promise<boolean> {
 
 function parseManagedModuleMetadata(contents: string): ModuleMetadataFields {
   const value: unknown = Try(() => Json.Parse(contents))
-  if (!isModuleMetadataFields(value)) {
-    Errors.ThrowUserInput('Managed module metadata must be a JSON object.')
-  }
+  UserInput.require(!!isModuleMetadataFields(value), 'Managed module metadata must be a JSON object.')
   return value
 }
 
@@ -213,7 +211,7 @@ function isManagedModuleFile(moduleDirectory: string, path: string): boolean {
 
 async function cleanModuleLinks(moduleDirectory: string, profile: string, value: unknown): Promise<void> {
   if (!hasValidPackageNames(value)) {
-    Errors.ThrowUserInput(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
+    UserInput.fail(`Managed module ownership marker contains invalid package names: ${moduleDirectory}`)
   }
   const localModules = Path.join(moduleDirectory, 'node_modules')
   if (isSymbolicLink(localModules)) {

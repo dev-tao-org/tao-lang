@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import { createModuleMemberKey, type LinkedDefinition, type LinkedModule, ModuleBinding } from './Typecheck'
 
 /** orderDefinitions sorts module-level lets by their linked value dependencies. */
@@ -51,7 +51,7 @@ function visitDefinition(item: DependencyDefinition, state: DefinitionOrderState
     return
   }
   if (state.visiting.has(key)) {
-    Errors.ThrowUserInput(`Module-level let cycle includes ${item.declaration.name.value} in ${item.source}.`)
+    UserInput.fail(`Module-level let cycle includes ${item.declaration.name.value} in ${item.source}.`)
   }
   state.visiting.add(key)
   visitDefinitionDependencies(item, state)
@@ -116,7 +116,7 @@ function collectDefinitionDependencies(
     return imports
   }
   if (!knownNames.has(value.value)) {
-    Errors.ThrowUserInput(`Unknown let reference ${value.value} in ${item.source}.`)
+    UserInput.fail(`Unknown let reference ${value.value} in ${item.source}.`)
   }
   return []
 }

@@ -1,4 +1,4 @@
-import { Errors, Regxs, Time, Try } from '@shared'
+import { Errors, Regxs, Time, Try, UserInput } from '@shared'
 import { BuildLock, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { PerformanceFixturePath } from '../parser-fixtures'
@@ -85,11 +85,10 @@ function newRecord(context: Context): PreviewHistoryStore.HistoryRecord {
 async function requireCleanInputs(git: Git, sourceCommit: string): Promise<void> {
   const current = (await git(['rev-parse', 'HEAD'])).trim()
   const dirty = await git(['status', '--porcelain=v1', '--untracked-files=all', '--', ...inputs])
-  if (current !== sourceCommit || dirty !== '') {
-    Errors.ThrowUserInput(
-      'Commit benchmark implementation inputs before recording; HEAD and inputs must stay unchanged.',
-    )
-  }
+  UserInput.require(
+    !(current !== sourceCommit || dirty !== ''),
+    'Commit benchmark implementation inputs before recording; HEAD and inputs must stay unchanged.',
+  )
 }
 
 async function readMeasuredReport(path: string, sourceCommit: string): Promise<string> {

@@ -1,5 +1,5 @@
 import * as RepoAnalysis from '@repo-analysis'
-import { Errors, Lists, Range } from '@shared'
+import { Lists, Range, UserInput } from '@shared'
 import { Path, Platform } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
 import { encodeLearningSnapshot, isInScope, snapshotScope } from './LearningStore'
@@ -15,9 +15,10 @@ export async function runCandidateScan(root: string, correction: Correction, sel
   const program = RepoAnalysis.createConformanceProgram(root, files.map(file => Path.join(root, file)))
   const findings = queryProgram(program, root, included, correction.rule)
   const after = await snapshotScope(root, correction)
-  if (encodeLearningSnapshot(snapshot) !== encodeLearningSnapshot(after)) {
-    Errors.ThrowUserInput('Source or configuration changed during the scan; rerun against a stable snapshot.')
-  }
+  UserInput.require(
+    encodeLearningSnapshot(snapshot) === encodeLearningSnapshot(after),
+    'Source or configuration changed during the scan; rerun against a stable snapshot.',
+  )
   return {
     id: Platform.randomUUID(),
     correction,
@@ -73,9 +74,7 @@ function resolveTarget(
     visit(source)
   }
   const unique = Lists.unique(found)
-  if (unique.length !== 1) {
-    Errors.ThrowUserInput('call-symbol requires one unambiguous declaration in the scanned scope.')
-  }
+  UserInput.require(unique.length === 1, 'call-symbol requires one unambiguous declaration in the scanned scope.')
   return unique[0]!
 }
 

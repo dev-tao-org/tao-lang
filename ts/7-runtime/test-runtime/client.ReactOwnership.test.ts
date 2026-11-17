@@ -1,5 +1,5 @@
 import * as Runtime from '@runtime'
-import { Errors, Time, Try } from '@shared'
+import { Time, Try, UserInput } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, HeadlessBrowser, Platform, Repo } from '@shared/os'
 import { createReactOwnershipApp } from './client.test-fixtures.ReactOwnership'
@@ -21,7 +21,7 @@ Tests.test(
       await verifyOwnershipJourney(browser, expo)
     }, {
       async catch(error) {
-        Errors.ThrowUserInput(`React ownership Metro acceptance failed. ${String(error)}`)
+        UserInput.fail(`React ownership Metro acceptance failed. ${String(error)}`)
       },
       async finally() {
         await closeBrowser(browser)

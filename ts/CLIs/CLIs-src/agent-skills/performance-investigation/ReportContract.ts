@@ -1,5 +1,5 @@
 import * as Performance from '@repo-analysis/performance'
-import { Errors, Json, Schema, Try } from '@shared'
+import { Json, Schema, Try, UserInput } from '@shared'
 import type { MeasurementJob } from './Runner'
 
 /** PreviewReport describes the complete raw workload required for a comparable independent session. */
@@ -33,7 +33,7 @@ type PreviewFrameCount = Performance.PreviewFrameCount
 /** parsePreviewReport validates the raw preview measurement before workload and provenance checks. */
 export function parsePreviewReport(source: string, path: string): PreviewReport {
   return Try(() => Json.Parse(source, { schema: previewReportSchema }), {
-    catch: () => Errors.ThrowUserInput(`Invalid preview report at ${path}. Use the tooling that recorded this job.`),
+    catch: () => UserInput.fail(`Invalid preview report at ${path}. Use the tooling that recorded this job.`),
   })
 }
 
@@ -73,23 +73,28 @@ const previewReportSchema = Schema.looseObject({
 
 /** requireReport verifies source, workload completeness and measurement conditions before accepting timings. */
 export function requireReport(report: PreviewReport, job: MeasurementJob): void {
-  if (!hasExpectedIdentity(report, job)) {
-    Errors.ThrowUserInput('Sample source, fixture, session or schema differs from its job.')
-  }
-  if (!hasExpectedWorkload(report, job)) {
-    Errors.ThrowUserInput('Sample workload is incomplete or differs from the configured measurement.')
-  }
-  if (!report.opening || report.opening.reopenMs?.length !== Performance.PreviewReopenCount) {
-    Errors.ThrowUserInput('Sample is missing the first preview open or successive warm opens.')
-  }
-  if (!report.results.every(result => result.work && Number.isInteger(result.work.modulesEmitted))) {
-    Errors.ThrowUserInput('Sample is missing module work observations.')
-  }
+  UserInput.require(
+    !!hasExpectedIdentity(report, job),
+    'Sample source, fixture, session or schema differs from its job.',
+  )
+  UserInput.require(
+    !!hasExpectedWorkload(report, job),
+    'Sample workload is incomplete or differs from the configured measurement.',
+  )
+  UserInput.require(
+    !(!report.opening || report.opening.reopenMs?.length !== Performance.PreviewReopenCount),
+    'Sample is missing the first preview open or successive warm opens.',
+  )
+  UserInput.require(
+    !!report.results.every(result => result.work && Number.isInteger(result.work.modulesEmitted)),
+    'Sample is missing module work observations.',
+  )
   const durations = [report.startupMs, report.opening.firstMs, ...report.opening.reopenMs]
   durations.push(...report.results.map(result => result.parentClickToLastAppliedMs))
-  if (durations.some(duration => !Number.isFinite(duration) || duration < 0)) {
-    Errors.ThrowUserInput('Sample contains a missing or invalid measured duration.')
-  }
+  UserInput.require(
+    !durations.some(duration => !Number.isFinite(duration) || duration < 0),
+    'Sample contains a missing or invalid measured duration.',
+  )
 }
 
 function hasExpectedIdentity(report: PreviewReport, job: MeasurementJob): boolean {
@@ -124,9 +129,10 @@ function hasExpectedSettings(report: PreviewReport, settings: Performance.Previe
   if (!report.measurement || !Array.isArray(report.frameSizes)) {
     return false
   }
-  if (report.measurement.protocol !== Performance.PreviewMeasurementProtocol) {
-    Errors.ThrowUserInput('Preview measurement protocol differs. Use tooling from the revision that recorded this job.')
-  }
+  UserInput.require(
+    report.measurement.protocol === Performance.PreviewMeasurementProtocol,
+    'Preview measurement protocol differs. Use tooling from the revision that recorded this job.',
+  )
   if (report.measurement.editCount !== settings.editCount || report.measurement.frameCount !== settings.frameCount) {
     return false
   }

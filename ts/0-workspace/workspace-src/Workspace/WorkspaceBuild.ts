@@ -1,6 +1,6 @@
 import type * as Runtime from '@runtime'
 import type * as Expo from '@runtime/expo'
-import { Json } from '@shared'
+import { Json, UserInput } from '@shared'
 
 import { Errors, NewlineCharacter, Objects, Timings, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
@@ -21,9 +21,7 @@ export async function publishBuild(
   if (!isCurrent()) {
     return
   }
-  if (files['App.tsx'] === undefined) {
-    Errors.ThrowUserInput('Generated app build must contain App.tsx.')
-  }
+  UserInput.require(files['App.tsx'] !== undefined, 'Generated app build must contain App.tsx.')
   onProgress?.('Preparing runtime resources and cached toolchain…')
   const runtime = await timings.run(prepareApplication, prepareRuntime)
   onProgress?.('Runtime resources and toolchain ready.')
@@ -95,9 +93,9 @@ const publishMemoryBuild = Timings.measured('workspace.runtime.publish-memory', 
   if (outcome.status === 'error' || outcome.status === 'poisoned') {
     const message = outcome.message
     if (message === undefined) {
-      Errors.ThrowUserInput(`Preview publication failed: ${outcome.status}`)
+      UserInput.fail(`Preview publication failed: ${outcome.status}`)
     }
-    Errors.ThrowUserInput(message)
+    UserInput.fail(message)
   }
   return outcome
 })
@@ -179,7 +177,7 @@ function resolveGeneratedPath(directory: string, file: string): string {
   const root = Path.resolve(directory)
   const path = Path.resolve(root, file)
   if (path !== root && !Path.isWithin(root, path)) {
-    Errors.ThrowUserInput(`Generated file path escapes the build directory: ${file}`)
+    UserInput.fail(`Generated file path escapes the build directory: ${file}`)
   }
   return path
 }
@@ -208,9 +206,7 @@ const publishChanged = Timings.measured('workspace.runtime.publish-changed', asy
     }
   }
   const mirrored = await FS.readFile(Path.join(snapshot, 'App.tsx'), 'utf8')
-  if (mirrored !== files['App.tsx']) {
-    Errors.ThrowUserInput('Generated app build changed while publishing.')
-  }
+  UserInput.require(mirrored === files['App.tsx'], 'Generated app build changed while publishing.')
 })
 
 function hasGeneratedSourceFile(files: Expo.GeneratedRevision['files'], file: string): boolean {

@@ -1,4 +1,4 @@
-import { Errors, Objects, Regxs } from '@shared'
+import { Objects, Regxs, UserInput } from '@shared'
 import { FS, Path } from '@shared/os'
 import { git, head, writeJson } from './ReviewGit'
 import * as ReviewSessionModule2 from './ReviewSession'
@@ -12,9 +12,7 @@ export async function continueReview(
   worktree?: string,
 ): Promise<ReviewSession> {
   const previousRoot = (await git(Path.resolve(from), ['rev-parse', '--show-toplevel'])).trim()
-  if (previousRoot === root) {
-    Errors.ThrowUserInput('Continue requires a different implementation checkout.')
-  }
+  UserInput.require(previousRoot !== root, 'Continue requires a different implementation checkout.')
   await requireSameRepository(root, previousRoot)
   return await ReviewSessionModule2.withReviewLock(previousRoot, async () => {
     const previous = await ReviewSessionModule2.loadSession(previousRoot)
@@ -41,22 +39,21 @@ export async function continueReview(
 
 async function requireSameRepository(root: string, previousRoot: string): Promise<void> {
   const args = ['rev-parse', '--path-format=absolute', '--git-common-dir']
-  if ((await git(root, args)).trim() !== (await git(previousRoot, args)).trim()) {
-    Errors.ThrowUserInput('Continue requires implementation checkouts from the same Git repository.')
-  }
+  UserInput.require(
+    (await git(root, args)).trim() === (await git(previousRoot, args)).trim(),
+    'Continue requires implementation checkouts from the same Git repository.',
+  )
 }
 
 async function requireEmptyHistory(session: ReviewSession): Promise<void> {
   const parent = Path.dirname(session.directory)
   for (const entry of await FS.readdir(parent)) {
     if (entry !== 'active') {
-      Errors.ThrowUserInput(`Destination review history already exists: ${Path.join(parent, entry)}`)
+      UserInput.fail(`Destination review history already exists: ${Path.join(parent, entry)}`)
     }
   }
   const active = (await FS.readdir(session.directory)).filter(entry => entry !== 'operation.lock')
-  if (active.length) {
-    Errors.ThrowUserInput('Destination review state already exists; preserve it before continuing.')
-  }
+  UserInput.require(!active.length, 'Destination review state already exists; preserve it before continuing.')
 }
 
 async function retainHistory(previous: ReviewSession, session: ReviewSession): Promise<void> {

@@ -1,4 +1,4 @@
-import { Errors } from '@shared'
+import { UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
 import { batch, useValue, useWritable } from './ReactiveEngine'
 import { defineScopeBinding, hasScopeBinding, LetDeclaration, Scope, ViewRenderBlock } from './Scope'
@@ -23,7 +23,7 @@ export function useStateDeclaration(scope: Scope, name: string, initialize: () =
 /** SetStatement replaces the value of the nearest writable binding. */
 export function SetStatement(scope: Scope, name: string, value: unknown): void {
   if (!hasScopeBinding(scope, name) || !Reflect.set(scope, name, value)) {
-    Errors.ThrowUserInput(`Cannot set "${name}": it is not writable state.`)
+    UserInput.fail(`Cannot set "${name}": it is not writable state.`)
   }
 }
 
@@ -85,15 +85,11 @@ function bindActionArguments(parent: Scope, parameters: readonly string[], value
 }
 
 function requireAction(candidate: unknown): Action {
-  if (typeof candidate !== 'function') {
-    Errors.ThrowUserInput('Expected a Tao action.')
-  }
+  UserInput.require(typeof candidate === 'function', 'Expected a Tao action.')
   return candidate as Action
 }
 
 function requireText(value: unknown): string {
-  if (typeof value !== 'string') {
-    Errors.ThrowUserInput('Expected a text value.')
-  }
+  UserInput.require(typeof value === 'string', 'Expected a text value.')
   return value
 }

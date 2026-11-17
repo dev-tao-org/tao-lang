@@ -1,4 +1,4 @@
-import { Errors, Json, NewlineCharacter, Regxs, S, Sort, Try } from '@shared'
+import { Errors, Json, NewlineCharacter, Regxs, S, Sort, Try, UserInput } from '@shared'
 import * as Shared from '@shared'
 import { Text } from '@shared/os'
 import { TypeScript } from '@tao/shared/typescript'
@@ -9,11 +9,10 @@ export async function unlockSecretStoreKey(cipher: Cipher, storeKey: StoreKey): 
   const secretKey = (await Try(() => cipher.decrypt(storeKey.wrappedKey.join(NewlineCharacter)), {
     catch: () => Errors.ThrowHostEnvironment('This machine identity could not unlock the secrets store.'),
   })).trim()
-  if (await cipher.recipientOfKey(secretKey) !== storeKey.recipient) {
-    Errors.ThrowUserInput(
-      'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
-    )
-  }
+  UserInput.require(
+    await cipher.recipientOfKey(secretKey) === storeKey.recipient,
+    'The identity unwrapped a different store key. Restore the storeKey block from its last valid commit.',
+  )
   return secretKey
 }
 
@@ -60,30 +59,30 @@ export function encodeStoreKey(key: SecretStore['storeKey']): OptionalEncodedSec
 export function parseSecretStore(text: string): SecretStore {
   const parsed = TypeScript.parseConfigFileTextToJson('secrets.jsonc', text)
   if (parsed.error !== undefined) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `The secret store is not valid JSONC: ${
         TypeScript.flattenDiagnosticMessageText(parsed.error.messageText, NewlineCharacter)
       }`,
     )
   }
   assertUniqueSecretStoreKeys(text)
-  if (!isRecord(parsed.config)) {
-    Errors.ThrowUserInput('The secret store must be a JSON object.')
-  }
+  UserInput.require(!!isRecord(parsed.config), 'The secret store must be a JSON object.')
   const recipientsValue = parsed.config.recipients
-  if (recipientsValue !== undefined && !isStringArray(recipientsValue)) {
-    Errors.ThrowUserInput("The secret store's recipients must be an array of strings.")
-  }
+  UserInput.require(
+    !(recipientsValue !== undefined && !isStringArray(recipientsValue)),
+    "The secret store's recipients must be an array of strings.",
+  )
   const secretsValue = parsed.config.secrets
-  if (secretsValue !== undefined && !isRecord(secretsValue)) {
-    Errors.ThrowUserInput("The secret store's secrets must be an object.")
-  }
+  UserInput.require(
+    !(secretsValue !== undefined && !isRecord(secretsValue)),
+    "The secret store's secrets must be an object.",
+  )
   const storeKey = parsed.config.storeKey === undefined ? undefined : parseStoreKey(parsed.config.storeKey)
   const secrets: Record<string, SecretEntry> = {}
   for (const [name, value] of Object.entries(isRecord(secretsValue) ? secretsValue : {})) {
     requireSecretName(name)
     if (!isRecord(value) || !isStringArray(value.value)) {
-      Errors.ThrowUserInput(`Secret '${name}' has no armor lines; its value must be an array of strings.`)
+      UserInput.fail(`Secret '${name}' has no armor lines; its value must be an array of strings.`)
     }
     secrets[name] = {
       addedAt: typeof value.addedAt === 'string' ? value.addedAt : '',
@@ -160,7 +159,7 @@ export async function decryptSecretValues(
     || !isStoreKeyArmor(store.secrets[name]!.value.join(NewlineCharacter))
   )
   if (unkeyed.length > 0) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `These values are not encrypted to the store key: ${
         unkeyed.join(', ')
       }. Nothing was decrypted. Re-add them with ./dev secrets add <KEY>.`,
@@ -172,7 +171,7 @@ export async function decryptSecretValues(
   for (const name of names) {
     const value = await Try(() => cipher.decryptWithKey(store.secrets[name]!.value.join(NewlineCharacter), secretKey), {
       catch: () =>
-        Errors.ThrowUserInput(`${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`),
+        UserInput.fail(`${name} does not decrypt with the store key. Re-add it with ./dev secrets add ${name}.`),
     })
     values.set(name, value)
   }
@@ -182,7 +181,7 @@ export async function decryptSecretValues(
 /** requireSecretName validates that a secret can become an environment variable. */
 export function requireSecretName(name: string): string {
   if (!Regxs.EnvironmentVariableNameRegx.test(name)) {
-    Errors.ThrowUserInput(
+    UserInput.fail(
       `'${name}' is not a usable secret name. Use capitals, digits and underscores, such as ANTHROPIC_API_KEY.`,
     )
   }
@@ -240,11 +239,10 @@ const secretStoreHeader = S`
 `
 
 function parseStoreKey(value: unknown): StoreKey {
-  if (!isStoreKeyShape(value)) {
-    Errors.ThrowUserInput(
-      "The secret store's storeKey needs a recipient string and wrappedFor and wrappedKey string arrays.",
-    )
-  }
+  UserInput.require(
+    !!isStoreKeyShape(value),
+    "The secret store's storeKey needs a recipient string and wrappedFor and wrappedKey string arrays.",
+  )
   return { recipient: value.recipient, wrappedFor: value.wrappedFor, wrappedKey: value.wrappedKey }
 }
 
