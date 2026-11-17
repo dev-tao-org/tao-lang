@@ -3,10 +3,11 @@
 /cache/sessions/*
 !/cache/sessions/review-build/
 /cache/sessions/review-build/*
-!/cache/sessions/review-build/build/
 !/cache/sessions/review-build/libraries/
-node_modules
-tsconfig.json
-*.tsbuildinfo
-*.generations/
+/cache/sessions/review-build/libraries/*
+!/cache/sessions/review-build/libraries/Demo/
+/cache/sessions/review-build/libraries/Demo/*
+!/cache/sessions/review-build/libraries/Demo/package.json
+!/cache/sessions/review-build/libraries/Demo/*.js
+!/cache/sessions/review-build/libraries/Demo/*.d.ts
 /locks/

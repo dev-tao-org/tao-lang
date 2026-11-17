@@ -1,7 +1,7 @@
 import { Errors, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
-/** publishDirectory replaces generated files with a completed directory, restoring the old output on failure. */
+/** publishDirectory installs completed output, restoring the old output if installation fails. */
 export async function publishDirectory(next: string, output: string): Promise<void> {
   await FS.mkdir(Path.dirname(output))
   const previous = `${next}.previous`
@@ -18,6 +18,7 @@ export async function publishDirectory(next: string, output: string): Promise<vo
     },
   })
   if (exists) {
-    await FS.rm(previous, { recursive: true, force: true })
+    // Installation is already committed. Session cleanup can remove a displaced tree later.
+    await Try.WithDefault(undefined, () => FS.rm(previous, { recursive: true, force: true }))
   }
 }

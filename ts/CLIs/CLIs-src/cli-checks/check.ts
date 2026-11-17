@@ -9,9 +9,9 @@ import { prepareParser } from './parser-build'
 import { prepareRuntime } from './runtime-build'
 
 /** assertNewWorkspaceTree rejects source links that could make tools traverse outside the workspace. */
-export async function assertNewWorkspaceTree(): Promise<void> {
-  const workspacePath = Repo.resolvePath('ts')
-  Repo.assertNewWorkspacePath(workspacePath)
+export async function assertNewWorkspaceTree(root = Repo.getWorkspaceRoot()): Promise<void> {
+  const workspacePath = Path.join(root, 'ts')
+  Repo.assertNewWorkspacePath(workspacePath, root)
   const workspace = FS.realpathSync(workspacePath)
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await FS.readdir(directory, { withFileTypes: true })) {
