@@ -42,7 +42,7 @@ function createCleanupFailureProbe(root: string, mockExport: keyof Pick<typeof T
     await publish('second', { 'App.tsx': 'second', 'Removed.ts': 'export {}' });
     const installed = runtime.generated.revision;
     await publish('third', { 'App.tsx': 'third' });
-    console.log(failures, installed, runtime.generated.revision);
+    console.log([failures, installed, runtime.generated.revision].join(' '));
   `
 }
 
