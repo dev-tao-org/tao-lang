@@ -17,6 +17,7 @@ Status: complete. Independently reviewed rollback `1d95d7b9` integrated here; re
 
 - Completed with the rollback: failed direct library output cleanup, parser preparation for the outer `agent unsandboxed verify` route, and the vacuous test assertion.
 - Synchronous-batch repair integrated from `bc5d463a`: ordinary synchronous results with a noncallable `then` field are accepted. Disabled and Boolean support remain removed. Human review is still separate.
+- Reactive runtime follow-up implemented locally, under review: feedback-loop limits stop the callback performing repeated writes and its newly created subscriptions, preserving independent observers; collection-publication benchmarks retain work counts and timings. Authored runtime type mappings remain stable across source rebuilds, avoiding unnecessary npm setup; preview validation and execution share one pinned runtime generation. Verification and measurement evidence live in the implementation checkpoint.
 - Finish the native CI worker's exact-tip verification and performance report; independently review, integrate and verify that branch separately. Earlier green CI is not evidence for a later tip.
 - Preserve performance and review evidence, back up commits, and retire worktrees only when their unique evidence is safe. Remote archive publication remains separately deferred for this consolidation.
 
@@ -37,6 +38,8 @@ Owner: [Language decisions](Tao%20Language%20Design%20Decisions.md), [Runtime Po
 Design Boolean, text and numeric types as one coherent foundation, rather than adding Boolean support as an incidental prerequisite for disabled. Resolve numeric representation/precision/limits, named types, construction/validation/conversion, arithmetic/comparison/logical expressions, optional values and `none`/`missing`, and time/duration semantics. Specify consistent sidecar and TypeScript-library contracts. Refresh one annotated example spanning the core types and their conversions.
 
 Implementation remains a sequence of small reviewable pieces beneath that shared design; this queue does not select unsettled numeric representations or spellings.
+
+Define the boundary between immutable data and opaque identity-bearing handles with core types and sidecar contracts. Do not imply that arbitrary mutable host objects become immutable through a TypeScript readonly annotation.
 
 ## Later design: brackets, layout, styling and design declarations
 
@@ -61,9 +64,13 @@ Owners: [Compiler and reactive runtime](Compiler%20and%20Reactive%20Runtime%20Pl
 
 Complete generated sidecar contracts, checked conversions, immutable snapshots and structural equality, observation/writable-state integration, pure and inline functions, typed matching and inferred returns. Effects remain explicit actions. Reuse already implemented behavior rather than reopening its decisions. Prove authored Tao calculations and headless TypeScript-library consumption.
 
+Include external reactive-source subscription/disposal and sidecar callback lifetime protection in the sidecar integration slice. Consult the previous runtime's revocable native mutation leases; prove that discarded renders and unmounted controls cannot publish late changes. Preserve the current commit-owned React subscription bridge.
+
 ## 6. Actions, control flow and collections
 
 Implement local state and updates, scoped actions and event bindings, render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton only after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
+
+Implement writable field projections and mapped writable inputs with the state/record/input slices, retaining one authoritative storage owner. Use the previous writable-lens behavior as reference, not its compatibility wrappers. Define transaction overlays and rollback in the owning mutation/action slice; synchronous reactive batching alone does not provide rollback or authorize making every UI action transactional.
 
 ## 7. Data and providers
 

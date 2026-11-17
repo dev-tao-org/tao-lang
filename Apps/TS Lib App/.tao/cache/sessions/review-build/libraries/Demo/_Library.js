@@ -785,9 +785,8 @@ function createReactiveEngine(options = {}) {
     disposed: false,
     evaluationDepth: 0,
     deliveryChainCount: 0,
-    deliveryChainActive: false,
     cancelDeliveryChainReset: undefined,
-    deliveryDepth: 0,
+    activeDelivery: undefined,
     deliveryScheduled: false,
     flushingDelivery: false
   });
@@ -885,7 +884,7 @@ function observeNode(state, node, receive) {
       deliveryPending = false;
       if (active && !areValueSnapshotsEqual(lastDelivered, pendingValue)) {
         lastDelivered = pendingValue;
-        deliverValue(state, receive, lastDelivered);
+        deliverValue(state, receive, lastDelivered, stop);
       }
     });
   }));
@@ -898,7 +897,8 @@ function observeNode(state, node, receive) {
     state.allStops.delete(stop);
   };
   state.allStops.add(stop);
-  Try(() => deliverValue(state, receive, lastDelivered), {
+  state.activeDelivery?.createdStops.add(stop);
+  Try(() => deliverValue(state, receive, lastDelivered, stop), {
     catch(thrown) {
       stop();
       return Throw(thrown);
@@ -910,24 +910,14 @@ function watchNode(state, node, changed) {
   assertActive(state);
   changed(decodeReactiveValue(node.value.value));
 }
-function deliverValue(state, receive, value) {
-  if (!state.deliveryChainActive) {
-    state.deliveryChainCount = 0;
-  }
-  state.deliveryChainActive = false;
-  state.deliveryChainCount += 1;
-  if (state.deliveryChainCount > MaxReentrantDeliveries) {
-    failDeliveryCycle(state);
-  }
-  state.deliveryDepth += 1;
+function deliverValue(state, receive, value, stop) {
+  const parent = state.activeDelivery;
+  state.activeDelivery = { stop, createdStops: new Set };
   Try(() => Bridge_preact_signals_core_default.untracked(() => receive(value)), {
     finally() {
-      state.deliveryDepth -= 1;
+      state.activeDelivery = parent;
     }
   });
-  if (!state.deliveryChainActive) {
-    resetDeliveryChain(state);
-  }
 }
 function scheduleDeliveryChainReset(state) {
   state.cancelDeliveryChainReset?.();
@@ -937,7 +927,6 @@ function resetDeliveryChain(state) {
   state.cancelDeliveryChainReset?.();
   state.cancelDeliveryChainReset = undefined;
   state.deliveryChainCount = 0;
-  state.deliveryChainActive = false;
 }
 function queueDelivery(state, deliver) {
   state.pending.push(deliver);
@@ -954,14 +943,9 @@ function queueDelivery(state, deliver) {
 function flushDelivery(state) {
   state.deliveryScheduled = false;
   state.flushingDelivery = true;
-  let passes = 0;
   let failure;
   Try(() => {
     while (state.pending.length > 0) {
-      passes += 1;
-      if (passes > MaxReentrantDeliveries) {
-        failDeliveryCycle(state);
-      }
       const current = state.pending;
       state.pending = [];
       Bridge_preact_signals_core_default.batch(() => {
@@ -986,11 +970,6 @@ function flushDelivery(state) {
     Throw(failure);
   }
 }
-function failDeliveryCycle(state) {
-  state.pending = [];
-  disposeObservers(state);
-  return ThrowUserInput("Reactive observers exceeded the reentrant delivery limit; break the update cycle.");
-}
 function createWritable(state, initial) {
   assertActive(state);
   const snapshot = takeValueSnapshot(initial);
@@ -1004,17 +983,30 @@ function createWritable(state, initial) {
 function updateSource(state, source, value) {
   assertActive(state);
   const snapshot = takeValueSnapshot(value);
-  if (state.deliveryDepth > 0) {
-    state.deliveryChainActive = true;
-  } else {
-    resetDeliveryChain(state);
+  const previous = source.peek();
+  const next = encodeReactiveValue(snapshot, previous);
+  if (Object.is(next, previous)) {
+    return;
   }
+  requireBoundedFeedback(state);
   Bridge_preact_signals_core_default.batch(() => {
-    source.value = encodeReactiveValue(snapshot, source.peek());
+    source.value = next;
   });
-  if (state.deliveryDepth > 0) {
-    scheduleDeliveryChainReset(state);
+}
+function requireBoundedFeedback(state) {
+  const delivery = state.activeDelivery;
+  if (!delivery) {
+    resetDeliveryChain(state);
+    return;
   }
+  state.deliveryChainCount += 1;
+  if (state.deliveryChainCount >= MaxReentrantDeliveries) {
+    delivery.stop();
+    delivery.createdStops.forEach((stop) => stop());
+    resetDeliveryChain(state);
+    ThrowUserInput("Reactive observers exceeded the reentrant delivery limit; break the update cycle.");
+  }
+  scheduleDeliveryChainReset(state);
 }
 function disposeEngine(state) {
   if (state.disposed) {
