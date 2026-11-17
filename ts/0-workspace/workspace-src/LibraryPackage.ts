@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import * as Compile from '@compile'
 import * as Grammar from '@grammar'
-import { Errors, Json } from '@shared'
+import { Errors, Json, Try } from '@shared'
 import * as SourceValidation from '@source-validation'
 import * as Stdlib from '@stdlib'
 import * as Typecheck from '@typecheck'
@@ -43,20 +43,29 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   const output = Path.resolve(request.out)
   await FS.mkdir(Path.dirname(output))
   await FS.createExclusiveDirectory(output)
+  await Try(() => writeLibraryPackage(output, library, request.name), {
+    async catch(error) {
+      await FS.rm(output, { recursive: true, force: true })
+      Errors.Throw(error)
+    },
+  })
+  return output
+}
+
+async function writeLibraryPackage(output: string, library: Compile.CompiledLibrary, name: string): Promise<void> {
   const sources = Path.join(output, 'source')
   await writeGeneratedSources(sources, library.files)
   const configuration = Path.join(sources, 'tsconfig.json')
   await FS.writeFile(configuration, serializeLibraryBuildConfiguration())
   await Bundle.bundleLibrary(Path.join(sources, 'Library.ts'), output, configuration)
   const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
-    name: request.name,
+    name,
     peerDependencies: { 'react': '19.2.3', 'react-native': '0.86.3' },
     dependencies: { '@preact/signals-core': '1.14.4' },
   })
   for (const [name, source] of Object.entries(packageFiles)) {
     await FS.writeFile(Path.join(output, name), source)
   }
-  return output
 }
 
 function requireLibraryPackageRequest(request: LibraryPackageRequest): void {
