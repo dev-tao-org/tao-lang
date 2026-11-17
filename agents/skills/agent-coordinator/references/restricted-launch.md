@@ -1,0 +1,6 @@
+# Restricted launches
+
+- Start new chats and subagents in a harness-enforced restricted mode appropriate to their work, such as read-only for a review or workspace-write for implementation. Use full access only when it is strictly necessary and the Developer explicitly approves it before launch or a permission change.
+- Before launch, verify the supported permission selector, effective configuration for the exact destination, or documented inheritance from the caller's verified restricted mode. If a tool lacks a permission selector, verify another supported way to establish restricted startup. If you cannot verify it, stop and explain the limitation before launching. Tool prompts may scope work but do not enforce sandbox permissions.
+- On discovering that an existing chat or agent has unapproved full access, pause new work there at a safe boundary. Tell the Developer what you found and coordinate switching to a verified restricted configuration or continuing in a verified restricted successor. Resume only after the permission issue is resolved.
+- Authorization to install pinned dependencies or run a named host operation applies to that operation. Keep the session restricted and use the operation's supported approval and execution path.

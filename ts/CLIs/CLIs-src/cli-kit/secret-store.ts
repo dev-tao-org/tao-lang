@@ -1,7 +1,7 @@
 import { Errors, Json, NewlineCharacter, Regxs, S, Sort, Try } from '@shared'
 import * as Shared from '@shared'
 import { Text } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { assertUniqueSecretStoreKeys } from './secret-store-jsonc'
 
 /** unlockSecretStoreKey unwraps once with the machine identity and verifies the recorded software-key recipient. */

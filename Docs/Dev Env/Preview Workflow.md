@@ -3,8 +3,8 @@
 ```sh
 ./dev
 ./dev help
-just performance
-./tao compile ts/perf/perf-fixtures/Performance/Performance.tao
+just timing --local
+./tao compile ts/repo-analysis/performance-fixtures/Performance/Performance.tao
 ```
 
 `./dev` and `just dev` start the keyboard launcher. Press `p` for the performance editor or `v` for the live Preview app. Each shortcut starts its app on demand and opens its URL in the browser. Press either shortcut again to reopen its existing session. Press `q` or Ctrl-C to shut down both sessions. `./dev help` lists all developer commands.
@@ -15,7 +15,9 @@ The compiler produces a complete generated revision in memory and publishes it t
 
 ## Measurements
 
-`just performance` uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
+`just timing --local` runs a diagnostic in the current checkout. It uses the same isolated project and serialized save path as the performance editor. It checks text changes, growth and shrink of same-file and imported trees, an edit inside a mounted dependency, and reset in both frame sizes.
+
+`just performance` and `just timing` run on the dedicated timing machine. The [remote timing workflow](Performance/Remote%20timing%20workflow.md) explains how to select a prepared checkout and run formal measurements in isolation under the shared timing lock.
 
 Use a fresh performance editor session for manual saves or for the built-in benchmark edits. The first edit selects that session's mode and protects saved source and benchmark inputs from each other.
 

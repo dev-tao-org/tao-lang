@@ -22,8 +22,8 @@ export async function runNativeTaoTests(
   shard?: TestShard,
 ): Promise<void> {
   await Exec.requireHostProcessAccess('Run ./agent unsandboxed test for native journey host access.')
-  const { files, consumer } = await selectNativeRun(Path.resolve(target), platform, shard)
   await prepareParser()
+  const { files, consumer } = await selectNativeRun(Path.resolve(target), platform, shard)
   await prepareRuntime()
   const controller = Cancellation.createController()
   const stop = Process.onTermination(() => controller.abort())

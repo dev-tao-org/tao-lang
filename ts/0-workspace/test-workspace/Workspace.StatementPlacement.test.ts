@@ -3,6 +3,7 @@ import * as Grammar from '@grammar'
 import { S, Source, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
+import { resolveDependencyLockPath } from '../workspace-src/dependencies/LockFile'
 import * as Workspace from '../workspace-src/Workspace'
 
 const PlacementMessage = 'Root declarations belong directly inside an app.'
@@ -89,20 +90,21 @@ Tests.test('misplaced statements retain their AST ranges and block app publicati
   }, { finally: () => workspace.dispose() })
 })
 
-Tests.test('library compilation rejects placements before emitting a package', async () => {
+Tests.test('library compilation rejects misplaced statements before reading dependency state or emitting a package', async () => {
   const directory = Artifacts.resolvePath('tmp', `library-placement-${Platform.randomUUID()}`)
   const entry = Path.join(directory, 'Library.tao')
   const output = Path.join(directory, 'output')
   const source = S`
     ts-library Demo { publish { Main } }
-    public view Main {
+    package view Main {
       root Main
       ${RootRender}
     }
   `
   await Try(async () => {
-    await FS.mkdir(directory)
+    await Workspace.createProject({ directory })
     await FS.writeFile(entry, source)
+    await FS.writeFile(resolveDependencyLockPath(directory), 'corrupt')
     await Tests.rejects(
       Workspace.compileLibraryPackage({ entry, out: output, name: '@example/placement' }),
       LibraryPlacementRegx,
@@ -111,7 +113,7 @@ Tests.test('library compilation rejects placements before emitting a package', a
   }, { finally: () => FS.rm(directory, { recursive: true, force: true }) })
 })
 
-Tests.test('linking reports required statements, view ordering and expectation placement together', async () => {
+Tests.test('source validation reports required statements, view ordering and expectation placement together', async () => {
   const source = S`
     app Example { root Main root Other }
     view Main {
@@ -119,7 +121,7 @@ Tests.test('linking reports required statements, view ordering and expectation p
       ${RootRender}
       let Late = "value"
       render Early
-      public view Exposed { ${RootRender} }
+      package view Exposed { ${RootRender} }
     }
     ts-library Demo {}
     tests { test { expect { #save input value "Ready" } } }
@@ -164,28 +166,34 @@ Tests.test('lowercase declarations keep their syntax and block compilation at th
   }, { finally: () => workspace.dispose() })
 })
 
-Tests.test('bare and tagged qualified views accept package-derived keyword namespaces', async () => {
-  const directory = Artifacts.resolvePath('tmp', `placement-namespaces-${Platform.randomUUID()}`)
-  const entry = Path.join(directory, 'Main.tao')
+Tests.test('text state and action statements parse before their placement and names are checked', async () => {
   const source = S`
-    use tao@ui Col
-    use package ./root
-    use package ./input
+    state Outside = "No"
     app Example { root Main }
-    view Main { render Col { root.Leaf #edge input.Leaf } }
-  `
-  const workspace = Workspace.createWorkspace({ directory })
-  await Try(async () => {
-    await FS.mkdirs(Path.join(directory, 'root'), Path.join(directory, 'input'))
-    await FS.writeFile(entry, source)
-    for (const namespace of ['root', 'input']) {
-      await FS.writeFile(Path.join(directory, namespace, 'Leaf.tao'), `public view Leaf { ${RootRender} }`)
+    view Main {
+      set Outside = "No"
+      do Missing()
+      on press Missing
+      action rename(value text) {
+        state Inner = "No"
+      }
+      ${RootRender}
+      state Late = "No"
     }
-    Tests.expect(await workspace.files.compileFile(entry)).toMatchObject({ status: 'published' })
-  }, {
-    async finally() {
-      await workspace.dispose()
-      await FS.rm(directory, { recursive: true, force: true })
-    },
-  })
+  `
+  Tests.expect(Grammar.createParser().parse(source).rootNode.hasError).toBe(false)
+  const workspace = Workspace.createWorkspace({})
+  await Try(async () => {
+    const outcome = await workspace.update(source)
+    Tests.expect(outcome.status).toBe('failed')
+    const error = outcome.status === 'failed' ? outcome.error : ''
+    Tests.expect(error).toContain('State declarations belong directly inside a view.')
+    Tests.expect(error).toContain('Set statements belong inside an action.')
+    Tests.expect(error).toContain('Do statements belong inside an action.')
+    Tests.expect(error).toContain('Press bindings belong inside a view invocation.')
+    Tests.expect(error).toContain("Declared name 'rename' must start with an uppercase letter.")
+    Tests.expect(error).toContain("Declared name 'value' must start with an uppercase letter.")
+    Tests.expect(error).toContain('A state or action declaration must precede')
+    Tests.expect(error).toContain(`offset ${source.indexOf('set Outside')}`)
+  }, { finally: () => workspace.dispose() })
 })

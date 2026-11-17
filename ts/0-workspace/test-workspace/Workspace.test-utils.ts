@@ -1,7 +1,21 @@
+import * as Runtime from '@runtime'
 import { Json } from '@shared'
 import { Errors } from '@shared'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import { initializeProject } from '../workspace-src/projects/Projects'
+
+/** installRelocatedLibrary moves the artifact into the ordinary consumer and copies its separate Tao runtime. */
+export async function installRelocatedLibrary(root: string, output: string, name: string): Promise<string> {
+  const modules = Path.join(root, 'src/ts/node_modules')
+  const library = Path.join(modules, name)
+  const runtime = Path.join(modules, '@tao/runtime')
+  await FS.rm(library, { force: true })
+  await FS.rm(runtime, { force: true })
+  await FS.rename(output, library)
+  await FS.cp(Runtime.libraryRuntimePackageDirectory(), runtime, { recursive: true })
+  await FS.rm(Path.join(root, 'src/tao'), { recursive: true })
+  return library
+}
 
 /** createStandaloneLibraryFixture copies the ordinary local app and links existing pinned dependencies without installing. */
 export async function createStandaloneLibraryFixture(): Promise<string> {
@@ -20,16 +34,7 @@ export async function createStandaloneLibraryFixture(): Promise<string> {
       packageDirectory: FS.realpathSync(packageDirectory),
     }),
   )
-  for (
-    const name of [
-      'package.json',
-      'tsconfig.json',
-      'Consumer.tsx',
-      'ForeignGreeting.tsx',
-      'DisabledPreviewDemo.tsx',
-      'test',
-    ]
-  ) {
+  for (const name of ['package.json', 'tsconfig.json', 'Consumer.tsx', 'ForeignGreeting.tsx', 'test']) {
     await FS.cp(Path.join(source, 'src/ts', name), Path.join(packageDirectory, name), { recursive: true })
   }
   await linkStandaloneLibraryDependencies(directory)
@@ -39,12 +44,14 @@ export async function createStandaloneLibraryFixture(): Promise<string> {
 /** linkStandaloneLibraryDependencies links this checkout's installed pinned runtime and browser dependencies. */
 export async function linkStandaloneLibraryDependencies(directory: string): Promise<void> {
   const modules = Path.join(directory, 'src/ts/node_modules')
-  await FS.mkdir(Path.join(modules, '@example'))
+  await FS.mkdir(Path.join(modules, '@tao-dev'))
   await FS.symlink(
-    Path.join(directory, '.tao/cache/libraries/Demo'),
-    Path.join(modules, '@example/tao-library'),
+    Path.join(directory, '.tao/cache/sessions/.cli/libraries/Demo'),
+    Path.join(modules, '@tao-dev/ts-lib-example'),
     'dir',
   )
+  await FS.mkdir(Path.join(modules, '@tao'))
+  await FS.symlink(Path.join(directory, '.tao/cache/runtime-package'), Path.join(modules, '@tao/runtime'), 'dir')
   const runtime = Repo.resolvePath('ts/7-runtime')
   const runtimePackages = [
     '@expo/metro-runtime',
@@ -57,6 +64,7 @@ export async function linkStandaloneLibraryDependencies(directory: string): Prom
     'react-native',
     'react-native-web',
     'typescript',
+    'zod',
   ]
   for (const name of runtimePackages) {
     await linkInstalledPackage(name, runtime, modules)

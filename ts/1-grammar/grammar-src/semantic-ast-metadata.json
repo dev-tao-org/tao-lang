@@ -6,19 +6,26 @@
     "InjectionCapture": "Capture"
   },
   "semanticFieldNames": {
+    "DoStatement": {
+      "argumentList": "arguments"
+    },
     "ViewRenderExpression": {
       "argumentList": "arguments",
       "view": "target"
     }
   },
   "requiredFields": {
-    "BooleanLiteral": ["value"],
-    "UseStatement": ["all"],
     "Capture": ["value"]
   },
   "fieldTypeOverrides": {
-    "BooleanLiteral": {
-      "value": "boolean"
+    "ActionDeclaration": {
+      "parameters": "readonly Parameter[]"
+    },
+    "DoStatement": {
+      "arguments": "readonly Expression[]"
+    },
+    "InlineAction": {
+      "body": "InlineActionBody"
     },
     "Capture": {
       "value": "CaptureValue"
@@ -30,6 +37,9 @@
     "Injection": {
       "captures": "readonly Capture[]"
     },
+    "PressBinding": {
+      "handler": "PressHandler"
+    },
     "InputExpectation": {
       "target": "RenderTag | undefined"
     },
@@ -39,17 +49,24 @@
     },
     "ViewRenderExpression": {
       "arguments": "readonly Expression[]"
-    },
-    "UseStatement": {
-      "all": "boolean"
     }
   },
   "unions": {
+    "ActionStatement": ["SetStatement", "DoStatement"],
+    "InlineActionBody": ["Block", "SetStatement", "DoStatement"],
+    "PressHandler": ["Name", "InlineAction"],
     "CaptureValue": ["Name", "ContextReference"],
     "TestStep": ["RunStatement", "PressStatement", "TypeStatement", "ExpectStatement"],
     "Expectation": ["TextExpectation", "InputExpectation"],
     "ValueDeclaration": ["AppDeclaration", "ViewDeclaration", "LetDeclaration"],
-    "ViewDeclarationStatement": ["LetDeclaration", "_ViewRenderStatement", "ViewDeclaration"],
-    "ViewRenderBlockStatement": ["LetDeclaration", "ViewRenderExpression"]
+    "ViewValueDeclaration": ["LetDeclaration", "StateDeclaration"],
+    "ViewDeclarationStatement": [
+      "LetDeclaration",
+      "StateDeclaration",
+      "ActionDeclaration",
+      "_ViewRenderStatement",
+      "ViewDeclaration"
+    ],
+    "ViewRenderBlockStatement": ["LetDeclaration", "PressBinding", "ViewRenderExpression"]
   }
 }

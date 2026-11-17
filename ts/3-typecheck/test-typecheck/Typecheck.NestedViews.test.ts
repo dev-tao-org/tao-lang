@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import { Range } from '@shared'
 import * as Tests from '@shared-tests'
 
-import { collectModuleReferences } from '../typecheck-src/LinkModuleValidation'
+import { collectReferencedNames } from '../typecheck-src/LinkModuleValidation'
 import { linkModules } from '../typecheck-src/Typecheck'
 import * as Fixtures from './Typecheck.test-fixtures.LinkModules'
 
@@ -27,7 +27,7 @@ Tests.test('nested views resolve their sibling group through descendants', () =>
       Fixtures.createView('Peer'),
     ]),
   }
-  Tests.expect(collectModuleReferences(Fixtures.createSource('app/main.tao', [owner]).document).names).toEqual(
+  Tests.expect(collectReferencedNames(Fixtures.createSource('app/main.tao', [owner]).document)).toEqual(
     new Set(['Col']),
   )
 })
@@ -40,14 +40,16 @@ Tests.test('nested view names share a scope while child scopes may shadow them',
   Tests.expect(() => linkModules('app/main.tao', [Fixtures.createSource('app/main.tao', [duplicateChildren])]))
     .toThrow('View Main in app/main.tao declares Card more than once in one scope')
 
+  const localCard = { ...Fixtures.createLetDefinition('Card'), value: Fixtures.createIdentifier('AlternateCard') }
   const shadowingChild = {
     ...Fixtures.createView('Main'),
     body: Fixtures.createViewBlock([
       render('Col'),
       {
         ...Fixtures.createView('Card'),
-        body: Fixtures.createViewBlock([Fixtures.createLetDefinition('Card'), render('Card')]),
+        body: Fixtures.createViewBlock([localCard, render('Card')]),
       },
+      Fixtures.createView('AlternateCard'),
     ]),
   }
   Tests.expect(() => linkModules('app/main.tao', [Fixtures.createSource('app/main.tao', [shadowingChild])])).not

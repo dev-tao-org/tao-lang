@@ -55,10 +55,7 @@ export async function openTestBrowser(): Promise<TestBrowser> {
         await openPage(page, url)
       },
       async press(tag) {
-        const target = page.getByTestId(tag)
-        // Attempt the real pointer click even when the control declares itself disabled.
-        const disabled = await target.isDisabled()
-        await target.click({ force: disabled })
+        await page.getByTestId(tag).click()
       },
       async type(tag, value) {
         await typeInput(page, tag, value)

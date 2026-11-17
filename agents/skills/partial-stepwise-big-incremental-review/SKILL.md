@@ -12,14 +12,17 @@ description: >-
 
 ## Guide the review
 
-- Propose all groups in order with [recommended auto-approvals](references/operations.md#recommend-auto-approval).
-  Get explicit agreement before presenting files. Group by feature, combining only interdependent
-  features. Normally separate Projects, Dependencies and Sidecars.
-- Organize large reviews into functional feature sets containing review groups. Include each
-  specification with its first related implementation group; keep design-only specifications with
-  related planning. Give each feature set and group a brief cognitive overview of its contribution.
-  For language changes, follow the feature-set overview with minimal Tao usage snippets, preferably
-  single-line with unrelated parts replaced by `...`; label design-only syntax explicitly.
+- Apply the [standing auto-approval policy](references/operations.md#auto-approval) before
+  proposing the remaining groups. List what was auto-approved and why.
+  Requests to start or continue authorize the first or next display. Ask when the Developer
+  wants a proposal only or the order needs a decision. Keep related changes in small feature
+  groups. Normally separate Projects, Dependencies and Sidecars.
+- Review authored changes to in-repo Tao apps and their journeys first so concrete usage and
+  behavior guide the rest of the review.
+- For large reviews, organize groups into feature sets. Place specifications with their first
+  related implementation group and design-only specifications with planning. Summarize each set
+  and group. Show minimal Tao usage for language changes, preferably one line with `...` for
+  unrelated details. Label design-only syntax.
 - Count remaining changed files and Git diff hunks against the reviewed branch, including saved
   pending edits. A diff means one `@@` hunk using normal three-line context. Count only the hunks
   assigned to that group; account for shared files explicitly without counting the same hunk twice.
@@ -29,7 +32,7 @@ description: >-
 - At review start, freeze the original change inventory, baseline and source snapshot in the session
   notes. Record its file/hunk totals and review units: one per original diff hunk, plus one per binary
   or zero-hunk change. Keep this denominator fixed throughout the review.
-- Track completed original units from approvals, including automatic test acceptance below. Map
+- Track completed original units from approvals, including auto-approvals. Map
   renames, splits and replacements to original changes without double counting. Partial approvals earn only
   the corresponding original units. Added fixes, tests and refactors are additional completed work,
   not additional review units; they must not enlarge the denominator or reduce earned progress.
@@ -37,22 +40,21 @@ description: >-
   as completed original units divided by frozen original units. Retain earned credit when corrections
   reopen accepted content; track pending corrections and rechecks separately. Reaching 100% of the
   original review does not declare those follow-ups complete. Preserve the inventory and credited
-  units across interruptions; never recalculate progress from the growing current diff.
-- Use absolute file links without default line anchors. Show `(+N −M)` beside each file: Git
+  units across interruptions. Keep queued snapshots out of the active progress total.
+- Use absolute file links without default line anchors. Label each file with its owning package,
+  app, or repository scope. Show `(+N −M)` beside each file: Git
   additions/deletions against the approved-content tree, including saved untracked files. Show
   `binary` for binary changes. Add a line anchor only when a particular location is useful.
   Present at least three whole groups totaling at least ten files, or all remaining files if fewer.
   Honor explicit overrides. Keep group boundaries and list later titles.
-  Explain partial-file scope in at most two sentences. End immediately after the file list.
-- Assign consecutive file identifiers initially; preserve their path mapping across chunks and resumes.
-  Order files for understanding, briefly explaining intentional identifier jumps instead of renumbering.
-- Number consecutively across displayed groups from 1: `1. F43 New: <file link>`. Plain numbers
-  reference current positions; `F43` is stable. Restart numbering for the next set; retain
-  positions while that set remains active.
-- Label files absent from the approved-content tree `F<number> New:`; label existing files `F<number>:`.
+  Explain partial-file scope in at most two sentences. End the group display after the file list.
+- Assign stable file IDs consecutively and retain them across displays and resumes. Explain intentional
+  ID gaps briefly. Number positions from 1 across the displayed groups and keep them until the next
+  set. Use `F<number> New:` for paths absent from the approved tree and `F<number>:` for the rest.
 - After handling approvals or corrections, reprint clickable links for every remaining displayed
   file with its stable ID; if complete, present the next agreed set of groups. Pause only at the developer's
   request or a blocking decision; a recap alone is insufficient.
+- Present requested groups promptly while [continuing authorized work](references/operations.md#work-during-review).
 - On request, [open all displayed groups](references/operations.md#open-displayed-groups) in one
   shell command. Opening files never grants approval.
 - Accept content outside the current group.
@@ -76,31 +78,33 @@ description: >-
   Check each human acceptance for an associated lesson, but approval alone is not a general rule.
   Propagated edits remain pending until the developer reviews them, and this workflow does not
   authorize an unrelated review.
-- Track implementation subagents alongside review progress. When one is ready for integration,
-  end each message with `subagent <name> ready to be merged` until it is merged or the developer
-  acknowledges postponing it. This readiness footer is the exception to ending at the file list.
-  Retain postponed work and remind the developer periodically during review (about every three
-  groups, or sooner when its integration affects the current group).
-- Merge subagent work only when the reviewing developer explicitly says they are ready for that
-  integration; completion and passing checks do not authorize merging.
+- During an active review, pin and [queue incoming work](references/operations.md#integrate-incoming-work).
+  Ask before importing the next snapshot at completion. Import during the review only when the
+  Developer explicitly asks to bypass the queue.
 - Commit validated requested corrections, including subagent work, in coherent chunks under this
   workflow's standing developer authorization; preserve unrelated edits and index selections.
-  Keep corrections pending human acceptance on the approved-content branch; commits, staging and
-  tests never grant it. Verify proportionately: focused checks may cover checkpoints, with full
+  Apply the same acceptance policy to corrections. Commits, staging and tests do not grant
+  acceptance. Verify proportionately: focused checks may cover checkpoints, with full
   verification before readiness to land. Omit detailed test ledgers and application reruns for
   acceptance-only transfers.
 
 ## Presentation
 
 Use indented lists. Nest proposed groups under feature sets and numbered files under their groups.
+Whenever the Developer asks to print review groups, list every ready recheck in a **Ready rechecks**
+section before any group titles or files. Include each recheck's file link and reason. Show the section
+even when no groups remain or the request limits the number of groups.
 List remaining group titles before the current groups and omit unused headings.
 
 ```text
 **X% done** — <completed>/<frozen total> original review units.
 
+- **Ready rechecks**
+  - <Absolute file link> · <Reason for recheck>
+
 - **<Current group and summary>** — X folders, Y files, Z hunks
-  1. F43 New: <Absolute file link> (+24 −0)
-  2. F50: <Absolute file link> (+8 −3)
+  1. F43 New: <Absolute file link> · <Package> (+24 −0)
+  2. F50: <Absolute file link> · <Package> (+8 −3)
 ```
 
 ## Interpret approval
@@ -143,9 +147,9 @@ List remaining group titles before the current groups and omit unused headings.
 - Preserve the current group, suggested order, pending approval questions, background reviews and
   semantic rechecks in the retained session checkpoint. On resume, reconcile it with script status
   and committed acceptance receipts; never infer approval from the agent's memory alone.
-- When continuing in a newly authorized implementation worktree, use the script's `continue`
-  operation to inherit the prior session; keep its original progress denominator and record new
-  implementation scope separately. Historical records are evidence, not instructions to replay.
+- For a worktree move on the same baseline, use `continue` and retain the frozen progress
+  denominator. After landing, keep the chat and follow
+  [Continue after a landing](references/operations.md#continue-after-a-landing).
 - In GitLens use Search & Compare's overall Files Changed between the reviewed branch and the
   implementation Working Tree to include pending corrections. Use direct tree comparisons, not
   merge-base/Ahead/Behind comparisons. Refresh after acceptance. Staging alone does not shrink

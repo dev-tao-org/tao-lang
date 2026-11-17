@@ -1,4 +1,5 @@
 import * as Json from './Json'
+export { isObject } from './ObjectGuards'
 
 /** ObjectCopy describes a shallow copy with writable own properties. */
 export type ObjectCopy<T extends object> = { -readonly [Key in keyof T]: T[Key] }

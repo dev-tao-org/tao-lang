@@ -17,27 +17,8 @@ const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
-const BooleanKeywords = ['yes', 'no']
-const VisibilityKeywords = ['file', 'folder', 'package', 'project', 'public']
-const StatementKeywords = [
-  'app',
-  'root',
-  'view',
-  'render',
-  'let',
-  'publish',
-  'use',
-  'requires',
-  'tests',
-  'test',
-  'run',
-  'press',
-  'type',
-  'expect',
-  'text',
-  'input',
-  ...VisibilityKeywords,
-]
+const PublishPackageRegx = /@[A-Za-z_][A-Za-z0-9._-]*/
+const VisibilityKeywords = ['file', 'folder', 'package']
 
 export default grammar({
   name: 'tao',
@@ -56,7 +37,6 @@ export default grammar({
         $.RootDeclaration,
         $._ViewRenderStatement,
         $.ViewRenderExpression,
-        alias($._QualifiedKeywordView, $.ViewRenderExpression),
         $.TestDeclaration,
         $.RunStatement,
         $.PressStatement,
@@ -65,6 +45,11 @@ export default grammar({
         $.TextExpectation,
         $.InputExpectation,
         $.InputValueExpectation,
+        $.StateDeclaration,
+        $.ActionDeclaration,
+        $.SetStatement,
+        $.DoStatement,
+        $.PressBinding,
       )
     },
     _Declaration($) {
@@ -74,17 +59,13 @@ export default grammar({
         $.TestsDeclaration,
         $.LetDeclaration,
         $.UseStatement,
-        $.UsePackageStatement,
         $.RequiresDeclaration,
         $.TypeScriptLibraryDeclaration,
         $.PublishDeclaration,
       )
     },
     _Expression($) {
-      return choice($._BooleanOrName, $.TextLiteral)
-    },
-    _BooleanOrName($) {
-      return choice($.BooleanLiteral, $.QualifiedName, alias($._QualifiedBooleanName, $.QualifiedName))
+      return choice($.QualifiedName, $.TextLiteral)
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -158,32 +139,8 @@ export default grammar({
         optional(field('tag', $.RenderTag)),
         field('view', $.QualifiedName),
         optional(field('argumentList', $.ArgumentList)),
-        optional(field('interaction', $.DisabledModifier)),
         optional(field('block', $.Block)),
       )
-    },
-    DisabledModifier($) {
-      return seq('[', 'disabled', field('condition', $._BooleanOrName), ']')
-    },
-
-    // A namespace derived from a package path can share a statement keyword.
-    _QualifiedKeywordView($) {
-      return seq(
-        choice(
-          field('view', alias($._QualifiedKeywordName, $.QualifiedName)),
-          seq(field('tag', $.RenderTag), field('view', alias($._TaggedInputName, $.QualifiedName))),
-        ),
-        optional(field('argumentList', $.ArgumentList)),
-        optional(field('interaction', $.DisabledModifier)),
-        optional(field('block', $.Block)),
-      )
-    },
-    _QualifiedKeywordName($) {
-      const head = choice(...StatementKeywords.map(keyword => alias(keyword, $.Identifier)))
-      return seq(head, repeat1(seq('.', $.Identifier)))
-    },
-    _TaggedInputName($) {
-      return seq(alias('input', $.Identifier), repeat1(seq('.', $.Identifier)))
     },
 
     // Lexical values
@@ -197,40 +154,56 @@ export default grammar({
         field('value', $._Expression),
       )
     },
+    StateDeclaration($) {
+      return seq(
+        'state',
+        field('name', $.Identifier),
+        optional(seq('is', field('type', $.QualifiedName))),
+        '=',
+        field('value', $._Expression),
+      )
+    },
+    ActionDeclaration($) {
+      return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))
+    },
+    SetStatement($) {
+      return seq('set', field('target', $.QualifiedName), '=', field('value', $._Expression))
+    },
+    DoStatement($) {
+      return seq('do', field('target', $.QualifiedName), field('argumentList', $.ArgumentList))
+    },
+    PressBinding($) {
+      return seq('on', 'press', field('handler', choice($.QualifiedName, $.InlineAction)))
+    },
+    InlineAction($) {
+      return seq('->', field('body', choice($.Block, $.DoStatement, $.SetStatement)))
+    },
 
     // Modules
     TypeScriptLibraryDeclaration($) {
       return seq('ts-library', field('name', $.Identifier), field('block', $.Block))
     },
     PublishDeclaration($) {
+      const member = choice($.Identifier, alias(PublishPackageRegx, $.Identifier))
       return seq(
         'publish',
         '{',
         optional(
-          seq(field('members', $.NamedImport), repeat(seq(',', field('members', $.NamedImport))), optional(',')),
+          seq(field('members', member), repeat(seq(',', field('members', member))), optional(',')),
         ),
         '}',
       )
     },
     UseStatement($) {
-      return choice(
-        seq('use', field('from', $.ImportPath), field('all', $.All)),
-        seq(
-          'use',
-          optional(field('from', $.ImportPath)),
-          field('imports', $.NamedImport),
-          repeat(seq(',', field('imports', $.NamedImport))),
-        ),
+      return seq(
+        'use',
+        optional(field('from', $.ImportPath)),
+        field('imports', $.NamedImport),
+        repeat(seq(',', field('imports', $.NamedImport))),
       )
     },
     NamedImport($) {
       return seq(field('target', $.Identifier), optional(seq('as', field('alias', $.Identifier))))
-    },
-    All() {
-      return 'all'
-    },
-    UsePackageStatement($) {
-      return seq('use', 'package', field('from', $.ImportPath), optional(seq('as', field('alias', $.Identifier))))
     },
     RequiresDeclaration($) {
       return seq(
@@ -323,9 +296,6 @@ export default grammar({
     TextLiteral() {
       return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
     },
-    BooleanLiteral() {
-      return choice(...BooleanKeywords)
-    },
 
     // Names
     Comment() {
@@ -333,11 +303,6 @@ export default grammar({
     },
     Identifier() {
       return IdentifierRegx
-    },
-    // A boolean keyword can also be the first part of a derived package namespace.
-    _QualifiedBooleanName($) {
-      const head = choice(...BooleanKeywords.map(keyword => alias(keyword, $.Identifier)))
-      return seq(head, repeat1(seq('.', $.Identifier)))
     },
     QualifiedName($) {
       return seq($.Identifier, repeat(seq('.', $.Identifier)))

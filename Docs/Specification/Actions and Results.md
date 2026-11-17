@@ -1,6 +1,36 @@
 # Actions and Results WIP
 
-The agreed MVP action inspection surface matches aggregate activity through `when ACTION` or first-match rendering through `pick ACTION`; the design below is not yet implemented.
+Actions run explicitly in response to an event or a `do` call.
+
+```tao
+use tao@ui Button, Col, Text
+
+view Editor {
+  state Message = "Before"
+
+  action Rename() {
+    set Message = "After"
+  }
+
+  render Col {
+    Text(Message)
+    Button("Rename") { on press Rename }
+    Button("Rename too") { on press -> do Rename() }
+  }
+}
+```
+
+#### `action Rename() { ... }`
+
+Declare an action in a view before `render`. It can read the view’s values, write visible state, and call other visible actions, including from a private nested view. A view instance owns its actions and state. Actions accept text parameters and run synchronously. `do Rename()` runs the action before the caller continues.
+
+#### `on press Rename`
+
+Bind a parameterless action to the standard `Button(Label)` to run it on press. `on press -> do Rename()` creates an anonymous action that calls `Rename` when pressed. Use `on press -> { ... }` for several statements. Registering a handler does not run it, and changes to values it reads do not trigger it.
+
+#### Planned action inspection
+
+The agreed MVP design below uses `when ACTION` to inspect aggregate activity and `pick ACTION` for first-match rendering. Inspection, returned results, failure handling and guards are not implemented.
 
 ```tao
 when Save {
@@ -34,28 +64,6 @@ pick Save {
 
 Here pending takes precedence over a previous failure, so the two buttons never render together. This selection does not change the underlying activity or acknowledge failures.
 
-#### Event actions
-
-In an action-expected event binding, `-> ...` is shorthand for an anonymous `action() { ... }`. An existing action can also be registered directly:
-
-```tao
-view Editor {
-   state Message = "Before"
-
-   action Rename() {
-      set Message = "After"
-   }
-
-   render Col {
-      Text(Message)
-      Button("Rename") { on press -> do Rename() }
-      Button("Rename directly") { on press Rename }
-   }
-}
-```
-
-Registration does not execute the action during rendering. The direct reference retains the existing action's identity; the anonymous wrapper has its own identity and delegates to that action when invoked. The registered action must satisfy the event's handler signature. In pure callback positions, arrows retain the pure-function rules in [Inline Functions](Inline%20Functions.md). These event forms are agreed future syntax.
-
 #### Returned values
 
 Binding `let Chosen = do PickFiles()` yields the declared return value after successful execution, not an operation wrapper. Starting an action again with `do` creates a new invocation rather than retrying a previous submission.
@@ -66,11 +74,9 @@ Inspection does not consume failures. Explicit handlers own presentation; defaul
 
 #### Disabled interaction
 
-`[disabled Condition]` is available on a rendered view or container. The condition is `yes`, `no`, or a name that refers to a boolean value. A disabled container disables its descendant controls. A child with `[disabled no]` remains disabled until its ancestors are enabled.
+Disabled interaction is future behavior planned with the [layout and style bracket system](../Roadmap/Immediate%20Implementation%20Queue.md). A disabled container suppresses user interaction in descendant controls. Descendants cannot override a disabled ancestor. Timers, reactive work and programmatic actions continue. Standard controls honor the inherited state, and raw custom controls follow the [TypeScript runtime contract](Runtime%20TypeScript%20API.md#disabled-interaction).
 
-Tao controls expose their disabled state to the platform and suppress user input and activation. Timers, reactive work and programmatic calls continue. Sidecars composing Tao controls inherit the state automatically. Raw controls follow the [TypeScript runtime contract](Runtime%20TypeScript%20API.md#disabled-interaction).
-
-The proposed ActionButton's exact implementation must respect the reduced MVP inspection surface, without introducing individual execution inspection.
+The proposed ActionButton uses aggregate action inspection. Its exact implementation will be designed with the controls that consume this behavior.
 
 #### Deferred execution features
 

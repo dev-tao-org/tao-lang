@@ -1,0 +1,6 @@
+# Continue a background agent's work in a visible chat
+
+- A requested handoff creates or briefs a visible successor through supported harness capabilities. Codex `handoff_thread` moves an existing visible chat's checkout. Verify what the available tools can actually do before claiming any direct promotion or transcript transfer.
+- Follow the session creation rules in `../SKILL.md`. Reuse the predecessor's isolated checkout only when the Developer explicitly selects it and the harness can target that exact checkout. Verify the destination path, branch, commit and dirty state before enabling writes.
+- Have the predecessor finish or pause at a safe boundary and update the task checkpoint. Record the source and successor identities, checkout and branch, committed baseline and dirty Git state, active runs and their identifiers, review and verification evidence with its scope, unresolved findings and open decisions, and current authorization. Carry forward any task-local evidence the successor needs.
+- Once the predecessor has paused writes, transfer exclusive ownership. Have the successor acknowledge the checkpoint, current state and owned work before it writes. Keep the predecessor available for questions or recovery without concurrent writes. If the successor cannot take ownership, report the gap and keep the checkpoint intact.

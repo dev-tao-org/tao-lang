@@ -37,13 +37,11 @@ finished side is empty, say so and do not merge.
 
 ## Bringing the branch to a good state
 
-Before touching `main`: land every finished change as commits so `git status` is clean (an
-in-progress change may be committed too, only if inert — not reachable from anything the Developer would run);
-reverse anything in progress that is not inert, restoring the previous state; leave loud markers (a
-quarantine entry) exactly where they were, note updated to say where work now stands; refresh the
-documents the landed work changed; run the targeted checks the change reaches, saying explicitly
-if one was already red rather than implying it passed. Write or refresh
-`.artifacts/merge/<branch>.msg`; the landing route proves the rest, so run no broad local lane first.
+Use the exact, clean implementation commit for the approved cut. The approvals branch records
+approved content and may be an incomplete tree. When implementation contains work beyond the cut,
+prepare the landing on a separate branch and keep the original worktree, branch and approval
+receipts. Reconcile documentation and preserve verification evidence under the parent landing skill.
+Write or refresh `.artifacts/merge/<branch>.msg` for that cut.
 
 ## The merge message for a partial landing
 
@@ -54,11 +52,16 @@ deliberately not in this commit and where it continues, naming the follow-up bra
 
 ## Merging and continuing
 
-Land through the parent skill's route; once GitHub has merged, without waiting to be asked: create the follow-up branch from the `main` that now holds the
-merge, in a fresh worktree; carry the in-progress work onto it, preferring to re-apply it from the
-landed base over cherry-picking a commit whose context has moved; and continue — the follow-up branch
-is an ordinary feature branch from here. A later cut is proposed the same way, against the same four
-conditions — the rhythm is the Developer's to set by answering, not yours to set by cutting.
+Before landing, record the implementation fork, exact cut tip and tree, and the remaining
+commits or patch ranges. Add the approved-content tip and receipt locations for a human review.
+After confirming the landing, record the squash commit on `main` and update local `main` through
+[Git workflow](../../git-workflow/SKILL.md). If a shared integration branch still needs
+reconciliation, identify its owner and record the resulting base once.
+
+Keep the current chat and continue on a fresh implementation branch and worktree. Use Git
+workflow's post-squash rules to carry the recorded remainder. For human-led review, follow
+[Continue after a landing](../../partial-stepwise-big-incremental-review/references/operations.md#continue-after-a-landing).
+Propose later cuts using the same criteria.
 
 ## The checkpoint
 

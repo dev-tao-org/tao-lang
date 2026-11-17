@@ -1,7 +1,7 @@
 import * as Runtime from '@runtime'
 import { Errors, Lists, Sort, Try } from '@shared'
 import { FS, Path } from '@shared/os'
-import { TypeScript } from '../../../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import { satisfies, valid, validRange } from '../../bridges/Bridge_semver'
 import { isNpmPackageName } from '../../NpmPackageName'
 import * as ManagedTypes from './ManagedModuleTypes'

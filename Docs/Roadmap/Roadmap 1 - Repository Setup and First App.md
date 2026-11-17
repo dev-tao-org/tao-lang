@@ -16,7 +16,7 @@ Use the process described in `AGENTS.md`. Remaining work continues in [Roadmap 2
 - [x] Run Hello World on headless web and verify its rendered output.
 - [x] Measure source edits through compilation, publication, Metro completion and matching React commits in two frame sizes.
 
-The canonical performance fixture is [Performance.tao](../../ts/perf/perf-fixtures/Performance/Performance.tao). [Preview Workflow](../Dev%20Env/Preview%20Workflow.md) describes the persistent developer loop, changed-file publication and measurement boundaries. Native acceptance and CI work moved to Roadmap 2.
+The canonical performance fixture is [Performance.tao](../../ts/repo-analysis/performance-fixtures/Performance/Performance.tao). [Preview Workflow](../Dev%20Env/Preview%20Workflow.md) describes the persistent developer loop, changed-file publication and measurement boundaries. Native acceptance and CI work moved to Roadmap 2.
 
 ## Goal 3 — Language and developer-tooling foundations
 

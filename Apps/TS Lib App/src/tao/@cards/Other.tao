@@ -1,0 +1,6 @@
+use tao@ui Text
+
+folder
+view Unselected {
+  render Text("Folder-only view")
+}

@@ -2,15 +2,16 @@
 name: maintain-task-title
 description: >-
   Keep the current task's sidebar title aligned with its work. Use when starting or resuming a
-  task, reaching a major milestone, or changing scope. Update misleading automatic titles;
-  preserve manually chosen titles and propose changes for approval.
+  task, reaching a major milestone, changing scope, naming a visible spin-off, or carrying out
+  a user-requested rename. Update misleading automatic titles and preserve manually chosen titles.
 ---
 
 # Maintain the task title
 
 - Reassess the title when the task starts or resumes and when its main objective changes. Rename when the existing title would mislead someone scanning the sidebar. Routine steps, test runs, and small follow-ups do not need new titles.
 - Name the current outcome in a short, concrete phrase, preserving useful project context. Put the distinguishing words early. Do not claim work is complete before it is, or rename a task around a brief tangent while its main objective remains active.
-- Change only the current task. In the Codex app, read its title through `list_threads` or `read_thread` and rename through `set_thread_title`, omitting `threadId` to target the calling task. In Claude or another host, use its supported title tools when available; otherwise suggest the title. Do not edit app databases or rename another task to maintain this one.
+- Limit automatic maintenance to the calling task. In the Codex app, read its title through `list_threads` or `read_thread` and rename through `set_thread_title`, omitting `threadId`. A user-requested rename can target another chat. Verify the chat and current title first, then supply that chat's ID. In other hosts, use supported title tools or suggest the title.
+- Give a visible spin-off the title `↳ Task name · FROM: Parent title` unless the user provides a different title. Use the full parent title when composing it. The app may truncate what it displays. Record the full composed title and parent chat ID in the checkpoint to preserve provenance.
 
 ## Preserve manually chosen titles
 

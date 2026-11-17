@@ -12,7 +12,7 @@ Tests.test('full-suite shards preserve every file exactly once and isolate expen
     '/ts/runtime/client.ReactOwnership.test.ts',
     '/ts/workspace/Workspace.CompilerRefreshAcceptance.test.ts',
     '/ts/workspace/Workspace.NestedRefresh.test.ts',
-    '/ts/perf/Preview.Recovery.test.ts',
+    '/ts/repo-analysis/test-repo-analysis/Performance/Preview.Recovery.test.ts',
     '/ts/shared/Other.test.ts',
     '/ts/new/Future.test.ts',
   ]
@@ -22,7 +22,7 @@ Tests.test('full-suite shards preserve every file exactly once and isolate expen
     '/ts/workspace/sidecars.ManagedMetroAcceptance.test.ts',
   ])
   Tests.expect(shards).toContainEqual([
-    '/ts/perf/Preview.Recovery.test.ts',
+    '/ts/repo-analysis/test-repo-analysis/Performance/Preview.Recovery.test.ts',
     '/ts/runtime/client.ReactOwnership.test.ts',
     '/ts/workspace/Workspace.CompilerRefreshAcceptance.test.ts',
     '/ts/workspace/Workspace.NestedRefresh.test.ts',

@@ -64,11 +64,16 @@ Do not assume Tree-sitter's structural node metadata alone captures all semantic
 Keep any added metadata small and explicit. No second intermediate tree, additional full-tree
 preview traversal, or general AST-generation framework without a concrete need.
 
-Preserve recognized statements and their source ranges in the CST and AST. Validate permitted
-owners, ordering, multiplicity and authored declaration names on the semantic AST before linking and code generation. The editor
-reports the same placement diagnostics for complete syntax and retains parser diagnostics for
-incomplete edits. Preserve supported valid syntax and the single-render rule. Consult old
-grammar and validation for proven edge cases while honoring the names and shapes above.
+Preserve recognized statements and their source ranges in the CST and AST. The source-validation
+stage checks permitted owners, ordering, multiplicity and authored declaration names on each
+reached semantic AST before resolving that document's imports. Structurally invalid programs stop
+before linking and code generation. Metadata-only discovery checks requirement declarations and
+their placement without validating unrelated declarations outside the loaded source graph.
+The workspace owns project requirements that depend on paths
+and dependency state. The editor reports the same placement
+diagnostics for complete syntax and retains parser diagnostics for incomplete edits. Preserve
+supported valid syntax and the single-render rule. Consult old grammar and validation for proven
+edge cases while honoring the names and shapes above.
 
 Update linker, formatter, workspace consumers, tests and specs together. No compatibility readers,
 duplicate old/new node designs, or implicit porting of additional language features.
@@ -175,11 +180,11 @@ The public contract is small:
 ```ts
 interface Expression<T> {
   jsValue(): T
-  observe(receive: (value: T) => void): Observation
+  observe<Result>(receive: ObservationCallback<T, Result>): Observation
 }
 
-interface WritableExpression<T> extends Expression<T> {
-  update(value: T): void
+interface WritableExpression<T> extends Expression<ValueSnapshot<T>> {
+  update(value: T | ValueSnapshot<T>): void
 }
 
 interface Observation {
@@ -188,9 +193,15 @@ interface Observation {
 ```
 
 - `jsValue()` returns the raw, nonreactive JS value. Reading a function value does not invoke it.
-- Object results are shared read-only snapshots, with no defensive copying per read.
+- Ordinary lists and records are deeply readonly runtime-owned snapshots. Copy external data at
+  ingress and reuse owned snapshots on reads. Preserve capability identity.
 - `observe` delivers the current value immediately and subsequent changed values after settlement.
-- Compare delivered values with `Object.is`; release observations on `unobserve` and owner disposal.
+- Observation callbacks are synchronous and read-only. The runtime stops a callback that attempts
+  a write or returns a thenable. Keep the same callback restriction when generating sidecar readers
+  and route authored failure handling through the future managed execution boundary.
+- Compare ordinary lists by ordered content and records by fields. Equal calculations reuse the
+  previous snapshot and keep dependent computations cached. Primitives and capabilities compare
+  with `Object.is`. Release observations on `unobserve` and owner disposal.
 - Avoid per-read wrapper allocations. Retain dependency tracking on cached reads.
 - Pure computed expressions track the inputs actually read, including dynamic branches. Release
   obsolete dependencies when a branch changes. Future pure calls may read captured state as well
@@ -260,6 +271,12 @@ dependencies; references can retain existing expression identity; cheap pure int
 stay inside a tracked evaluator. Compare selective graph construction and observation granularity
 against universal node construction before introducing either as a mandatory compiler pattern.
 
+### Immutable ordinary values
+
+The current runtime exposes snapshot ownership and structural equality through its TypeScript
+expression API, including compiled Tao render injections. Native Tao list and record syntax and
+typed sidecar contracts remain future compiler work. See [Runtime TypeScript API](../Specification/Runtime%20TypeScript%20API.md).
+
 ## 6. Independent batching policies
 
 Writes change their authoritative value immediately. Deferral applies to derived work and observer
@@ -267,7 +284,7 @@ delivery, not to replaying queued mutations later. Read-your-writes is required 
 normal settlement boundary. Notification batching is not transaction isolation or rollback.
 
 Both policies share nesting, pending-change tracking, equality checks, error cleanup, observer
-delivery and reentrant-write handling. Only the flush-scheduling policy should differ where possible:
+delivery and the read-only observation boundary. Only the flush-scheduling policy should differ where possible:
 
 ```ts
 interface Batching {
@@ -282,7 +299,7 @@ type ScheduleFlush = (flush: () => void) => void
   one action/event boundary can cause multiple settlements.
 - Deferred: schedule one microtask after the current synchronous stack, coalescing separate writes.
   Reading before that flush must refresh necessary computations without prematurely delivering
-  observer callbacks. Reentrant callbacks may require another bounded settlement pass.
+  observer callbacks. A callback that attempts to write fails before changing state.
 - No batch remains open across `await`. Define and test failed-operation cleanup without inventing
   rollback. An already queued callback must not touch a disposed owner.
 
@@ -299,7 +316,7 @@ computation and synchronous batching. Notification-only microtask coalescing is 
 experiment: delaying a Preact subscription receiver may leave every computed evaluation synchronous.
 Any deferred-computation candidate must prove reduced evaluation counts, fresh in-batch reads and
 correct callback timing using supported APIs. Do not construct a second scheduler/graph merely to
-preserve the draft interface. Define bounded reentrant-update handling and a cycle/failure policy.
+preserve the draft interface. Preserve independent deliveries after an observer fails.
 
 Count evaluations, notifications and allocations independently. Admit a candidate only with semantic
 parity, supported provider APIs, one graph and bounded ownership/cleanup. Deferred delivery and
@@ -391,7 +408,8 @@ plan or obtaining its review. Commit, push, merge and landing each follow curren
 
 Use minimal meaningful tests, dominated by representative Tao journeys. Internal tests cover only
 the contracts not yet expressible in the current language: dynamic/diamond dependencies, cached
-reads, equal results, nested/standalone batches, in-batch reads, reentrant updates and disposal.
+reads, equal results, nested/standalone batches, in-batch reads, observation write rejection,
+independent delivery and disposal.
 Use recording schedulers/clocks for deterministic notification timing; do not assert fragile timings.
 
 Exercise changed/unchanged hook topology, hook-bearing injections, failed-edit recovery, component
@@ -437,8 +455,8 @@ approval is inferred from test results or this document.
 - [ ] **Scope and timing:** coordinate the affected runtime/benchmark paths and baseline with the
       ongoing human review before starting; implementation requires separate authorization and must
       not advance review approvals. Start from [ReactiveEngine.ts](../../ts/7-runtime/runtime-src/client/ReactiveEngine.ts),
-      [reactivity-performance.ts](../../ts/perf/perf-src/reactivity-performance.ts) and
-      [reactivity-heap.ts](../../ts/perf/perf-src/reactivity-heap.ts). Production currently uses native-lazy
+      [reactivity-performance.ts](../../ts/repo-analysis/repo-analysis-src/Performance/reactivity-performance.ts) and
+      [reactivity-heap.ts](../../ts/repo-analysis/repo-analysis-src/Performance/reactivity-heap.ts). Production currently uses native-lazy
       computation and synchronous delivery; alternate policies are test/experiment hooks.
 - **Bounded comparison:** while those hooks remain, evaluate native-lazy, uncached-public-read,
   observed-eager and deferred-notification approaches; add candidates only for a concrete gap.

@@ -26,30 +26,23 @@ export function organizeImports(source: string, tree: CST.Tree, ast: AST.Documen
   return Shared.Source.slice(source, start, end) === text ? [] : [{ range: Shared.Range(start, end), text }]
 }
 
-type Import = AST.UseStatement | AST.UsePackageStatement
-type Group = { source: string; form: string; names: Set<string>; text?: string }
+type ImportNamesByFolder = Map<string, Set<string>>
 
 function groupImports(
   source: string,
   slices: readonly StatementSlice[],
-  imports: ReadonlyMap<number, Import>,
+  imports: ReadonlyMap<number, AST.UseStatement>,
   newline: string,
 ): string[] {
   const output: string[] = []
-  let groups = new Map<string, Group>()
+  let groups: ImportNamesByFolder = new Map()
   const seenImports = new Set<string>()
   for (const slice of slices) {
     if (slice.commented) {
       output.push(...renderGroups(groups))
       groups = new Map()
       const statement = imports.get(slice.node.startIndex)!
-      if (AST.IsUseStatement(statement) && !statement.all) {
-        output.push(renderCommentedNamedImport(source, slice, statement, newline, seenImports))
-      } else {
-        const duplicate = isDuplicateImport(statement, seenImports)
-        recordImports(statement, seenImports)
-        output.push(duplicate ? retainComments(source, slice, newline) : Shared.Source.slice(source, slice))
-      }
+      output.push(renderCommentedNamedImport(source, slice, statement, newline, seenImports))
     } else {
       addImport(groups, imports.get(slice.node.startIndex)!, seenImports)
     }
@@ -98,43 +91,14 @@ function collectCommentNodes(node: StatementSlice['node']): StatementSlice['node
     : node.namedChildren.flatMap(collectCommentNodes)
 }
 
-function addImport(groups: Map<string, Group>, statement: Import, seenImports: Set<string>): void {
+function addImport(groups: ImportNamesByFolder, statement: AST.UseStatement, seenImports: Set<string>): void {
   const source = statement.from?.value ?? ''
-  if (AST.IsUsePackageStatement(statement)) {
-    if (isDuplicateImport(statement, seenImports)) {
-      return
-    }
-    recordImports(statement, seenImports)
-    const text = `use package ${source}${statement.alias ? ` as ${statement.alias.value}` : ''}`
-    groups.set(text, { source, form: 'package', names: new Set(), text })
-    return
+  const names = groups.get(source) ?? new Set<string>()
+  for (const imported of collectNewNamedImports(statement, seenImports)) {
+    names.add(renderImportName(imported))
   }
-  if (statement.all) {
-    if (isDuplicateImport(statement, seenImports)) {
-      return
-    }
-    recordImports(statement, seenImports)
-  }
-  const form = statement.all ? 'all' : 'named'
-  const key = `${form}:${source}`
-  const group = groups.get(key) ?? { source, form, names: new Set<string>() }
-  const newImports = collectNewNamedImports(statement, seenImports)
-  for (const imported of newImports) {
-    const name = imported.target.value + (imported.alias ? ` as ${imported.alias.value}` : '')
-    group.names.add(name)
-  }
-  if (statement.all || group.names.size > 0) {
-    groups.set(key, group)
-  }
-}
-
-function isDuplicateImport(statement: Import, seenImports: ReadonlySet<string>): boolean {
-  return collectImportIdentities(statement).every(identity => seenImports.has(identity))
-}
-
-function recordImports(statement: Import, seenImports: Set<string>): void {
-  for (const identity of collectImportIdentities(statement)) {
-    seenImports.add(identity)
+  if (names.size > 0) {
+    groups.set(source, names)
   }
 }
 
@@ -154,45 +118,35 @@ function collectNewNamedImports(statement: AST.UseStatement, seenImports: Set<st
 
 function createNamedImportIdentity(source: string, imported: AST.NamedImport): string {
   const alias = imported.alias?.value ?? ''
-  return `named:${source}:${imported.target.value}:${alias}`
+  return `${source}:${imported.target.value}:${alias}`
 }
 
 function renderNamedImport(statement: AST.UseStatement, imports: readonly AST.NamedImport[]): string {
   if (imports.length === 0) {
     return ''
   }
-  const names = imports.map(imported =>
-    `${imported.target.value}${imported.alias ? ` as ${imported.alias.value}` : ''}`
-  ).join(', ')
-  const source = statement.from?.value ?? ''
-  return `use ${source ? `${source} ` : ''}${names}`
+  const names = imports.map(renderImportName)
+  return renderImport(statement.from?.value ?? '', names)
 }
 
-function collectImportIdentities(statement: Import): string[] {
-  const source = statement.from?.value ?? ''
-  if (AST.IsUsePackageStatement(statement)) {
-    return [`package:${source}:${statement.alias?.value ?? ''}`]
-  }
-  if (statement.all) {
-    return [`all:${source}`]
-  }
-  return statement.imports.map(imported => createNamedImportIdentity(source, imported))
+function renderImportName(imported: AST.NamedImport): string {
+  const alias = imported.alias
+  return alias ? `${imported.target.value} as ${alias.value}` : imported.target.value
 }
 
-function renderGroups(groups: ReadonlyMap<string, Group>): string[] {
-  return [...groups.values()].sort(compareGroups).map(group => {
-    if (group.text) {
-      return group.text
-    }
-    const namesCode = group.form === 'all' ? 'all' : [...group.names].sort(Shared.Sort.CompareStrings).join(', ')
-    return `use ${group.source ? `${group.source} ` : ''}${namesCode}`
+function renderImport(source: string, names: readonly string[]): string {
+  return `use ${source ? `${source} ` : ''}${names.join(', ')}`
+}
+
+function renderGroups(groups: ImportNamesByFolder): string[] {
+  return [...groups.keys()].sort(compareSources).map(source => {
+    const names = [...groups.get(source)!].sort(Shared.Sort.CompareStrings)
+    return renderImport(source, names)
   })
 }
 
-function compareGroups(left: Group, right: Group): number {
-  return rankSource(left.source) - rankSource(right.source)
-    || Shared.Sort.CompareStrings(left.source, right.source)
-    || Shared.Sort.CompareStrings(left.form, right.form)
+function compareSources(left: string, right: string): number {
+  return rankSource(left) - rankSource(right) || Shared.Sort.CompareStrings(left, right)
 }
 
 function rankSource(source: string): number {

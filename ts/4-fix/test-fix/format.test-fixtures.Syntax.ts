@@ -4,31 +4,33 @@ import { S } from '@shared'
 /** syntaxFixture exercises every named rule in the current Tao grammar. */
 export const syntaxFixture = S`
   // Current syntax
-  use package tao@ui as UI
-  use ./Shared all
+  use tao@ui Col,Text
+  use ./Shared Example
   use @cards Card as Panel,Heading
   use Local
   requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
-  ts-library Demo{publish{Root as Main,}}
-  publish{Root,}
+  ts-library Demo{publish{Root,@cards,}}
   file let Caption is text="Hello"
   folder app Demo{root Root}
-  public view Root( Title text,Subtitle text ){
+  package view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  render #root UI . Col[ disabled yes ]{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message)}
+  state Status is text=Title
+  action Rename (Value text){set Status=Value}
+  action Save(){do Rename (Caption)}
+  render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message) UI.Button(Status){on press Save} UI.Button(Subtitle){on press->do Rename(Title)}}
   }
   package view Native(Value text){render inject Value,Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`}
-  project let Shared=Caption
-  public view FormattedDate(Value text) from ./FormattedDate.tsx
+  package let Shared=Caption
+  package view FormattedDate(Value text) from ./FormattedDate.tsx
   tests "Source"{test(Label "Case"){run Demo press #child type "Set" into #child expect text "Ready" expect #child input value "Set" expect #child{text "Ready" input value "Set"} expect{text "Ready"}} test "Short"{} test(){} }
 `
 
 /** formattedSyntaxFixture pins canonical spacing and layout without changing source tokens. */
 export const formattedSyntaxFixture = S`
   // Current syntax
-  use package tao@ui as UI
-  use ./Shared all
+  use tao@ui Col, Text
+  use ./Shared Example
   use @cards Card as Panel, Heading
   use Local
   requires github:acme/widgets version v1.2.0 as Widgets
@@ -36,12 +38,9 @@ export const formattedSyntaxFixture = S`
 
   ts-library Demo {
     publish {
-      Root as Main,
+      Root,
+      @cards,
     }
-  }
-
-  publish {
-    Root,
   }
 
   file
@@ -52,14 +51,27 @@ export const formattedSyntaxFixture = S`
     root Root
   }
 
-  public
+  package
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    render #root UI.Col [disabled yes] {
+    state Status is text = Title
+    action Rename(Value text) {
+      set Status = Value
+    }
+    action Save() {
+      do Rename(Caption)
+    }
+    render #root UI.Col {
       #child
       Panel(Title, Caption)
       let Message = Hidden
       UI.Text(Message)
+      UI.Button(Status) {
+        on press Save
+      }
+      UI.Button(Subtitle) {
+        on press -> do Rename(Title)
+      }
     }
   }
 
@@ -68,10 +80,10 @@ export const formattedSyntaxFixture = S`
     render inject Value, Kids @@children \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`
   }
 
-  project
+  package
   let Shared = Caption
 
-  public
+  package
   view FormattedDate(Value text) from ./FormattedDate.tsx
 
   tests "Source" {
@@ -116,13 +128,15 @@ export const syntaxKinds = {
   ContextReference: true,
   TypeScript: true,
   ViewRenderExpression: true,
-  DisabledModifier: true,
-  BooleanLiteral: true,
   LetDeclaration: true,
+  StateDeclaration: true,
+  ActionDeclaration: true,
+  SetStatement: true,
+  DoStatement: true,
+  PressBinding: true,
+  InlineAction: true,
   UseStatement: true,
   NamedImport: true,
-  All: true,
-  UsePackageStatement: true,
   RequiresDeclaration: true,
   RequirementProvider: true,
   RequirementIdentifier: true,

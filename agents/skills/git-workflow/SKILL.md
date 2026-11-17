@@ -55,6 +55,7 @@ branch pushes through the guarded route are authorized; other publication needs 
   If the sandbox blocks Git metadata writes, use
   `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
   switch, replace an existing branch, or discard dirty work under this authorization.
+- A sandboxed Git metadata denial does not by itself require another Developer decision. For an already-authorized operation, prepare the pinned environment if needed, then invoke the supported `./agent unsandboxed git <operation>` route with the harness's command-scoped approval mechanism. The wrapper name alone does not grant host access. Ask the Developer only if that route receives an approval rejection, is unavailable, or requires authorization not already given; identify the actual failing boundary. Keep the chat restricted and do not add machine-local Git grants or broaden permissions to work around the denial.
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
   root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
@@ -107,16 +108,20 @@ the SHA. It preserves Git's squash appendix on `main` — summary, bullets, a bl
 
 ## Child branches after a parent squash
 
-- Before integrating a child branch whose parent was squash-merged into `main`, rebase only the
-  child's intended additional commits onto updated `main`; the squash does not preserve the
-  original parent commits as ancestors. Identify the original parent boundary before choosing
-  the replay range, rather than blindly rebasing the whole inherited history.
-- Retain the original parent ref or a recoverable checkpoint until the child's rebase and final
-  diff are verified. Confirm that the diff against `main` contains only the intended additional
-  work, resolve conflicts and rerun affected validation before presenting it for review or landing.
-- Follow root authorization and ownership rules before rebasing. This workflow does not authorize
-  rewriting a published child branch or force-pushing it; preserve the existing branch and use a
-  fresh feature branch when rewriting it is not authorized.
+- Preserve ancestry when integrating dependent feature branches. Use the landing workflow for
+  the final squash onto `main`.
+- After a parent squash, use the [recorded landing boundary](../landing/references/merge-progress.md)
+  to identify the child's actual inherited base and its remaining work. When content was copied
+  earlier, compare the recorded source and destination trees to map that content before choosing
+  a replay range. The squash has its own ancestry even when the landed files match.
+- Default to a fresh continuation branch from updated `origin/main` and replay only the verified
+  child changes. An explicitly authorized rebase of a private child can replay the same range.
+- When a shared integration branch has live dependents and both histories must remain intact,
+  appoint one integration owner to reconcile the branches in a single merge. Use the recorded
+  pre-squash boundary to resolve duplicate changes and preserve both sides' additional work.
+- Retain the original refs or recoverable checkpoints. Confirm that the final diff against
+  updated `main` contains only the intended additional changes and rerun affected validation
+  before presenting it for review or landing.
 
 ## Rebuilding history
 

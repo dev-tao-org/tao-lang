@@ -1,5 +1,5 @@
 import { IO } from '@cli-kit'
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { Errors, Objects, Time, Try } from '@shared'
 import { FS, Path, Platform, Repo } from '@shared/os'
 import * as Metrics from './BranchMetrics'
@@ -8,10 +8,10 @@ import { resolveCommit } from './Git'
 import type { PreviewReport } from './ReportContract'
 import * as Runner from './Runner'
 import { describeMeasurementConditions, type MeasurementConditions, readCompletedJob } from './Summary'
-import { appendTimingProgress } from './TimingProgress'
+import { appendTimingProgress, describeTimingLabel } from './TimingProgress'
 
 /** BranchComparisonOptions selects prepared runner checkouts and independent pairs per round. */
-export type BranchComparisonOptions = { baseline: string; candidate: string; pairs: number }
+export type BranchComparisonOptions = { baseline: string; candidate: string; pairs: number; label?: string }
 
 type RoundStatus = 'running' | 'passed' | 'failed'
 type Side = 'baseline' | 'candidate'
@@ -24,7 +24,7 @@ type Round = {
 }
 type ScenarioSessions = { conditions?: MeasurementConditions; seenIds: Set<string> }
 type ComparisonLoadField = 'extraViews' | 'extraFileCount'
-type ComparisonLoad = Pick<Perf.PreviewMeasurement, ComparisonLoadField>
+type ComparisonLoad = Pick<Performance.PreviewMeasurement, ComparisonLoadField>
 
 /** ComparisonScenario retains the measurements and job provenance for a fixed workload. */
 export type ComparisonScenario = {
@@ -55,6 +55,7 @@ export const BranchReportEnd = 'End Tao branch timing report.'
 /** runBranchComparison measures the fixed project in pairs and confirms consistent shifts in a second round. */
 export async function runBranchComparison(options: BranchComparisonOptions): Promise<void> {
   requireBranchPairCount(options.pairs)
+  const label = describeTimingLabel(options.label)
   await Runner.withTimingLock(async () => {
     await Promise.all([
       Runner.requirePreviewProtocol(options.baseline),
@@ -65,14 +66,17 @@ export async function runBranchComparison(options: BranchComparisonOptions): Pro
     IO.print(`Performance comparison: ${comparison.directory}`)
     await saveComparison(comparison)
     await Try(async () => {
-      const { extraViews, extraFileCount } = Perf.readPreviewMeasurement({ editCount: EditsPerSession, frameCount: 2 })
+      const { extraViews, extraFileCount } = Performance.readPreviewMeasurement({
+        editCount: EditsPerSession,
+        frameCount: 2,
+      })
       const scenario: ComparisonScenario = {
         name: 'Performance project',
         load: { extraViews, extraFileCount },
         rounds: [],
       }
       comparison.scenarios.push(scenario)
-      await appendTimingProgress(`Comparing ${scenario.name} · ${options.pairs} pairs`)
+      await appendTimingProgress(`Comparing ${scenario.name} · ${label} · ${options.pairs} pairs`)
       await measureScenario(comparison, scenario, fixture)
       comparison.status = 'passed'
     }, {
@@ -96,14 +100,13 @@ export function requireBranchPairCount(pairs: number): void {
   }
 }
 
-const Fixture = 'ts/perf/perf-fixtures/Performance/Performance.tao'
 const ComparisonsDirectory = '.artifacts/notes/performance-investigation/comparisons'
 
 async function createComparison(options: BranchComparisonOptions): Promise<BranchComparison> {
   const baseline = await resolveCommit(options.baseline, 'HEAD')
   const candidate = await resolveCommit(options.candidate, 'HEAD')
   const directory = Repo.resolvePath(ComparisonsDirectory, Platform.randomUUID())
-  const source = await FS.readFile(Repo.resolvePath(Fixture), 'utf8')
+  const source = await Performance.readPerformanceFixture()
   await FS.mkdir(directory)
   await FS.writeFile(Path.join(directory, 'fixture.tao'), source)
   return {
@@ -154,7 +157,14 @@ async function measureRound(
       const path = Runner.allocateTimingJob(Path.join(comparison.directory, 'sessions'))
       jobs[side].push(path)
       await saveComparison(comparison)
-      await Runner.runMeasurementJob({ repo, fixture, samples: 1, edits: EditsPerSession, frameCount: 2 }, path)
+      await Runner.runMeasurementJob({
+        repo,
+        fixture,
+        samples: 1,
+        edits: EditsPerSession,
+        frameCount: 2,
+        label: comparison.options.label,
+      }, path)
       const report = await readComparableReport(path, comparison, side)
       requireComparableSession(report, sessionHistory)
       sessions[side].push(report)

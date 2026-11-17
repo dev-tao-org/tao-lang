@@ -157,6 +157,9 @@ Tests.test('nested batches clean up after errors and reject asynchronous ownersh
     })
   ).toThrow('failed')
   Tests.expect(source.jsValue()).toBe(2)
+  const synchronousValue = { then: 'next' }
+  Tests.expect(engine.batch(() => synchronousValue)).toBe(synchronousValue)
+  Tests.expect(() => engine.batch(() => ({ then: () => undefined }))).toThrow('must finish synchronously')
   Tests.expect(() => engine.batch(() => Promise.resolve())).toThrow('must finish synchronously')
   Tests.expect(source.jsValue()).toBe(2)
   engine.dispose()
@@ -182,26 +185,7 @@ Tests.test('a failing queued observer does not strand other deliveries or subseq
   engine.dispose()
 })
 
-Tests.test('reentrant observer update loops fail with a bounded actionable error', () => {
-  const engine = createReactiveEngine()
-  const first = engine.createWritable(0)
-  const second = engine.createWritable(0)
-  first.observe(value => {
-    if (value > 0 && value < 1000) {
-      second.update(value + 1)
-    }
-  })
-  second.observe(value => {
-    if (value > 0 && value < 1000) {
-      first.update(value + 1)
-    }
-  })
-
-  Tests.expect(() => first.update(1)).toThrow('reentrant delivery limit')
-  engine.dispose()
-})
-
-Tests.test('independent observers and source updates are not counted as one delivery cycle', () => {
+Tests.test('a source delivers both updates to every observer in a broad read-only fan-out', () => {
   const engine = createReactiveEngine()
   const source = engine.createWritable(0)
   let deliveries = 0
@@ -233,6 +217,35 @@ Tests.test('observer reads do not become dependencies of the observed expression
   Tests.expect(values).toEqual([0])
   observed.update(1)
   Tests.expect(values).toEqual([0, 1])
+  engine.dispose()
+})
+
+Tests.test('equal collection replacements retain identity without evaluating downstream', () => {
+  const engine = createReactiveEngine()
+  const source = engine.createWritable({ value: 'A', count: 1 })
+  const rows = engine.createComputed(() => {
+    const current = source.jsValue()
+    const derivedCount = current.count % 2
+    return [{ value: current.value, count: derivedCount }]
+  })
+  let evaluations = 0
+  const downstream = engine.createComputed(() => {
+    evaluations += 1
+    return rows.jsValue()[0]!.count
+  })
+  const values: number[] = []
+  downstream.observe(value => values.push(value))
+
+  const original = source.jsValue()
+  const firstRows = rows.jsValue()
+  source.update({ count: 1, value: 'A' })
+  Tests.expect(source.jsValue()).toBe(original)
+  source.update({ count: 3, value: 'A' })
+  Tests.expect(rows.jsValue()).toBe(firstRows)
+  Tests.expect(evaluations).toBe(1)
+  source.update({ count: 2, value: 'A' })
+  Tests.expect(values).toEqual([1, 0])
+  Tests.expect(evaluations).toBe(2)
   engine.dispose()
 })
 

@@ -31,12 +31,13 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   Identifier: constructName,
   QualifiedName: constructName,
   TextLiteral: constructTextLiteral,
-  BooleanLiteral: constructBooleanLiteral,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
   ImportPath: constructImportPath,
   ViewDeclaration: constructViewDeclaration,
   ViewRenderExpression: constructViewRenderExpression,
+  ActionDeclaration: constructActionDeclaration,
+  DoStatement: constructDoStatement,
   ExpectStatement: constructExpectStatement,
   Injection: constructInjection,
   InjectionCapture: constructCapture,
@@ -68,9 +69,6 @@ function constructGeneratedNode(cst: CST.SyntaxNode, kind: Generated.Node['kind'
 }
 
 function constructField(cst: CST.SyntaxNode, kind: Generated.Node['kind'], name: string, field: ChildField): unknown {
-  if (kind === 'UseStatement' && name === 'all') {
-    return cst.childForFieldName(name) !== null
-  }
   const children = cst.childrenForFieldName(name)
   const constructChild = (child: CST.SyntaxNode) => isScalarField(kind, name) ? child.text : constructNode(child)
   if (field.multiple) {
@@ -92,31 +90,48 @@ function constructFile(cst: CST.SyntaxNode): Generated.File {
 
 function constructViewDeclaration(cst: CST.SyntaxNode): Generated.ViewDeclaration {
   const body = CST.RequiredField(cst, 'body')
-  const parametersNode = cst.childForFieldName('parameters')
-  const parameters = constructChildren(parametersNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
   const implementation = Construct(body, ['Block', 'ForeignView'])
   return makeNode(cst, 'ViewDeclaration', {
     body: implementation,
     name: constructFieldNode(cst, 'name', 'Name'),
-    parameters,
+    parameters: constructParameters(cst),
     visibility: constructOptionalVisibility(cst),
   })
 }
 
+function constructActionDeclaration(cst: CST.SyntaxNode): Generated.ActionDeclaration {
+  return makeNode(cst, 'ActionDeclaration', {
+    name: constructFieldNode(cst, 'name', 'Name'),
+    parameters: constructParameters(cst),
+    block: constructFieldNode(cst, 'block', 'Block'),
+  })
+}
+
+function constructParameters(cst: CST.SyntaxNode): Generated.Parameter[] {
+  const parameters = cst.childForFieldName('parameters')
+  return constructChildren(parameters?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
+}
+
 function constructViewRenderExpression(cst: CST.SyntaxNode): Generated.ViewRenderExpression {
-  const argumentList = cst.childForFieldName('argumentList')
   const block = constructOptionalField(cst, 'block', 'Block')
   return makeNode(cst, 'ViewRenderExpression', {
-    arguments: constructChildren(argumentList?.namedChildren.filter(CST.IsSemanticNode) ?? [], [
-      'Name',
-      'TextLiteral',
-      'BooleanLiteral',
-    ]),
+    arguments: constructArguments(cst),
     block,
-    interaction: constructOptionalField(cst, 'interaction', 'DisabledModifier'),
     tag: constructOptionalField(cst, 'tag', 'RenderTag'),
     target: constructFieldNode(cst, 'view', 'Name'),
   })
+}
+
+function constructDoStatement(cst: CST.SyntaxNode): Generated.DoStatement {
+  return makeNode(cst, 'DoStatement', {
+    arguments: constructArguments(cst),
+    target: constructFieldNode(cst, 'target', 'Name'),
+  })
+}
+
+function constructArguments(cst: CST.SyntaxNode): Generated.Expression[] {
+  const argumentsNode = cst.childForFieldName('argumentList')
+  return constructChildren(argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral'])
 }
 
 function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatement {
@@ -152,7 +167,6 @@ function constructCapture(cst: CST.SyntaxNode): Generated.Capture {
 
 function constructUseStatement(cst: CST.SyntaxNode): Generated.UseStatement {
   return makeNode(cst, 'UseStatement', {
-    all: cst.childForFieldName('all') !== null,
     from: constructOptionalField(cst, 'from', 'ImportPath'),
     imports: constructFieldList(cst, 'imports', 'NamedImport'),
   })
@@ -165,11 +179,6 @@ function constructName(cst: CST.SyntaxNode): Generated.Name {
 
 function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
   return makeNode(cst, 'TextLiteral', { value: Json.Parse(cst.text) as string })
-}
-
-const TrueLiteralKeyword = 'yes'
-function constructBooleanLiteral(cst: CST.SyntaxNode): Generated.BooleanLiteral {
-  return makeNode(cst, 'BooleanLiteral', { value: cst.text === TrueLiteralKeyword })
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {

@@ -48,6 +48,8 @@ description: >-
 - Use the runner helper to serialize jobs across checkouts of the same runner account. Keep other
   verification, builds and interactive use off that host while timing; the helper lock does not
   exclude unrelated processes or other users. Record observed load, power mode and thermal conditions.
+- Pass `--label "<your agent or chat name>"` to every speed run or comparison on the runner, so
+  the developer can identify its start in `just timing-watch`.
 - Freeze browser, pinned toolchain, fixture, frame sizes, edit count and relevant environment.
   Setup, transfer and dependency preparation finish before measurement. Distinguish first use,
   startup and warm refresh; do not equate React-applied receipts with physical paint.
@@ -90,10 +92,12 @@ description: >-
 - Put the verdict and a compact table in the reply after every requested speed run. Say what
   improved, slowed down or remained inconclusive. Name the measured revisions, workloads,
   independent session counts and measurement endpoint.
-- Put **Change**, **This run** and **Baseline** first in comparison tables, in that order. Use
-  signed percentages alone in Change. Include startup, first edit, typical and slow warm edits,
-  session variation, warm edits over budget and observed frame restarts when measured. Use counts
-  with denominators for reliability rows and show unavailable evidence explicitly.
+- Use the columns **Metric**, **Change**, **This run**, and **Baseline**, in that order. Show signed
+  percentages in Change and use a dash when a percentage is undefined. Include startup, first
+  edit, typical warm edit, slowest warm edit, warm edits over budget, and sessions with frame
+  restarts when measured. For repeated runs, use the median of session statistics for latencies,
+  report the warm session median ranges below the table, and use counts with denominators for
+  reliability rows. Show unavailable evidence explicitly.
 - Explain noteworthy changes in milliseconds and give the pair agreement or repeat evidence that
   determines the verdict. Include implicated phases and experiment outcomes when established.
   Link the full report for per-edit and phase details.

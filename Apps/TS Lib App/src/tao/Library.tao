@@ -1,13 +1,12 @@
 use tao@ui Col, Text
-use package ./cards as Cards
 use LanguageFeatures
-use DisabledPreview
+use ValueSnapshots
 
 ts-library Demo {
-  publish { Greeting, Panel, LanguageFeatures, DisabledPreview, Cards as Catalog, }
+  publish { Greeting, Panel, LanguageFeatures, ValueSnapshots, @cards, }
 }
 
-public
+package
 view Greeting(First text, Second text) {
   render Col {
     Text(First)
@@ -30,7 +29,7 @@ view Greeting(First text, Second text) {
   }
 }
 
-public
+package
 view Panel {
   render inject Children @@children ```ts
     return <Tao.View>{Children}</Tao.View>

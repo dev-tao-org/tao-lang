@@ -17,15 +17,27 @@ requirements.
 
 ## Bounded review rounds
 
-- Plan an initial review and at least one follow-up after substantive fixes. Usually one or two follow-ups suffice; never launch more than four review rounds in one cycle, including an initial review already completed for the same request.
+- Plan an initial review and at least one follow-up after substantive fixes. Usually one or two follow-ups suffice. Count the initial review, including one already completed for the same request, toward the five-round limit.
 - Use at least one independent read-only subagent per round. Run reviewers in parallel when distinct functional responsibilities justify it; explicitly assign every changed file, conformance coverage and cross-scope seam. Several reviewers inspecting one pinned snapshot count as one round.
 - Choose model and effort for each assignment under `delegation`, within the same-or-lower reviewer ceiling. A standard reviewer at medium effort is a useful first pass; a fast reviewer at high effort can check straightforward repairs while a standard reviewer at high effort independently probes intricate compiler, concurrency or lifecycle seams. These are defaults to adapt, not mandatory model combinations. Do not repeatedly pay for broad high-effort reviews of settled code.
-- Pin each round's commit and dirty snapshot. Pause writers while reviewers read that snapshot. Follow-ups cover every change since the last reviewed snapshot, reopened findings, affected callers and regression tests; retain the original branch scope and include an independent check of the risky integrated behavior rather than only confirming the proposed patch.
+- Pin each round's commit and dirty snapshot. Pause writes to any checkout reviewers are reading. Separately authorized work can continue outside that snapshot. Follow-ups cover every change since the last reviewed snapshot, reopened findings, affected callers and regression tests. Retain the original branch scope and independently check the risky integrated behavior.
 - Reconcile findings before changing code. In a write-authorized cycle, fix confirmed P0–P2 issues and required instruction violations, add the smallest credible regression proof and run relevant verification. Low-priority suggestions alone do not require speculative refactoring. Findings-only requests stop at the report and do not enter a repair phase.
 - Commit validated repairs as the work progresses, before the next review round or final report. Group coupled fixes with their regression tests; keep independent repairs in separate self-contained commits. Follow root formatting/verification policy and `git-workflow`, preserve unrelated edits and index selections, and record each commit with its findings and validation. Do not accumulate completed repairs as an uncommitted final handoff unless the Developer requests it; a commit does not imply that its follow-up review has passed.
 - After meaningful repairs, run another independent review round. Finish when the reviewed state has no P0–P2 findings or required instruction violations; report any remaining low-priority findings and coverage limits. Do not launch a redundant round solely to reach a planned count when the first pass needs no substantive repairs.
-- At the four-round cap, stop before starting a fifth round or making another repair batch that would need it. Report remaining findings, repeated root causes and the next work needed; never describe unreviewed repairs or an interrupted round as clean.
+- At the five-round cap, stop before starting a sixth round or making another repair batch that would need it. Report remaining findings, repeated root causes and the next work needed. Never describe unreviewed repairs or an interrupted round as clean.
 - Record each round's reviewers/models/effort, snapshot, findings, fixes, verification and remaining risks in the task checkpoint. Keep the last fully reviewed commit and any reviewed dirty snapshot distinct.
+
+## Pause for a Developer decision
+
+Pause the review cycle in any round when the evidence supports any of these conditions.
+
+- A fix would expand the agreed scope by adding product behavior, implementing a missing prerequisite, or substantially redesigning an existing component.
+- Resolving a finding requires a decision about materially different behaviors or an established contract that the agreed scope leaves open.
+- Successive repairs reopen the same failure, move it between callers, or reveal a growing chain of required changes, and the evidence points to a shared cause without a focused fix in scope.
+
+Continue through independent findings and ordinary follow-up repairs while each has a focused, verifiable fix within the agreed scope.
+
+On pause, stop repairs and reviewer dispatch. Record the last fully reviewed snapshot, unreviewed changes, verification results and unresolved findings. Show the Developer the concrete failure, what prevents a focused repair, and the smallest viable options. Recommend a next step and ask for the decision needed to proceed. Resume only after the Developer gives direction.
 
 ## Requested organizational review
 

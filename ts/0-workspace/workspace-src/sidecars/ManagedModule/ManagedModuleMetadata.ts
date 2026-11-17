@@ -97,6 +97,36 @@ export async function typescriptDefaultsDrift(projectRoot: string): Promise<Mana
   return createTypeScriptDefaultsDrift(current, ownership, defaults, path, marker)
 }
 
+/** createTypeScriptDefaults shares authored defaults with generation-pinned snapshot validation. */
+export function createTypeScriptDefaults(resourcesDirectory?: string): string {
+  return `${
+    Json.Print({
+      compilerOptions: {
+        moduleResolution: 'Bundler',
+        module: 'ESNext',
+        target: 'ES2022',
+        strict: true,
+        noEmit: true,
+        jsx: 'react-jsx',
+        skipLibCheck: true,
+        resolveJsonModule: true,
+        allowImportingTsExtensions: true,
+        lib: ['ES2022', 'DOM'],
+        paths: {
+          ...Runtime.runtimeTypeScriptPaths(resourcesDirectory),
+          'zod': ['node_modules/zod'],
+          'zod/*': ['node_modules/zod/*'],
+          'react': ['node_modules/@types/react'],
+          'react/*': ['node_modules/@types/react/*'],
+          'react-native': ['node_modules/react-native'],
+          'react-native/*': ['node_modules/react-native/*'],
+          '@preact/signals-core': ['node_modules/@preact/signals-core'],
+        },
+      },
+    })
+  }${NewlineCharacter}`
+}
+
 function createTypeScriptDefaultsDrift(
   current: ManagedFileContents,
   ownership: ManagedFileContents,
@@ -306,33 +336,4 @@ function rejectSymlink(path: string): void {
   if (Try.WithDefault(false, () => FS.lstatSync(path).isSymbolicLink())) {
     Errors.ThrowUserInput(`Generated module metadata cannot be a symbolic link: ${path}`)
   }
-}
-
-function createTypeScriptDefaults(): string {
-  return `${
-    Json.Print({
-      compilerOptions: {
-        moduleResolution: 'Bundler',
-        module: 'ESNext',
-        target: 'ES2022',
-        strict: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        skipLibCheck: true,
-        resolveJsonModule: true,
-        allowImportingTsExtensions: true,
-        lib: ['ES2022', 'DOM'],
-        paths: {
-          ...Runtime.runtimeTypeScriptPaths(),
-          'zod': ['node_modules/zod'],
-          'zod/*': ['node_modules/zod/*'],
-          'react': ['node_modules/@types/react'],
-          'react/*': ['node_modules/@types/react/*'],
-          'react-native': ['node_modules/react-native'],
-          'react-native/*': ['node_modules/react-native/*'],
-          '@preact/signals-core': ['node_modules/@preact/signals-core'],
-        },
-      },
-    })
-  }${NewlineCharacter}`
 }

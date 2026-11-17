@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import { Errors, Source, Switch, Time, Try } from '@shared'
-import * as Typecheck from '@typecheck'
+import * as SourceValidation from '@source-validation'
 
 /** TestDriver runs one isolated app journey against a platform's visible UI. */
 export type TestDriver = {
@@ -35,7 +35,7 @@ export type TestResult = {
 
 /** runTests executes the app journeys declared in one semantic source document. */
 export async function runTests(document: AST.Document, options: TestOptions): Promise<TestResult[]> {
-  Typecheck.assertValidStatements(document, options.path)
+  SourceValidation.assertValidStatements(document, options.path)
   const results: TestResult[] = []
   for (const suite of AST.GetTestsDeclarations(document)) {
     for (const test of AST.GetTests(suite)) {

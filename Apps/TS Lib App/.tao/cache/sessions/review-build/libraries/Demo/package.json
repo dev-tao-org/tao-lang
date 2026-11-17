@@ -1,0 +1,16 @@
+{
+  "name": "@tao-dev/ts-lib-example",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./ts/Library.ts",
+    "./@cards": "./ts/@cards.ts",
+    "./@cards/details": "./ts/@cards/details.ts"
+  },
+  "peerDependencies": {
+    "@tao/runtime": "0.0.0",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "dependencies": {}
+}

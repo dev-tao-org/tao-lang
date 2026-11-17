@@ -24,16 +24,32 @@ export const Formatting = {
   },
   ViewRenderExpression(fm) {
     fm.noSpaceBeforeProperty('argumentList')
-    fm.oneSpaceBeforeProperty('interaction')
-  },
-  DisabledModifier(fm) {
-    fm.noSpaceAfter('[')
-    fm.oneSpaceAfter('disabled')
-    fm.noSpaceBefore(']')
   },
   LetDeclaration(fm) {
     fm.oneSpaceAfter('let')
     fm.oneSpaceAround('=', 'is')
+  },
+  StateDeclaration(fm) {
+    fm.oneSpaceAfter('state')
+    fm.oneSpaceAround('=', 'is')
+  },
+  ActionDeclaration(fm) {
+    fm.oneSpaceAfter('action')
+    fm.noSpaceBeforeProperty('parameters')
+  },
+  SetStatement(fm) {
+    fm.oneSpaceAfter('set')
+    fm.oneSpaceAround('=')
+  },
+  DoStatement(fm) {
+    fm.oneSpaceAfter('do')
+    fm.noSpaceBeforeProperty('argumentList')
+  },
+  PressBinding(fm) {
+    fm.oneSpaceAfter('on', 'press')
+  },
+  InlineAction(fm) {
+    fm.oneSpaceAfter('->')
   },
   RenderInjectStatement(fm) {
     fm.oneSpaceAfter('render')
@@ -64,12 +80,8 @@ export const Formatting = {
   },
   UseStatement(fm) {
     fm.oneSpaceAfter('use')
-    fm.oneSpaceBeforeProperty('imports', 'all')
+    fm.oneSpaceBeforeProperty('imports')
     fm.commaSpacedList()
-  },
-  UsePackageStatement(fm) {
-    fm.oneSpaceAfter('use', 'package')
-    fm.oneSpaceAround('as')
   },
   RequiresDeclaration(fm) {
     fm.oneSpaceAfter('requires')

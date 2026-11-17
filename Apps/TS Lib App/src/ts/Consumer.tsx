@@ -1,14 +1,8 @@
-import library from '@example/tao-library'
-import Card from '@example/tao-library/Catalog/Greeting'
-import Greeting from '@example/tao-library/Greeting'
-import LanguageFeatures from '@example/tao-library/LanguageFeatures'
-import Panel from '@example/tao-library/Panel'
+import { Greeting, LanguageFeatures, Panel, ValueSnapshots } from '@tao-dev/ts-lib-example'
+import { Caption } from '@tao-dev/ts-lib-example/@cards'
+import { DetailedCard } from '@tao-dev/ts-lib-example/@cards/details'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import DisabledPreviewDemo from './DisabledPreviewDemo'
-
-const first = library.instantiate()
-const second = library.instantiate()
 
 export default function Consumer() {
   const [name, setName] = React.useState('Ada')
@@ -20,28 +14,26 @@ export default function Consumer() {
         <Text style={styles.label}>Update first greeting</Text>
       </Pressable>
       <Pressable style={styles.button} testID="unmount" onPress={() => setMounted(false)}>
-        <Text style={styles.label}>Unmount first instance</Text>
+        <Text style={styles.label}>Unmount first greeting</Text>
       </Pressable>
-      <Text style={styles.label} testID="borrowed-instance">{first.disposed ? 'disposed' : 'borrowed'}</Text>
       {mounted && (
         <View style={styles.instance} testID="instance-A">
-          <library.Provider instance={first}>
+          <View testID="first-greeting">
             <Greeting First={name} Second="Lovelace" />
-            <Panel>
-              <Text style={styles.label} testID="react-child">React child</Text>
-            </Panel>
-            <Card Value="Published submodule" />
-            <DisabledPreviewDemo />
-            <View testID="language-features">
-              <LanguageFeatures Name="Ada" />
-            </View>
-          </library.Provider>
+          </View>
+          <Panel>
+            <Text style={styles.label} testID="react-child">React child</Text>
+          </Panel>
+          <Caption Value="Published package" />
+          <DetailedCard Value="Published subfolder" />
+          <View testID="language-features">
+            <LanguageFeatures Name={name} />
+            <ValueSnapshots />
+          </View>
         </View>
       )}
       <View style={styles.instance} testID="instance-B">
-        <library.Provider instance={second}>
-          <Greeting First="Alan" Second="Turing" />
-        </library.Provider>
+        <Greeting First="Alan" Second="Turing" />
       </View>
     </View>
   )

@@ -107,13 +107,6 @@ export function GetTypeScriptLibraryDeclarations(
   )
 }
 
-/** GetPublishDeclarations lists publish blocks declared in a source document. */
-export function GetPublishDeclarations(document: AST.Document): readonly AST.PublishDeclaration[] {
-  return document.root.block.statements.filter((node): node is AST.PublishDeclaration =>
-    AST.IsKind(node, 'PublishDeclaration')
-  )
-}
-
 /** GetAppDeclarations lists app declarations in a source document. */
 export function GetAppDeclarations(document: AST.Document): AST.AppDeclaration[] {
   return document.root.block.statements.filter(IsAppDeclaration)
@@ -180,14 +173,14 @@ export function FindAppDeclaration(document: AST.Document, name: string): AST.Ap
   )
 }
 
-/** GetImportStatements lists declaration and package imports in a source document. */
-export function GetImportStatements(document: AST.Document): ImportStatement[] {
-  return document.root.block.statements.filter(isImportStatement)
+/** GetImportStatements lists named declaration imports in a source document. */
+export function GetImportStatements(document: AST.Document): AST.UseStatement[] {
+  return document.root.block.statements.filter(IsUseStatement)
 }
 
 /** HasImportStatements reports whether a source document declares an import. */
 export function HasImportStatements(document: AST.Document): boolean {
-  return document.root.block.statements.some(isImportStatement)
+  return document.root.block.statements.some(IsUseStatement)
 }
 
 /** GetValueDeclarations lists named values declared by a source document. */
@@ -224,19 +217,14 @@ export function GetViewName(view: AST.ViewDeclaration): string {
   return view.name.value
 }
 
-/** GetDeclarationVisibility resolves explicit visibility and the app/folder or value/file defaults. */
+/** GetDeclarationVisibility resolves explicit visibility or defaults to file scope. */
 export function GetDeclarationVisibility(node: AST.ValueDeclaration): AST.Visibility {
-  return node.visibility ?? (IsAppDeclaration(node) ? 'folder' : 'file')
+  return node.visibility ?? 'file'
 }
 
 /** IsUseStatement narrows a semantic node to a declaration import. */
 export function IsUseStatement(node: AST.Node): node is AST.UseStatement {
   return AST.IsKind(node, 'UseStatement')
-}
-
-/** IsUsePackageStatement narrows a semantic node to a package import. */
-export function IsUsePackageStatement(node: AST.Node): node is AST.UsePackageStatement {
-  return AST.IsKind(node, 'UsePackageStatement')
 }
 
 /** IsViewRenderExpression narrows a semantic node to a recursive view invocation. */
@@ -247,12 +235,6 @@ export function IsViewRenderExpression(node: AST.Node): node is AST.ViewRenderEx
 /** IsViewRenderStatement narrows a semantic node to a keyworded view render. */
 export function IsViewRenderStatement(node: AST.Node): node is AST.ViewRenderStatement {
   return AST.IsKind(node, ['RenderInjectStatement', 'RenderViewExpressionStatement'])
-}
-
-type ImportStatement = AST.UseStatement | AST.UsePackageStatement
-
-function isImportStatement(node: AST.Node): node is ImportStatement {
-  return IsUseStatement(node) || IsUsePackageStatement(node)
 }
 
 function appendNestedViews(view: AST.ViewDeclaration, views: AST.ViewDeclaration[]): void {
@@ -269,9 +251,14 @@ function isTestStep(node: AST.Statement): node is AST.TestStep {
 }
 
 function isViewDeclarationStatement(node: AST.Statement): node is AST.ViewDeclarationStatement {
-  return IsViewDeclaration(node) || IsViewRenderStatement(node) || IsLetDeclaration(node)
+  return IsViewRenderStatement(node) || AST.IsKind(node, [
+    'ViewDeclaration',
+    'LetDeclaration',
+    'StateDeclaration',
+    'ActionDeclaration',
+  ])
 }
 
 function isViewRenderBlockStatement(node: AST.Statement): node is AST.ViewRenderBlockStatement {
-  return IsViewRenderExpression(node) || IsLetDeclaration(node)
+  return AST.IsKind(node, ['ViewRenderExpression', 'LetDeclaration', 'PressBinding'])
 }

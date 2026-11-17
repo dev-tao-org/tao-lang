@@ -4,6 +4,9 @@ import * as Shared from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import * as GrammarTraversal from './grammar-traversal'
 
+/** SemanticAstOutputDirectory identifies the workspace-relative generated AST directory. */
+export const SemanticAstOutputDirectory = 'ts/2-ast-gen/_gen_AST'
+
 /** writeSemanticAst derives semantic node fields and memberships from Tree-sitter metadata.
  *  It writes ts/2-ast-gen/_gen_AST/AST-generated.ts during parser prepare; @ast-gen re-exports it
  *  as the semantic AST model for CST transform, typecheck, compile and the Tao IDE extension. */
@@ -13,7 +16,7 @@ export async function writeSemanticAst(directory: string): Promise<void> {
   const grammar = await readGrammarMetadata(Path.join(directory, 'src/grammar.json'))
   const metadata = await readSemanticMetadata(Repo.resolvePath('ts/1-grammar/grammar-src/semantic-ast-metadata.json'))
   const source = generateSemanticAst(nodes, grammar, metadata)
-  const output = Repo.resolvePath('ts/2-ast-gen/_gen_AST/AST-generated.ts')
+  const output = Repo.resolvePath(SemanticAstOutputDirectory, 'AST-generated.ts')
   await FS.mkdir(Path.dirname(output))
   await FS.writeIfChanged(output, source)
 }
@@ -67,7 +70,6 @@ async function readSemanticMetadata(path: string): Promise<SemanticMetadata> {
 }
 
 const omittedRules = new Set([
-  'All',
   'ArgumentList',
   'Comment',
   'Identifier',

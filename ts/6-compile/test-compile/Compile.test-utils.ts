@@ -1,6 +1,6 @@
 import { Errors } from '@shared'
 import { Path } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import type { CompiledFiles } from '../compile-src/Compile'
 
 /** executeGeneratedFiles loads an emitted module map with an injected runtime boundary. */
@@ -33,10 +33,10 @@ function loadGeneratedModule(
   const module = { exports: {} as Record<string, unknown> }
   cache.set(path, module)
   const requireModule = (specifier: string) => {
-    if (specifier === '@runtime') {
+    if (specifier === '@tao/runtime/generated') {
       return runtime
     }
-    if (specifier === '@tao/runtime-api') {
+    if (specifier === '@tao/runtime/runtime-api') {
       return { default: {} }
     }
     const target = resolveGeneratedPath(path, specifier, files)

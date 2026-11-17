@@ -4,7 +4,7 @@ import * as Tests from '@shared-tests'
 import { Artifacts, Env, FS, Path, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 
-Tests.test('CLI launchers prepare missing semantic AST before loading commands', async () => {
+Tests.test('CLI launchers prepare generated files before loading commands when needed', async () => {
   await FS.mkdir(Artifacts.resolvePath('tmp'))
   const root = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/cli-generated-bootstrap-'))
   await Try(async () => {
@@ -14,6 +14,7 @@ Tests.test('CLI launchers prepare missing semantic AST before loading commands',
     await assertMissingDependenciesRequireSetup(root)
     await assertPreparationFailureStopsLauncher(root)
     await assertExistingAstSkipsSetup(root)
+    await assertVerifyChecksExistingAst(root)
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -109,6 +110,26 @@ async function assertExistingAstSkipsSetup(root: string): Promise<void> {
     Tests.expect(await readCalls(root)).toBe(`${command}:run ${resolveCLIEntry(command)} --help\n`)
     await writeCalls(root, '')
   }
+}
+
+async function assertVerifyChecksExistingAst(root: string): Promise<void> {
+  const verifyRoutes = [
+    ['agent', ['verify']],
+    ['agent', ['unsandboxed', 'verify']],
+    ['dev', ['verify']],
+  ] as const
+  for (const [launcher, args] of verifyRoutes) {
+    await writeCalls(root, '')
+    const result = await runLauncher(root, launcher, args)
+    Tests.expect(result.status).toBe(0)
+    Tests.expect(await readCalls(root)).toBe(
+      `prepare\n${launcher}:run ${resolveCLIEntry(launcher)} ${args.join(' ')}\n`,
+    )
+  }
+  await writeCalls(root, '')
+  const failed = await runLauncher(root, 'dev', ['verify'], { BOOTSTRAP_FAILURE_STATUS: '23' })
+  Tests.expect(failed.status).toBe(23)
+  Tests.expect(await readCalls(root)).toBe('prepare\n')
 }
 
 type CLICommand = 'agent' | 'dev' | 'tao'

@@ -30,9 +30,8 @@ Labels are optional; unnamed cases are reported by file and line.
 
 #### `type "Hello World" into #name`
 
-Typing replaces the existing value of an editable input. A disabled input retains its value.
-Cursor-position specifiers are deferred.
-`press #save` attempts to activate the selected control. A disabled control remains inactive.
+Typing replaces the input's existing value; cursor-position specifiers are deferred.
+`press #save` activates the selected control.
 
 #### `expect text "Saved"`
 

@@ -5,11 +5,12 @@ import * as Typecheck from '@typecheck'
 
 import { S } from '@shared'
 
-import { collectLibraryPublications } from '../compile-src/Compile'
+import { collectLibraryPublications, requireLibraryPublication } from '../compile-src/Compile/LibraryPublications'
 
-Tests.test('library publication lists require commas and accept aliases and trailing commas', () => {
+Tests.test('library publication lists require commas, reject aliases and accept trailing commas', () => {
   const parser = Grammar.createParser()
-  Tests.expect(parser.parse('ts-library Demo { publish { First, Second as Other, } }').rootNode.hasError).toBe(false)
+  Tests.expect(parser.parse('ts-library Demo { publish { First, Second as Other, } }').rootNode.hasError).toBe(true)
+  Tests.expect(parser.parse('ts-library Demo { publish { First, @second, } }').rootNode.hasError).toBe(false)
   Tests.expect(parser.parse('publish { First, Second, }').rootNode.hasError).toBe(false)
   Tests.expect(parser.parse('publish { First Second }').rootNode.hasError).toBe(true)
   Tests.expect(parser.parse('ts-library Demo { publish { First Second } }').rootNode.hasError).toBe(true)
@@ -18,20 +19,20 @@ Tests.test('library publication lists require commas and accept aliases and trai
 Tests.test('library publications reject private, unsupported, duplicate and dependency definitions', () => {
   const source = S`
     ts-library Demo { publish { Greeting, } }
-    public view Greeting(Value text) {
+    package view Greeting(Value text) {
       render inject Value \`\`\`ts return <Tao.Text>{Value}</Tao.Text> \`\`\`
     }
   `
-  Tests.expect(resolvePublications(source).map(view => view.path)).toEqual(['Greeting'])
-  Tests.expect(() => resolvePublications(source.replace('public view', 'file view'))).toThrow('public declaration')
-  Tests.expect(() => resolvePublications(source.replace('Value text', 'Value number'))).toThrow(
-    'text or boolean parameters',
+  Tests.expect(resolvePublications(source).map(view => view.name)).toEqual(['Greeting'])
+  Tests.expect(() => resolvePublications(source.replace('package view', 'folder view'))).toThrow(
+    'package-visible declaration',
   )
+  Tests.expect(() => resolvePublications(source.replace('Value text', 'Value number'))).toThrow('text parameters')
   Tests.expect(() => resolvePublications(source.replace('Greeting, }', 'Greeting, Greeting, }'))).toThrow('Duplicate')
   Tests.expect(() => resolvePublications(source, new Set())).toThrow('dependency definition')
 })
 
-Tests.test('module publication resolves one list across imported sources including a list-only file', () => {
+Tests.test('publication keeps package API paths and excludes nested packages and private declarations', () => {
   const createModule = (path: string, source: string): Typecheck.SourceModule => ({
     path,
     document: AST.transform(Grammar.createParser().parse(source))!,
@@ -39,32 +40,33 @@ Tests.test('module publication resolves one list across imported sources includi
     siblings: [],
   })
   const entry = createModule(
-    'Library.tao',
-    S`
-      use package ./cards as Cards
-      ts-library Demo { publish { Cards as Catalog, } }
-    `,
+    '/project/Library.tao',
+    'ts-library Demo { publish { @cards, } }',
   )
   const greeting = createModule(
-    'cards/Greeting.tao',
-    'public view Greeting(Name text) { render inject ```ts return null ``` }',
+    '/project/@cards/details/Greeting.tao',
+    'package view Greeting(Name text) { render inject ```ts return null ``` }',
   )
-  const other = createModule('cards/Other.tao', 'public view Other { render inject ```ts return null ``` }')
-  const list = createModule('cards/Publication.tao', 'publish { Greeting as Hello, }')
-  entry.imports = [{
-    statement: AST.GetImportStatements(entry.document)[0]!,
-    targets: [greeting, other, list].map(module => ({ path: module.path, relation: 'same-project' })),
-  }]
-  const sources = [entry, greeting, other, list]
+  const other = createModule('/project/@cards/Other.tao', 'view Other { render inject ```ts return null ``` }')
+  const nested = createModule(
+    '/project/@cards/@nested/Hidden.tao',
+    'package view Hidden { render inject ```ts return null ``` }',
+  )
+  const sources = [entry, greeting, other, nested]
   const program = Typecheck.linkModules(entry.path, sources)
-  Tests.expect(collectLibraryPublications(program, new Set(sources.map(module => module.path))).map(view => view.path))
-    .toEqual(['Catalog/Hello'])
+  const publication = {
+    declaration: requireLibraryPublication(entry.document),
+    ownSources: new Set(sources.map(module => module.path)),
+    packageRoots: new Map([['@cards', '/project/@cards']]),
+  }
+  Tests.expect(collectLibraryPublications(program, publication).map(view => [view.subpath, view.name]))
+    .toEqual([['./@cards/details', 'Greeting']])
 })
 
 Tests.test('library signatures allow uppercase Tao props with React-related names', () => {
   const source = S`
     ts-library Demo { publish { Greeting, } }
-    public view Greeting(Value text) { render inject \`\`\`ts return null \`\`\` }
+    package view Greeting(Value text) { render inject \`\`\`ts return null \`\`\` }
   `
   const publications = resolvePublications(source.replace('Value text', 'Children text, Key text, Ref text'))
   Tests.expect(publications[0]!.declaration.parameters.map(parameter => parameter.name.value))
@@ -74,5 +76,10 @@ Tests.test('library signatures allow uppercase Tao props with React-related name
 function resolvePublications(source: string, ownSources: ReadonlySet<string> = new Set(['Library.tao'])) {
   const document = AST.transform(Grammar.createParser().parse(source))!
   const module = { path: 'Library.tao', document, imports: [], siblings: [] }
-  return collectLibraryPublications(Typecheck.linkModules(module.path, [module]), ownSources)
+  const declaration = requireLibraryPublication(document)
+  return collectLibraryPublications(Typecheck.linkModules(module.path, [module]), {
+    declaration,
+    ownSources,
+    packageRoots: new Map(),
+  })
 }

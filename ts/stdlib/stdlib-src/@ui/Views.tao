@@ -1,27 +1,38 @@
-public
+package
 view Text(Value text) {
   render inject Value ```ts
     return <Tao.Text>{Value}</Tao.Text>
   ```
 }
 
-public
+package
 view Col {
   render inject Children @@children ```ts
     return <Tao.View style={{ flexDirection: 'column' }}>{Children}</Tao.View>
   ```
 }
 
-public
+package
 view Row {
   render inject Children @@children ```ts
     return <Tao.View style={{ flexDirection: 'row' }}>{Children}</Tao.View>
   ```
 }
 
-public
+package
 view Input(Value text) {
   render inject Value ```ts
     return <Tao.TextInput defaultValue={Value} />
+  ```
+}
+
+package
+view Button(Label text) {
+  render inject Label, Press @@press ```ts
+    return (
+      <Tao.Pressable accessibilityRole="button" onPress={Press}>
+        <Tao.Text>{Label}</Tao.Text>
+      </Tao.Pressable>
+    )
   ```
 }

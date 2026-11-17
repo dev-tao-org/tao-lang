@@ -6,7 +6,7 @@ import * as Typecheck from '@typecheck'
 import { compileIdentifier, emitStringLiteral } from './codegen-util'
 
 /** ForeignViewPathResolver maps an authored foreign-view path relative to its owning module. */
-export type ForeignViewPathResolver = (modulePath: string, authoredPath: string) => string
+export type ForeignViewPathResolver = (modulePath: string, authoredPath: string, outputPath: string) => string
 
 /** ForeignViewNamesByModuleMemberKey maps semantic foreign-view keys to generated import identifiers. */
 export type ForeignViewNamesByModuleMemberKey = ReadonlyMap<string, string>
@@ -14,10 +14,11 @@ export type ForeignViewNamesByModuleMemberKey = ReadonlyMap<string, string>
 /** compileForeignViews resolves and imports every foreign view in a linked program. */
 export function compileForeignViews(
   program: Typecheck.LinkedProgram,
+  outputPath: string,
   resolvePath?: ForeignViewPathResolver,
 ): { imports: string; names: ForeignViewNamesByModuleMemberKey } {
   const declarations = collectForeignViewDeclarations(program)
-  const resolvedViews = resolveForeignViewPaths(declarations, resolvePath)
+  const resolvedViews = declarations.map(declaration => resolveForeignView(declaration, outputPath, resolvePath))
   const views = resolvedViews.sort(compareForeignViews)
   return compileForeignViewImports(views)
 }
@@ -47,19 +48,13 @@ function collectForeignViewDeclarations(program: Typecheck.LinkedProgram): Forei
   return foreignViews
 }
 
-function resolveForeignViewPaths(
-  declarations: readonly ForeignViewDeclaration[],
-  resolvePath?: ForeignViewPathResolver,
-): ResolvedForeignView[] {
-  return declarations.map(declaration => resolveForeignView(declaration, resolvePath))
-}
-
 function resolveForeignView(
   declaration: ForeignViewDeclaration,
+  outputPath: string,
   resolvePath: OptionalForeignViewPathResolver,
 ): ResolvedForeignView {
   const path = resolvePath
-    ? resolvePath(declaration.modulePath, declaration.authoredPath)
+    ? resolvePath(declaration.modulePath, declaration.authoredPath, outputPath)
     : Path.resolve(Path.dirname(declaration.modulePath), declaration.authoredPath)
   return { ...declaration, path }
 }

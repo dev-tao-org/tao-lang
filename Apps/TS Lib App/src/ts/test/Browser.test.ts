@@ -11,7 +11,7 @@ type TaoTestSourceMarker = {
   packageDirectory: string
 }
 
-test('Tao library renders React props, children and isolated instances', async () => {
+test('Tao library renders React props, children and mount-local state', async () => {
   const reservation = Bun.serve({ port: 0, fetch: () => new Response() })
   const port = reservation.port!
   reservation.stop(true)
@@ -25,7 +25,7 @@ test('Tao library renders React props, children and isolated instances', async (
   try {
     await waitForServer(url, server)
     browser = await chromium.launch({ headless: true, channel: 'chrome' })
-    const page = await browser.newPage({ hasTouch: true })
+    const page = await browser.newPage()
     await page.goto(url)
     await verifyConsumer(page)
     if (shouldRefreshSource) {

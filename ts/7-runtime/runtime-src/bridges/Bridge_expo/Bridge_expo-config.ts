@@ -23,8 +23,8 @@ export const metroConfiguration = S`
     const singleton = tao.singletonPackages.find(id => name === id || name.startsWith(id + '/'));
     if (singleton) return context.resolveRequest(context, path.join(__dirname, 'node_modules', name), platform);
     if (name.startsWith('@runtime/client/')) return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime', name.slice('@runtime/client/'.length)), platform);
-    if (name === '@runtime') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
-    if (name === '@tao/runtime-api') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TaoRuntimeAPI.ts'), platform);
+    if (name === '@tao/runtime/generated') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TR.ts'), platform);
+    if (name === '@tao/runtime/runtime-api' || name === '@tao/runtime-api') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/runtime/TaoRuntimeAPI.ts'), platform);
     if (name === '@shared') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/shared.ts'), platform);
     if (name === '@shared/os/preview') return context.resolveRequest(context, path.join(__dirname, 'src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'), platform);
     ${hmrResolution}
@@ -51,7 +51,9 @@ export const consumerMetroConfiguration = S`
   const consumer = require('./tao-consumer.json');
   const config = getDefaultConfig(__dirname);
   const modules = path.join(__dirname, 'node_modules');
+  const library = consumer.library;
   function dependencyRoot(name) {
+    if (library && name === library.name) return library.directory;
     let directory = fs.realpathSync(path.join(modules, name));
     let root = directory;
     while (path.dirname(directory) !== directory) {
@@ -63,6 +65,19 @@ export const consumerMetroConfiguration = S`
   config.watchFolders = [...new Set([consumer.packageDirectory, ...consumer.packages.map(dependencyRoot)])];
   config.resolver.nodeModulesPaths = [modules];
   config.resolver.resolveRequest = (context, name, platform) => {
+    if (library && (name === library.name || name.startsWith(library.name + '/'))) {
+      const generatedContext = {
+        ...context,
+        disableHierarchicalLookup: true,
+        nodeModulesPaths: [],
+        extraNodeModules: { [library.name]: library.directory },
+      };
+      return context.resolveRequest(generatedContext, name, platform);
+    }
+    if (name.startsWith('@tao/runtime/')) {
+      const peerContext = { ...context, disableHierarchicalLookup: true, nodeModulesPaths: [modules] };
+      return context.resolveRequest(peerContext, name, platform);
+    }
     const peer = ['react', 'react-dom', 'react-native', 'react-native-web'].find(id => name === id || name.startsWith(id + '/'));
     return context.resolveRequest(context, peer ? path.join(modules, name) : name, platform);
   };

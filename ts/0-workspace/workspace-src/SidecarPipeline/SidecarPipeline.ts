@@ -7,7 +7,7 @@ import * as Typecheck from '@typecheck'
 
 import * as Paths from '../modules/Paths'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
-import { collectModuleSpecifiers, getFileExtension } from './Imports'
+import * as Imports from './Imports'
 import * as Snapshots from './Snapshots'
 
 /** SidecarPipelineOptions defines one compiler check and immutable sidecar snapshot. */
@@ -81,6 +81,15 @@ export async function prepareSidecarPipeline(options: SidecarPipelineOptions): P
   }
 }
 
+/** collectLibrarySidecars captures the same bounded source closure for relocatable library publication. */
+export async function collectLibrarySidecars(
+  program: Typecheck.LinkedProgram,
+  projectDirectory: string,
+): Promise<readonly Snapshots.SidecarGroup[]> {
+  const { groups } = await collectSidecarInputs({ program, projectDirectory })
+  return groups
+}
+
 function resolveTypeScriptDefaultsPath(options: SidecarPipelineOptions): string {
   const projectDirectory = options.projectDirectory === undefined
     ? Path.dirname(options.program.entry)
@@ -115,7 +124,9 @@ function snapshotForeignViewPaths(
 }
 
 type CollectedSidecarInputs = { groups: Snapshots.SidecarGroup[]; watchFiles: string[] }
-async function collectSidecarInputs(options: SidecarPipelineOptions): Promise<CollectedSidecarInputs> {
+type SidecarInputField = 'program' | 'projectDirectory' | 'onWatchFiles'
+type SidecarInputOptions = Pick<SidecarPipelineOptions, SidecarInputField>
+async function collectSidecarInputs(options: SidecarInputOptions): Promise<CollectedSidecarInputs> {
   const entryPath = options.program.entry
   const projectDirectory = options.projectDirectory
     ? Path.resolve(options.projectDirectory)
@@ -147,7 +158,7 @@ function compareSidecarModuleRoots(left: Snapshots.SidecarGroup, right: Snapshot
 }
 
 async function collectProgramSidecarViews(
-  options: SidecarPipelineOptions,
+  options: SidecarInputOptions,
   canonicalConsumerDirectory: string,
   groups: Map<string, Snapshots.SidecarGroup>,
   watchFiles: Set<string>,
@@ -178,7 +189,7 @@ async function collectSidecarView(
   if (realModulePath === undefined) {
     Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
   }
-  const moduleRoot = Paths.findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
+  const moduleRoot = Paths.findNamedPackageRoot(Path.dirname(realModulePath), projectRoot) ?? projectRoot
   const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
   watchAttemptedPath(resolvedAuthoredPath, moduleRoot, watchFiles)
   const sidecarPath = await resolveSafeModuleFile(resolvedAuthoredPath, moduleRoot, projectRoot)
@@ -228,33 +239,28 @@ async function collectFileClosure(
     watchFiles.add(safePath)
     const contents = await FS.readFile(safePath)
     group.files.set(path, contents)
-    if (!isTypeScriptSource(path)) {
+    if (!Imports.isScriptSource(path)) {
       continue
     }
+    const declaration = await Imports.findScriptDeclaration(
+      path,
+      candidate => watchAttemptedPath(candidate, moduleRoot, watchFiles),
+    )
+    if (declaration) {
+      pending.push(declaration)
+    }
     const source = Text.decodeUtf8(contents)
-    for (const specifier of collectModuleSpecifiers(source)) {
+    for (const specifier of Imports.collectModuleSpecifiers(source)) {
       if (!specifier.startsWith('.')) {
         continue
       }
-      const target = await resolveRelativeImport(Path.resolve(Path.dirname(path), specifier), moduleRoot, watchFiles)
+      const target = await Imports.resolveRelativeImport(
+        Path.resolve(Path.dirname(path), specifier),
+        candidate => watchAttemptedPath(candidate, moduleRoot, watchFiles),
+      )
       pending.push(await resolveSafeModuleFile(target, moduleRoot, projectDirectory))
     }
   }
-}
-
-async function resolveRelativeImport(path: string, moduleRoot: string, watchFiles: Set<string>): Promise<string> {
-  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...Snapshots.sidecarAssetExtensions]
-  const candidates = getFileExtension(path) ? [path] : [
-    ...suffixes.map(suffix => `${path}${suffix}`),
-    ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
-  ]
-  for (const candidate of candidates) {
-    watchAttemptedPath(candidate, moduleRoot, watchFiles)
-    if (await FS.exists(candidate) && FS.lstatSync(candidate).isFile()) {
-      return candidate
-    }
-  }
-  Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
 async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
@@ -266,7 +272,7 @@ async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDi
     Errors.ThrowUserInput(`Foreign view sidecar escapes its module boundary: ${absolute}`)
   }
   const expectedPackage = moduleRoot === projectDirectory ? undefined : moduleRoot
-  if (Paths.findNamedPackageRoot(realPath, projectDirectory) !== expectedPackage) {
+  if (Paths.findNamedPackageRoot(Path.dirname(realPath), projectDirectory) !== expectedPackage) {
     Errors.ThrowUserInput(`Foreign view sidecar crosses a nested module boundary: ${absolute}`)
   }
   await rejectNestedProjectPath(absolute, moduleRoot, projectDirectory)
@@ -330,8 +336,4 @@ function fingerprintFor(
       `${left.root}/${left.path}/${left.name}`.localeCompare(`${right.root}/${right.path}/${right.name}`)
     ),
   }, { prettyPrint: false }))
-}
-
-function isTypeScriptSource(path: string): boolean {
-  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx'].includes(getFileExtension(path))
 }

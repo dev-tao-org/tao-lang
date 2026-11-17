@@ -1,6 +1,6 @@
 import * as AST from '@ast-gen'
 import { Range, Source, Switch, Timings } from '@shared'
-import { deriveNamespaceFromPath } from './Modules'
+import { visitActionReferences, visitPressReferences } from '../ActionReferences'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
@@ -16,7 +16,7 @@ export const unusedWarnings = Timings.createTopLevelTimer(function(timings, docu
 })
 
 type UsageWarningCode = 'unused-import' | 'unused-declaration'
-type BindingKind = 'local' | 'import' | 'namespace'
+type BindingKind = 'local' | 'import'
 type Binding = { name: AST.Name; kind: BindingKind; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
@@ -34,18 +34,11 @@ const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Do
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
-    const reportUnused = AST.GetDeclarationVisibility(node) === 'file'
+    const reportUnused = !AST.IsAppDeclaration(node) && AST.GetDeclarationVisibility(node) === 'file'
     declare(scope, node.name, 'local', reportUnused)
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
       declare(scope, item.alias ?? item.target, 'import')
-    }
-  } else if (AST.IsUsePackageStatement(node)) {
-    // ex: use package @Foo as Bar -> Bar
-    const value = node.alias?.value ?? deriveNamespaceFromPath(node.from.value)
-    if (value) {
-      const namespaceName: AST.Name = node.alias ?? { ...node.from, kind: 'Name', value }
-      declare(scope, namespaceName, 'namespace')
     }
   } else {
     // Requirements and test suites do not declare module-level values.
@@ -72,7 +65,6 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
       }
     },
     UseStatement: Switch.nothing,
-    UsePackageStatement: Switch.nothing,
     RequiresDeclaration: Switch.nothing,
     TypeScriptLibraryDeclaration(library) {
       const publication = AST.FindLibraryPublication(library)
@@ -86,7 +78,9 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
 
 function visitPublication(node: AST.PublishDeclaration, scope: Scope): void {
   for (const member of node.members) {
-    reference(scope, member.target)
+    if (!member.value.startsWith('@')) {
+      reference(scope, member)
+    }
   }
 }
 
@@ -97,26 +91,50 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
     reference(parent, parameter.type)
     declare(scope, parameter.name, 'local', reportUnusedParameters)
   }
-  const statements = AST.GetViewDeclarationStatements(node)
-  if (statements) {
-    for (const child of AST.GetNestedViewDeclarations(statements)) {
-      declare(scope, child.name)
+  const statements = AST.GetViewDeclarationStatements(node) ?? []
+  const actions = []
+  for (const statement of statements) {
+    if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration'])) {
+      declare(scope, statement.name)
     }
-    for (const statement of statements) {
-      Switch.kind(statement, {
-        LetDeclaration(definition) {
-          visitLet(definition, scope)
-          declare(scope, definition.name)
-        },
-        RenderViewExpressionStatement: render => visitRender(render.expression, scope),
-        RenderInjectStatement: render => visitInjection(render.injection, scope),
-        ViewDeclaration: view => visitView(view, scope),
-      })
+    if (AST.IsKind(statement, 'ActionDeclaration')) {
+      actions.push(statement)
     }
+  }
+  for (const statement of statements) {
+    visitViewStatement(statement, scope)
+  }
+  for (const action of actions) {
+    visitAction(action, scope)
   }
 }
 
-function visitLet(node: AST.LetDeclaration, scope: Scope): void {
+function visitViewStatement(node: AST.ViewDeclarationStatement, scope: Scope): void {
+  Switch.kind(node, {
+    LetDeclaration: definition => visitLocalValue(definition, scope),
+    StateDeclaration: definition => visitLocalValue(definition, scope),
+    ActionDeclaration: Switch.nothing,
+    RenderViewExpressionStatement: render => visitRender(render.expression, scope),
+    RenderInjectStatement: render => visitInjection(render.injection, scope),
+    ViewDeclaration: view => visitView(view, scope),
+  })
+}
+
+function visitAction(node: AST.ActionDeclaration, scope: Scope): void {
+  const actionScope = createChildScope(scope)
+  for (const parameter of node.parameters) {
+    reference(scope, parameter.type)
+    declare(actionScope, parameter.name)
+  }
+  visitActionReferences(node.block, name => reference(actionScope, name))
+}
+
+function visitLocalValue(node: AST.ViewValueDeclaration, scope: Scope): void {
+  visitLet(node, scope)
+  declare(scope, node.name)
+}
+
+function visitLet(node: AST.ViewValueDeclaration, scope: Scope): void {
   if (node.type) {
     reference(scope, node.type)
   }
@@ -127,10 +145,6 @@ function visitLet(node: AST.LetDeclaration, scope: Scope): void {
 
 function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   reference(scope, node.target)
-  const condition = node.interaction?.condition
-  if (condition && AST.IsKind(condition, 'Name')) {
-    reference(scope, condition)
-  }
   for (const argument of node.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       reference(scope, argument)
@@ -141,10 +155,8 @@ function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
     const childrenScope = createChildScope(scope)
     for (const child of statements) {
       Switch.kind(child, {
-        LetDeclaration(definition) {
-          visitLet(definition, childrenScope)
-          declare(childrenScope, definition.name)
-        },
+        LetDeclaration: definition => visitLocalValue(definition, childrenScope),
+        PressBinding: binding => visitPressReferences(binding.handler, name => reference(childrenScope, name)),
         ViewRenderExpression: render => visitRender(render, childrenScope),
       })
     }
@@ -172,9 +184,7 @@ function declare(scope: Scope, name: AST.Name, kind: Binding['kind'] = 'local', 
 }
 
 function reference(scope: Scope, name: AST.Name): void {
-  const head = name.value.split('.')[0]!
-  const namespace = scope.bindings.get(head)?.filter(binding => binding.kind === 'namespace')
-  const bindings = scope.bindings.get(name.value) ?? (namespace?.length ? namespace : undefined)
+  const bindings = scope.bindings.get(name.value)
   if (bindings) {
     for (const binding of bindings) {
       binding.used = true

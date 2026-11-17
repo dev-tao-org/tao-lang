@@ -1,27 +1,96 @@
-import { Path } from '@shared/os'
-import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { Errors, Json } from '@shared'
+import { FS, Path } from '@shared/os'
+import { TypeScript } from '@tao/shared/typescript'
+import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
 
 type ModuleSpecifierNode = TypeScript.Node | undefined
 
-/** getFileExtension returns the final extension used to resolve a sidecar dependency. */
-export const getFileExtension = Path.extname
+const ScriptExtensions = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.mjs', '.cjs']
+
+/** resolveRelativeImport resolves a sidecar source or asset and records attempted paths for invalidation. */
+export async function resolveRelativeImport(path: string, watch: (candidate: string) => void): Promise<string> {
+  const suffixes = [...ScriptExtensions, '.d.ts', '.d.mts', '.d.cts', '.json', ...sidecarAssetExtensions]
+  const candidates = Path.extname(path) ? [path] : [
+    ...suffixes.map(suffix => `${path}${suffix}`),
+    ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
+  ]
+  for (const candidate of candidates) {
+    watch(candidate)
+    if (await FS.exists(candidate) && FS.lstatSync(candidate).isFile()) {
+      return candidate
+    }
+  }
+  Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
+}
+
+/** isScriptSource identifies TypeScript and JavaScript modules whose imports need capture. */
+export function isScriptSource(path: string): boolean {
+  return ScriptExtensions.includes(Path.extname(path))
+}
+
+const ScriptDeclarationExtensions = new Map([
+  ['.js', '.d.ts'],
+  ['.jsx', '.d.ts'],
+  ['.mjs', '.d.mts'],
+  ['.cjs', '.d.cts'],
+])
+
+/** findScriptDeclaration captures an authored JavaScript module's optional declaration companion. */
+export async function findScriptDeclaration(path: string, watch: (candidate: string) => void) {
+  const extension = Path.extname(path)
+  const suffix = ScriptDeclarationExtensions.get(extension)
+  if (!suffix) {
+    return undefined
+  }
+  const candidate = path.slice(0, -extension.length) + suffix
+  watch(candidate)
+  return await FS.exists(candidate) ? candidate : undefined
+}
 
 /** collectModuleSpecifiers finds imports, exports, and require calls in TypeScript source. */
 export function collectModuleSpecifiers(source: string): string[] {
-  const file = TypeScript.createSourceFile('sidecar.tsx', source, TypeScript.ScriptTarget.Latest, true)
   const result = new Set<string>()
-  collectModuleSpecifiersFromNode(file, result)
+  visitSourceSpecifiers(source, node => result.add(node.text))
   return [...result]
 }
 
-function collectModuleSpecifiersFromNode(node: TypeScript.Node, result: Set<string>): void {
+/** rewriteModuleSpecifiers updates only parsed module specifiers in a portable sidecar snapshot. */
+export function rewriteModuleSpecifiers(source: string, resolve: (specifier: string) => string): string {
+  const edits: SpecifierEdit[] = []
+  visitSourceSpecifiers(source, node => {
+    const specifier = resolve(node.text)
+    if (specifier !== node.text) {
+      edits.push({ start: node.getStart(), end: node.getEnd(), text: Json.Print(specifier) })
+    }
+  })
+  for (const edit of edits.reverse()) {
+    source = source.slice(0, edit.start) + edit.text + source.slice(edit.end)
+  }
+  return source
+}
+
+type SpecifierEdit = { start: number; end: number; text: string }
+type SpecifierVisitor = (node: TypeScript.StringLiteralLike) => void
+
+function visitSourceSpecifiers(source: string, visit: SpecifierVisitor): void {
+  const file = TypeScript.createSourceFile('sidecar.tsx', source, TypeScript.ScriptTarget.Latest, true)
+  visitModuleSpecifiers(file, visit)
+}
+
+function visitModuleSpecifiers(node: TypeScript.Node, visit: SpecifierVisitor): void {
   if (TypeScript.isImportDeclaration(node) || TypeScript.isExportDeclaration(node)) {
-    addLiteralSpecifier(node.moduleSpecifier, result)
+    visitLiteralSpecifier(node.moduleSpecifier, visit)
   }
   if (TypeScript.isCallExpression(node) && isModuleLoader(node.expression)) {
-    addLiteralSpecifier(node.arguments[0], result)
+    visitLiteralSpecifier(node.arguments[0], visit)
   }
-  TypeScript.forEachChild(node, child => collectModuleSpecifiersFromNode(child, result))
+  if (TypeScript.isImportTypeNode(node) && TypeScript.isLiteralTypeNode(node.argument)) {
+    visitLiteralSpecifier(node.argument.literal, visit)
+  }
+  if (TypeScript.isExternalModuleReference(node)) {
+    visitLiteralSpecifier(node.expression, visit)
+  }
+  TypeScript.forEachChild(node, child => visitModuleSpecifiers(child, visit))
 }
 
 function isModuleLoader(expression: TypeScript.Expression): boolean {
@@ -29,8 +98,8 @@ function isModuleLoader(expression: TypeScript.Expression): boolean {
     || TypeScript.isIdentifier(expression) && expression.text === 'require'
 }
 
-function addLiteralSpecifier(node: ModuleSpecifierNode, result: Set<string>): void {
+function visitLiteralSpecifier(node: ModuleSpecifierNode, visit: SpecifierVisitor): void {
   if (node && (TypeScript.isStringLiteral(node) || TypeScript.isNoSubstitutionTemplateLiteral(node))) {
-    result.add(node.text)
+    visit(node)
   }
 }

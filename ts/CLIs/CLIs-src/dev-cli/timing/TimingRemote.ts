@@ -5,7 +5,13 @@ import { Streams } from '@shared/os'
 import { executeRemote } from '../../agent-skills/performance-investigation/Remote'
 
 /** TimingRemoteRequest selects literal runner arguments through an existing authenticated socket. */
-export type TimingRemoteRequest = { host: string; directory: string; controlPath: string; args: readonly string[] }
+export type TimingRemoteRequest = {
+  host: string
+  directory: string
+  controlPath: string
+  args: readonly string[]
+  streamOutput?: boolean
+}
 
 /** readTimingRemote retains runner stdout while preserving ordinary command logs and SSH supervision. */
 export async function readTimingRemote(request: TimingRemoteRequest): Promise<string> {
@@ -16,7 +22,9 @@ export async function readTimingRemote(request: TimingRemoteRequest): Promise<st
     ...channel,
     stdout(chunk) {
       text += decode(chunk)
-      channel.stdout(chunk)
+      if (request.streamOutput !== false) {
+        channel.stdout(chunk)
+      }
     },
   }
   const args = [

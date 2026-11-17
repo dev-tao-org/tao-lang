@@ -2,20 +2,29 @@
 
 Use these commands from the repository root after `./agent unsandboxed setup`:
 
-| Command                                   | Measures                                                                                                  |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `./agent performance parser`              | Forced grammar/native build, process-cold parsing and warm full-source parser/AST/code-generation phases. |
-| `./agent performance formatter`           | Tao formatting/fixing and embedded TSX formatting on the driver's fixtures.                               |
-| `./agent performance extension`           | Incremental Tao parsing, embedded TSX parsing and highlight queries; excludes editor paint.               |
-| `./agent unsandboxed performance preview` | Editor save, compiler publication, Metro, and app receipts in two isolated headless previews.             |
-| `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.     |
-| `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                  |
-| `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.      |
-| `just performance`                        | Developer preview measurement command, printing results and retaining the raw report.                     |
+| Command                                   | Measures                                                                                                       |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `./agent performance parser`              | Forced grammar/native build, process-cold parsing and warm full-source parser/AST/code-generation phases.      |
+| `./agent performance formatter`           | Tao formatting/fixing and embedded TSX formatting on the driver's fixtures.                                    |
+| `./agent performance reactivity`          | Reactive graph policies, heap retention, and reused/fresh collection publications with downstream work counts. |
+| `./agent performance extension`           | Incremental Tao parsing, embedded TSX parsing and highlight queries; excludes editor paint.                    |
+| `./agent unsandboxed performance preview` | Editor save, compiler publication, Metro, and app receipts in two isolated headless previews.                  |
+| `./dev performance editor`                | Serves the fixed performance project with a source tree, editor, Save button, and on-demand previews.          |
+| `./dev performance preview --baseline`    | Retains five fresh sessions from one clean commit as the checkout's comparison baseline.                       |
+| `./agent unsandboxed performance record`  | One immutable preview record for the current clean implementation commit; reuses an existing record.           |
+| `just timing` or `just performance`       | Preview measurement on the configured timing runner. Pass `--local` for a diagnostic on this machine.          |
+
+Official speed tests run on the dedicated speed-testing machine in an isolated checkout under its
+shared timing lock. Configure the shortcut with `TAO_TIMING_HOST` and `TAO_TIMING_CHECKOUT`, or
+pass the runner checkout and `--host` explicitly. See the [remote timing workflow](Remote%20timing%20workflow.md).
 
 The preview host route is required in the macOS agent environment. See
 [Preview Workflow](../Preview%20Workflow.md) for the persistent `just dev` loop, output locations and
 receipt definitions. App receipts establish a React commit, not physical repaint.
+
+The drivers live in [repository analysis](../../../ts/repo-analysis/repo-analysis-src/Performance)
+and share the [authored workload](../../../ts/repo-analysis/performance-fixtures/Performance/Performance.tao).
+Each timing record keeps the fixture path and hash at the revision it measured.
 
 The fixed project imports six groups across 24 dependency files. A cycle measures a small text
 edit, expanding and shrinking a same-file tree, mounting and expanding a nested imported tree,
@@ -23,8 +32,18 @@ editing a mounted dependency, shrinking the imported tree, and resetting. Launch
 warm preview opens have separate timers. Each session runs three cycles, allowing the last two to
 supply a warm sample for every edit. Percentage changes use each step's own baseline median.
 
+Protocol v4 keeps the rendered workload and source file count. Its named sibling imports search
+all direct sibling files, changing the candidate graph and resolution work from v3's filename
+imports. Use a separate baseline for v4.
+
 Ordinary `verify` and TypeScript CI prepare assets and run correctness checks/tests; they do not run
 these benchmark targets automatically. Do not infer a new timing baseline from a passing verify.
+
+The reactivity workload includes 1000-row lists and 1000 publications per sample: reusing an owned
+snapshot, submitting fresh equal lists, and changing one field with shared versus fresh rows. It
+retains seven samples after two warmups and checks identity retention and downstream work counts.
+These timings include list construction, snapshot admission, equality and propagation; they do not
+isolate copy cost or measure React rendering, and are not a comparison with the previous runtime.
 
 ## Comparing and retaining results
 

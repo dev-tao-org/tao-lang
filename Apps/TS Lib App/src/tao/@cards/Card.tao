@@ -1,0 +1,7 @@
+use tao@ui Text
+
+package
+view Caption(Value text) {
+  render Text(Value)
+}
+

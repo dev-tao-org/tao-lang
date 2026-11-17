@@ -1,4 +1,4 @@
-import * as Perf from '@perf'
+import * as Performance from '@repo-analysis/performance'
 import { NewlineCharacter } from '@shared'
 import type { BranchComparison, ComparisonScenario } from './BranchComparison'
 import * as Metrics from './BranchMetrics'
@@ -74,7 +74,7 @@ function formatWorkload(workload: Workload): string[] {
 }
 
 function formatStepChanges(metrics: ComparedMetric[]): string[] {
-  const steps = metrics.filter(metric => Perf.PreviewRenderSteps.some(step => step.label === metric.first.name))
+  const steps = metrics.filter(metric => Performance.PreviewRenderSteps.some(step => step.label === metric.first.name))
   return [
     '  Change  Warm render steps',
     ...steps.map(({ first }) => `  ${TimingColumns.formatPercentage(first.changePercent).padStart(7)}  ${first.name}`),

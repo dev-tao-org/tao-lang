@@ -1,7 +1,0 @@
-use tao@ui Text
-
-public
-view Caption(Value text) {
-  render Text(Value)
-}
-

@@ -45,7 +45,7 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
         publish { Greeting, }
       }
 
-      public
+      package
       view Greeting(Name text) {
         render Text(Name)
       }
@@ -57,20 +57,15 @@ export const libraryProjectFiles: readonly LibraryProjectFile[] = [
   {
     path: 'src/ts/Consumer.tsx',
     contents: S`
-      import library from '@example/tao-library'
-      import Greeting from '@example/tao-library/Greeting'
+      import { Greeting } from '@tao-dev/ts-lib-example'
       import React from 'react'
       import { Text, View } from 'react-native'
-
-      const instance = library.instantiate()
 
       export default function Consumer() {
         return (
           <View>
             <Text>Tao library consumer</Text>
-            <library.Provider instance={instance}>
-              <Greeting Name="Ada" />
-            </library.Provider>
+            <Greeting Name="Ada" />
           </View>
         )
       }
@@ -87,13 +82,13 @@ function serializeLibraryProjectManifest(): string {
     tao: {
       compile: {
         entry: '../tao/Library.tao',
-        out: '../../.tao/cache/libraries/Demo',
-        name: '@example/tao-library',
+        name: '@tao-dev/ts-lib-example',
       },
       run: { entry: 'Consumer.tsx', name: 'Tao Library Consumer' },
     },
     dependencies: {
-      '@example/tao-library': 'file:../../.tao/cache/libraries/Demo',
+      '@tao-dev/ts-lib-example': 'file:../../.tao/cache/sessions/.cli/libraries/Demo',
+      '@tao/runtime': 'file:../../.tao/cache/runtime-package',
       '@expo/metro-runtime': '57.0.17',
       'expo': '57.0.30',
       'react-dom': '19.2.3',

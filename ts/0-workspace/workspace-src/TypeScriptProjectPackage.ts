@@ -13,7 +13,7 @@ export type TypeScriptProjectPackage = {
   run?: PackageRunConfiguration
 }
 
-type PackageCompileConfiguration = { entry: string; out?: string; name?: string }
+type PackageCompileConfiguration = { entry: string; name?: string }
 type PackageRunConfiguration = { entry: string; name: string }
 
 type PackageRecord = Record<string, unknown>
@@ -45,9 +45,11 @@ function parseTypeScriptProjectPackage(source: string, directory: string): TypeS
 
 function readCompileConfiguration(value: unknown): PackageCompileConfiguration {
   const configuration = requirePackageRecord(value, 'tao.compile')
+  if (configuration.out !== undefined) {
+    Errors.ThrowUserInput('Remove tao.compile.out; build output is owned by the selected session.')
+  }
   return {
     entry: requireString(configuration.entry, 'tao.compile.entry'),
-    out: readOptionalString(configuration.out, 'tao.compile.out'),
     name: readOptionalString(configuration.name, 'tao.compile.name'),
   }
 }

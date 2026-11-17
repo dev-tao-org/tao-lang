@@ -238,7 +238,9 @@ export function notifyCompletion(
   listeners: Iterable<(event: CompiledEvent) => void>,
   completed: CompletedInput,
 ): void {
-  const report = (error: unknown) => Try.WithDefault(undefined, () => options.onSourceError?.(error))
+  const report = (error: unknown): void => {
+    Try.IgnoreError(() => options.onSourceError?.(error))
+  }
   Try(() => options.onSourceUpdate?.(completed.result), { catch: report })
   for (const listener of listeners) {
     Try(() => listener(completed), { catch: report })

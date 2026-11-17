@@ -1,19 +1,18 @@
-import { Errors, Time, Try } from '@shared'
+import { Errors, Try } from '@shared'
 import Preact from './Bridge_preact-signals-core'
 import React from './Bridge_react/Bridge_react'
+import * as ObservationDelivery from './ObservationDelivery'
 import { runSynchronousReactiveBatch } from './ReactiveBatch'
-import { decodeReactiveValue, encodeReactiveValue } from './ReactiveValues'
-import type { ReactiveValue } from './ReactiveValues'
+import { decodeReactiveValue, encodeReactiveValue, type ReactiveValue } from './ReactiveValues'
+import { areValueSnapshotsEqual, registerValueCapability, takeValueSnapshot } from './ValueSnapshots'
+import type { ValueCapability, ValueSnapshot } from './ValueSnapshots'
 
-/** Expression exposes a raw value and an immediate, change-only observation. */
-export type Expression<T> = {
-  jsValue(): T
-  observe(receive: (value: T) => void): Observation
-}
+/** Expression exposes a raw value and delivers observations synchronously within a read-only scope. */
+export type Expression<T> = ValueCapability & ExpressionReader<T, Observation>
 
 /** WritableExpression is the single authoritative writable Tao value. */
-export type WritableExpression<T> = Expression<T> & {
-  update(value: T): void
+export type WritableExpression<T> = Expression<ValueSnapshot<T>> & {
+  update(value: WritableValue<T>): void
 }
 
 /** ReactiveEngineOptions selects an honest provider experiment and delivery scheduler. */
@@ -25,8 +24,8 @@ export type ReactiveEngineOptions = {
 /** ReactiveEngine creates expressions over one Preact dependency graph. */
 export type ReactiveEngine = {
   createWritable<T>(initial: T): WritableExpression<T>
-  createComputed<T>(evaluate: () => T): Expression<T>
-  createConstant<T>(value: T): Expression<T>
+  createComputed<T>(evaluate: () => T): Expression<ValueSnapshot<T>>
+  createConstant<T>(value: T): Expression<ValueSnapshot<T>>
   batch<T>(perform: () => T): T
   dispose(): void
 }
@@ -41,10 +40,6 @@ export function createReactiveEngine(options: ReactiveEngineOptions = {}): React
     pending: [],
     disposed: false,
     evaluationDepth: 0,
-    deliveryChainCount: 0,
-    deliveryChainActive: false,
-    cancelDeliveryChainReset: undefined,
-    deliveryDepth: 0,
     deliveryScheduled: false,
     flushingDelivery: false,
   })
@@ -57,12 +52,12 @@ export function useWritable<T>(initializer: () => T): WritableExpression<T> {
 }
 
 /** useComputed memoizes a pure, recreatable candidate from stable inputs. */
-export function useComputed<T>(evaluate: () => T, stableInputs: readonly unknown[]): Expression<T> {
+export function useComputed<T>(evaluate: () => T, stableInputs: readonly unknown[]): Expression<ValueSnapshot<T>> {
   return React.useMemo(() => defaultEngine.createComputed(evaluate), stableInputs)
 }
 
 /** useValue subscribes to a cached provider snapshot through React's commit-owned bridge. */
-export function useValue<T>(expression: Expression<T>): T {
+export function useValue<T>(expression: ExpressionReader<T>): T {
   const subscribe = React.useMemo(() => (notify: () => void) => {
     const observation = expression.observe(() => notify())
     return () => observation.unobserve()
@@ -79,12 +74,16 @@ export function batch<T>(perform: () => T): T {
   return defaultEngine.batch(perform)
 }
 
-type Observation = { unobserve(): void }
+type Observation = ValueCapability & { unobserve(): void }
+type WritableValue<T> = T | ValueSnapshot<T>
+type ExpressionReader<T, Subscription = Pick<Observation, 'unobserve'>> = {
+  jsValue(): T
+  observe<Result>(receive: ObservationDelivery.ObservationCallback<T, Result>): Subscription
+}
 
-const MaxReentrantDeliveries = 100
 const defaultEngine = createReactiveEngine()
 type Node<T> = { value: Preact.Signal<ReactiveValue>; evaluate(): T }
-type InternalExpression<T> = Expression<T> & { snapshot?: () => T }
+type InternalExpression<T> = ExpressionReader<T, Observation> & { snapshot?: () => T }
 type EngineState = {
   strategy: NonNullable<ReactiveEngineOptions['strategy']>
   scheduleDelivery: (deliver: () => void) => void
@@ -92,10 +91,6 @@ type EngineState = {
   pending: (() => void)[]
   disposed: boolean
   evaluationDepth: number
-  deliveryChainCount: number
-  deliveryChainActive: boolean
-  cancelDeliveryChainReset: OptionalDeliveryReset
-  deliveryDepth: number
   deliveryScheduled: boolean
   flushingDelivery: boolean
 }
@@ -103,8 +98,15 @@ type EngineState = {
 function buildEngine(state: EngineState): ReactiveEngine {
   return {
     createWritable: initial => createWritable(state, initial),
-    createComputed: evaluate => createExpression(state, evaluate),
-    createConstant: value => createExpression(state, () => value),
+    createComputed(evaluate) {
+      assertActive(state)
+      return createExpression(state, () => takeValueSnapshot(evaluate()))
+    },
+    createConstant(value) {
+      assertActive(state)
+      const snapshot = takeValueSnapshot(value)
+      return createExpression(state, () => snapshot)
+    },
     batch(perform) {
       assertActive(state)
       return runSynchronousReactiveBatch(perform)
@@ -114,15 +116,18 @@ function buildEngine(state: EngineState): ReactiveEngine {
 }
 
 function createNode<T>(state: EngineState, evaluate: () => T): Node<T> {
-  return {
-    value: Preact.computed(() => evaluateNode(state, evaluate)),
-    evaluate,
-  }
+  let previous: ReactiveValue
+  const value = Preact.computed(() => {
+    previous = evaluateNode(state, evaluate, previous)
+    return previous
+  })
+  return { value, evaluate }
 }
 
 function createExpression<T>(state: EngineState, evaluate: () => T): Expression<T> {
-  assertActive(state)
-  return expressionFor(state, createNode(state, evaluate))
+  const node = createNode(state, evaluate)
+  const expression = expressionFor(state, node)
+  return registerValueCapability(expression)
 }
 
 function expressionFor<T>(state: EngineState, node: Node<T>): InternalExpression<T> {
@@ -140,39 +145,37 @@ function readNode<T>(state: EngineState, node: Node<T>): T {
     : decodeReactiveValue<T>(node.value.value)
 }
 
-function evaluateNode<T>(state: EngineState, evaluate: () => T): ReactiveValue {
+function evaluateNode<T>(state: EngineState, evaluate: () => T, previous: ReactiveValue): ReactiveValue {
   state.evaluationDepth += 1
-  return Try(() => encodeReactiveValue(evaluate()), {
+  return Try(() => encodeReactiveValue(evaluate(), previous), {
     finally() {
       state.evaluationDepth -= 1
     },
   })
 }
 
-function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) => void): Observation {
+function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) => unknown): Observation {
   assertActive(state)
+  ObservationDelivery.requireSynchronousObserver(receive)
   let active = true
   let deliveryPending = false
-  let lastDelivered: T = decodeReactiveValue<T>(node.value.value)
-  let pendingValue = lastDelivered
+  let pendingValue = decodeReactiveValue<T>(node.value.value)
+  let lastDelivered = pendingValue
   const stopEffect = Preact.effect(() =>
     watchNode(state, node, value => {
       if (!active) {
         return
       }
       pendingValue = value
-      if (Object.is(lastDelivered, pendingValue)) {
-        return
-      }
-      if (deliveryPending) {
+      if (deliveryPending || areValueSnapshotsEqual(lastDelivered, pendingValue)) {
         return
       }
       deliveryPending = true
       queueDelivery(state, () => {
         deliveryPending = false
-        if (active && !Object.is(lastDelivered, pendingValue)) {
+        if (active && !areValueSnapshotsEqual(lastDelivered, pendingValue)) {
           lastDelivered = pendingValue
-          deliverValue(state, receive, lastDelivered)
+          ObservationDelivery.deliverObservation(receive, lastDelivered, stop)
         }
       })
     })
@@ -186,50 +189,18 @@ function observeNode<T>(state: EngineState, node: Node<T>, receive: (value: T) =
     state.allStops.delete(stop)
   }
   state.allStops.add(stop)
-  Try<void>(() => deliverValue(state, receive, lastDelivered), {
+  Try(() => ObservationDelivery.deliverObservation(receive, lastDelivered, stop), {
     catch(thrown) {
       stop()
       return Errors.Throw(thrown)
     },
   })
-  return { unobserve: stop }
+  return registerValueCapability({ unobserve: stop })
 }
 
 function watchNode<T>(state: EngineState, node: Node<T>, changed: (value: T) => void): void {
   assertActive(state)
   changed(decodeReactiveValue<T>(node.value.value))
-}
-
-function deliverValue<T>(state: EngineState, receive: (value: T) => void, value: T): void {
-  if (!state.deliveryChainActive) {
-    state.deliveryChainCount = 0
-  }
-  state.deliveryChainActive = false
-  state.deliveryChainCount += 1
-  if (state.deliveryChainCount > MaxReentrantDeliveries) {
-    failDeliveryCycle(state)
-  }
-  state.deliveryDepth += 1
-  Try(() => Preact.untracked(() => receive(value)), {
-    finally() {
-      state.deliveryDepth -= 1
-    },
-  })
-  if (!state.deliveryChainActive) {
-    resetDeliveryChain(state)
-  }
-}
-
-function scheduleDeliveryChainReset(state: EngineState): void {
-  state.cancelDeliveryChainReset?.()
-  state.cancelDeliveryChainReset = Time.scheduleMicrotask(() => resetDeliveryChain(state))
-}
-
-function resetDeliveryChain(state: EngineState): void {
-  state.cancelDeliveryChainReset?.()
-  state.cancelDeliveryChainReset = undefined
-  state.deliveryChainCount = 0
-  state.deliveryChainActive = false
 }
 
 function queueDelivery(state: EngineState, deliver: () => void): void {
@@ -248,14 +219,9 @@ function queueDelivery(state: EngineState, deliver: () => void): void {
 function flushDelivery(state: EngineState): void {
   state.deliveryScheduled = false
   state.flushingDelivery = true
-  let passes = 0
   let failure: unknown
   Try(() => {
     while (state.pending.length > 0) {
-      passes += 1
-      if (passes > MaxReentrantDeliveries) {
-        failDeliveryCycle(state)
-      }
       const current = state.pending
       state.pending = []
       Preact.batch(() => {
@@ -279,35 +245,29 @@ function flushDelivery(state: EngineState): void {
   }
 }
 
-function failDeliveryCycle(state: EngineState): never {
-  state.pending = []
-  disposeObservers(state)
-  return Errors.ThrowUserInput('Reactive observers exceeded the reentrant delivery limit; break the update cycle.')
-}
-
 function createWritable<T>(state: EngineState, initial: T): WritableExpression<T> {
   assertActive(state)
-  const source = Preact.signal(encodeReactiveValue(initial))
-  const node: Node<T> = createNode(state, () => decodeReactiveValue<T>(source.value))
-  return {
+  const snapshot = takeValueSnapshot(initial)
+  const source = Preact.signal(encodeReactiveValue(snapshot))
+  const node = createNode(state, () => decodeReactiveValue<ValueSnapshot<T>>(source.value))
+  return registerValueCapability({
     ...expressionFor(state, node),
-    update: value => updateSource(state, source, value),
-  }
+    update: (value: WritableValue<T>) => updateSource(state, source, value),
+  })
 }
 
-function updateSource<T>(state: EngineState, source: Preact.Signal<ReactiveValue>, value: T): void {
+function updateSource(state: EngineState, source: Preact.Signal<ReactiveValue>, value: unknown): void {
+  ObservationDelivery.assertObservationAllowsWrite()
   assertActive(state)
-  if (state.deliveryDepth > 0) {
-    state.deliveryChainActive = true
-  } else {
-    resetDeliveryChain(state)
+  const snapshot = takeValueSnapshot(value)
+  const previous = source.peek()
+  const next = encodeReactiveValue(snapshot, previous)
+  if (Object.is(next, previous)) {
+    return
   }
   Preact.batch(() => {
-    source.value = encodeReactiveValue(value)
+    source.value = next
   })
-  if (state.deliveryDepth > 0) {
-    scheduleDeliveryChainReset(state)
-  }
 }
 
 function disposeEngine(state: EngineState): void {
@@ -315,8 +275,6 @@ function disposeEngine(state: EngineState): void {
     return
   }
   state.disposed = true
-  state.cancelDeliveryChainReset?.()
-  state.cancelDeliveryChainReset = undefined
   disposeObservers(state)
   state.pending = []
 }
@@ -333,4 +291,3 @@ function assertActive(state: EngineState): void {
 }
 
 type ReactiveReadStrategy = 'native-lazy' | 'uncached-public-read'
-type OptionalDeliveryReset = (() => void) | undefined

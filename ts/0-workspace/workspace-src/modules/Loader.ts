@@ -1,6 +1,7 @@
 import * as AST from '@ast-gen'
 import type * as Grammar from '@grammar'
-import * as Typecheck from '@typecheck'
+import * as SourceValidation from '@source-validation'
+import type * as Typecheck from '@typecheck'
 
 import { Errors, Timings } from '@shared'
 import { FS, Path } from '@shared/os'
@@ -8,7 +9,7 @@ import { FS, Path } from '@shared/os'
 import { listDirectSourceFiles } from './Catalog'
 import * as Paths from './Paths'
 import { loadRequirementModules } from './Requirements'
-import { importTargets, type ModuleResolutionContext, resolveBareTargets } from './Resolver'
+import { importTargets, type ModuleResolutionContext, type ModuleTarget } from './Resolver'
 
 /** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
@@ -16,10 +17,11 @@ export type ModuleLoadOptions = {
   resolveProject?: (importer: string, alias: string) => Promise<ProjectResolution>
   observeProjectSources?: (root: string, sources: readonly Pick<Typecheck.SourceModule, SourceModuleField>[]) => void
   includeModuleRequirements?: boolean
-  validateStatementsBeforeDiscovery?: boolean
+  includedSources?: readonly string[]
+  beforeLoad?: () => Promise<void>
 }
 
-/** loadModules discovers and parses the source graph reachable from one parsed entry.
+/** loadModules discovers the source graph, validating each reached document before resolving its imports.
  *  Successful results are nonempty, with the canonical entry module first. */
 export const loadModules = Timings.createTopLevelTimer(function(
   timings,
@@ -44,6 +46,7 @@ type LoadState = LoadRequest & {
   projectRoot: string
   sources: Map<string, Typecheck.SourceModule>
   projectRoots: Map<string, string>
+  projectAliases: Map<string, string>
   pending: string[]
   observedRoots: Set<string>
   documents: Map<string, AST.Document>
@@ -57,6 +60,7 @@ type Discovery = {
   imports: Typecheck.SourceModule['imports'][number][]
   siblings: string[]
   projectRoots: Map<string, string>
+  projectAliases: Map<string, string>
 }
 
 const loadGraph = Timings.measure(
@@ -64,14 +68,31 @@ const loadGraph = Timings.measure(
   async function(timings, request: LoadRequest): Promise<Typecheck.SourceModule[]> {
     const { entry, options } = request
     const entryPath = Paths.resolveCanonicalPath(entry.path)
+    timings.run(ValidateStatements, entry.document, entryPath)
+    if (options.beforeLoad) {
+      await timings.run(LoadSources, options.beforeLoad)
+    }
     const projectRoot = resolveEntryProjectRoot(entryPath, options.directory)
     const state = createLoadState(request, entryPath, projectRoot)
+    if (options.includedSources?.length) {
+      const included: Discovery = {
+        sources: new Map(options.includedSources.map(path => [path, undefined])),
+        imports: [],
+        siblings: [],
+        projectRoots: new Map(),
+        projectAliases: new Map(),
+      }
+      await addDiscoveredSources(state, included, timings)
+    }
     while (state.pending.length > 0) {
       await loadNextSource(state, timings)
     }
     return await completedGraph(state, timings)
   },
 )
+
+const ValidateStatements = Timings.measured('source.validate', SourceValidation.assertValidStatements)
+const LoadSources = Timings.measured('dependencies.sources', (load: () => Promise<void>) => load())
 
 function resolveEntryProjectRoot(entryPath: string, configuredDirectory?: string): string {
   const entryDirectory = Path.dirname(entryPath)
@@ -100,12 +121,17 @@ async function addDiscoveredSources(
   discovery: Discovery,
   timings: Timings,
 ): Promise<void> {
+  for (const [root, alias] of discovery.projectAliases) {
+    if (!state.projectAliases.has(root)) {
+      state.projectAliases.set(root, alias)
+    }
+  }
   for (const [candidate, text] of discovery.sources) {
     if (!state.sources.has(candidate)) {
       const document = text === undefined
         ? await readDocument(candidate, state.parser, state.documents, timings)
         : parseDocument(text, candidate, state.parser, timings)
-      validateDiscoveryDocument(state.options, document, candidate)
+      timings.run(ValidateStatements, document, candidate)
       state.documents.set(candidate, document)
       state.sources.set(candidate, sourceModule(candidate, document))
       state.pending.push(candidate)
@@ -119,43 +145,46 @@ async function addDiscoveredSources(
 
 function createLoadState(request: LoadRequest, entryPath: string, projectRoot: string): LoadState {
   const document = request.entry.document
-  validateDiscoveryDocument(request.options, document, entryPath)
   return {
     ...request,
     entryPath,
     projectRoot,
     sources: new Map([[entryPath, sourceModule(entryPath, document)]]),
     projectRoots: new Map(),
+    projectAliases: new Map(),
     pending: [entryPath],
     observedRoots: new Set(),
     documents: new Map([[entryPath, document]]),
   }
 }
 
-function validateDiscoveryDocument(options: ModuleLoadOptions, document: AST.Document, path: string): void {
-  if (options.validateStatementsBeforeDiscovery) {
-    Typecheck.assertValidStatements(document, path)
-  }
-}
-
 async function completedGraph(state: LoadState, timings: Timings): Promise<Typecheck.SourceModule[]> {
-  const sources = [...state.sources.values()]
-  return state.options.includeModuleRequirements
+  const sources = state.options.includeModuleRequirements
     ? [
-      ...sources,
+      ...state.sources.values(),
       ...await loadRequirementModules(
-        sources,
+        [...state.sources.values()],
         state.projectRoot,
         path => readDocument(path, state.parser, state.documents, timings),
       ),
     ]
-    : sources
+    : [...state.sources.values()]
+  return sources.map(source => {
+    const root = source.project?.root ?? state.projectRoots.get(source.path) ?? state.projectRoot
+    return { ...source, project: { root, alias: state.projectAliases.get(root) } }
+  })
 }
 
 const discover = Timings.measure(
   'modules.discover',
   async function(timings, state: LoadState, source: Typecheck.SourceModule): Promise<Discovery> {
-    const found: Discovery = { sources: new Map(), imports: [], siblings: [], projectRoots: new Map() }
+    const found: Discovery = {
+      sources: new Map(),
+      imports: [],
+      siblings: [],
+      projectRoots: new Map(),
+      projectAliases: new Map(),
+    }
     const projectRoot = state.projectRoots.get(source.path) ?? state.projectRoot
     await observeProject(state, projectRoot, timings)
     const physical = await resolvePhysicalSourcePath(source.path, state.entryPath, projectRoot)
@@ -192,24 +221,30 @@ async function discoverImports(
   discovery: Discovery,
 ): Promise<void> {
   for (const statement of AST.GetImportStatements(source.document)) {
-    const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+    const specifier = statement.from?.value
     const context = createModuleResolutionContext(state, projectRoot)
     const targets = specifier === undefined
-      ? await resolveBareTargets(source.path, physical, context)
+      ? resolveBareTargets(source.path, discovery.siblings)
       : await importTargets(specifier, source.path, physical, context)
     discovery.imports.push({
       statement,
       targets: targets.map(({ path, relation }) => ({ path, relation })),
     })
     for (const target of targets) {
-      if (target.projectRoot) {
-        discovery.projectRoots.set(target.path, target.projectRoot)
+      const root = target.projectRoot ?? projectRoot
+      discovery.projectRoots.set(target.path, root)
+      if (target.projectAlias !== undefined) {
+        discovery.projectAliases.set(root, target.projectAlias)
       }
       if (!discovery.sources.has(target.path)) {
         discovery.sources.set(target.path, target.source)
       }
     }
   }
+}
+
+function resolveBareTargets(importer: string, siblings: readonly string[]): ModuleTarget[] {
+  return siblings.filter(path => path !== importer).map(path => ({ path, relation: 'same-directory' }))
 }
 
 async function resolvePhysicalSourcePath(

@@ -1,8 +1,22 @@
 # TypeScript Library Decisions and PoC
 
-Status: compiler PoC implemented and verified in the uncommitted working tree. This record separates future direction from implemented functionality. No code review or landing is recorded.
+The [TypeScript Libraries specification](../Specification/TypeScript%20Libraries.md) describes the current API. The original PoC and its evidence remain below for reference.
 
-## Agreed library contract
+## Generated source packages
+
+`tao compile --ts-lib <Declaration> --out <directory>` emits a source package into a fresh directory under the selected session lock. Its root `package.json` selects TypeScript facades in `ts/`, which also contains the portable `tsconfig.json`, the shared app/library module organization under `ts/packages/` and `ts/dependencies/`, and reachable sidecars. Add an explicit distribution build when the JavaScript and declaration targets are defined.
+
+Importing a library facade automatically initializes one shared scope per loaded library. Top-level state is singular, as for an app. View-local state belongs to each mount. Generated libraries use the independently installed `@tao/runtime` peer. Shutdown and development reload details remain open.
+
+Generated library configuration maps published packages by project-local identities such as `@editor`. Captured sidecars use these identities and resolve to the generated facade. A general resolver for authored sidecars remains separate. Declaration kinds without a TypeScript representation need an explicit bridge design.
+
+Tao source project distribution uses project-source plus local package identity, without an authored npm publication name. Generated TypeScript artifacts are a separate distribution boundary: an installed artifact's package name prefixes its exported Tao package subpaths. Metadata ownership for packaging that artifact remains open; do not conflate it with naming the Tao source package.
+
+Individually published declarations use named root exports. A selected local package exposes its package-visible views through artifact-qualified subpaths, such as `<library-path>/@editor` and `<library-path>/@editor/tools`. Each export has one canonical address. Package manifest ownership and local addressing are recorded in [Tao Language Design Decisions](Tao%20Language%20Design%20Decisions.md). Local development linking across separate projects is deferred until after MVP.
+
+## Original PoC contract
+
+This records the original JS bundle, explicit provider and component subpath design. The generated source package contract above supersedes it.
 
 - `ts-library` declares a reusable unit with explicit comma-separated `publish` lists; a trailing comma is allowed.
 - Publish only selected public definitions owned by the library project. Dependencies remain internal; a dependency may separately publish its own library.
@@ -27,11 +41,11 @@ Status: compiler PoC implemented and verified in the uncommitted working tree. T
 - Production `draft <DataDef>` implementation is deferred until the human-review branch merges.
 - Comma separation for equivalent existing grammar lists remains deferred; design blocks are excluded.
 
-## Authorized PoC
+## Original PoC authorization
 
 Compile a real Tao library with one published submodule into a local JS/declaration package consumed by an ordinary TS React application. Demonstrate a greeting with two required text arguments, a panel rendering React children through existing injection functionality, a nested/private helper, and internal stdlib dependencies that are not published.
 
-Add minimal executable `ts-library` and `publish` grammar, publication aliases, and a module-level publication list. Require commas and allow a trailing comma. Reuse existing module/view compilation and initialization ordering; the library path must not require an app root. Generated public components use precise props, stable identities and matching library provider context. Reject unsupported signatures rather than weakening them to `any`.
+Add minimal executable `ts-library` and `publish` grammar and a module-level publication list. Require commas and allow a trailing comma. Reuse existing module/view compilation and initialization ordering; the library path must not require an app root. Generated public components use precise props, stable identities and matching library provider context. Reject unsupported signatures rather than weakening them to `any`.
 
 Create one runtime-only workspace package at `ts/ts-api`, with handwritten `ts-api.ts`, `Library.tsx` and `ViewComponent.tsx` under `ts-api-src`, and sibling `ts-api-test` tests. Existing compiler, runtime and workspace/CLI owners retain generation, semantics and packaging. The bridge must not import parser, compiler, workspace, filesystem or Expo startup machinery.
 
@@ -39,7 +53,7 @@ The original PoC used `compile-library <entry> --out <directory> --name <package
 
 Do not implement data, designs, actions, drafts, selector hooks, native backends or a general capability framework in this slice. Do not present simulated TS versions as compiled Tao functionality. The fixture uses existing web-supported functionality; unsupported imports fail its build.
 
-## Acceptance and evidence
+## Original PoC acceptance and evidence
 
 - One real TS-consumer/browser journey compiles authored Tao and renders through React Native Web.
 - Assert both text arguments, a React-driven prop update, nested Tao output, React children, two independent library instances and one instance unmounting without disrupting the other.
@@ -50,12 +64,12 @@ Do not implement data, designs, actions, drafts, selector hooks, native backends
 
 Implementation baseline: `8240f24f733c12a84c1832a870d5b0b60e8ab95f`. No code review is recorded for this task. Existing uncommitted Roadmap 2 TODOs must be preserved. One GPT-6.1 Sol subagent at medium reasoning owns implementation. No review, commit, push or landing is authorized. Return exact compile/demo commands, verification and package/type evidence, implemented/deferred boundaries, and unresolved complications.
 
-## Implementation evidence
+## Historical implementation evidence
 
 The PoC compiles real Tao module/view bodies through shared app/library initialization, with the runtime-only `ts/ts-api` bridge. Unified `tao compile` now emits library JS, precise declarations and explicit package paths. The isolated consumer resolves emitted package files through ordinary imports without repository TypeScript paths or consumer aliases. Grammar, aliases, module publication lists, text props, React children and instance isolation are implemented; the future data/action/design contracts above remain deferred.
 
 - Demo compile: from `Apps/TS Lib App`, run `../../tao compile Demo --package src/ts` or `just compile`.
-- Browser/type proof: `./agent unsandboxed test ts/ts-api/test-ts-api/TsApi.LibraryBrowser.test.ts`.
+- The original `TsApi.LibraryBrowser` proof exercised the JS-bundle PoC. The current browser journey lives in `Apps/TS Lib App/src/ts/test`.
 - Final full verification after the compiler path-sharing change passed: 504 TypeScript tests, six authored Tao headless journeys, zero errors. Native behavior is not verified.
 - Final warm preview comparison (eight samples each) measured median/p95 58.70/66.70 ms against baseline 53.85/63.40 ms. The residual observed +4.85 ms median is not performance parity; compiler-phase medians were 0.321/0.305 ms. Baseline primary results were complete, but its existing CLI summary printer failed on an extra secondary reload. Attribution remains uncertain in this small sample.
 - Source drafting preceded an executable failing journey while setup was blocked; the first executable package proof was green. This deviates from journey-first red/green TDD.
@@ -72,6 +86,17 @@ Authored TypeScript, package/configuration and dependency installation live in `
 
 The browser proof reads these actual authored files. Final follow-up verification passed 505 TypeScript tests and six Tao journeys, zero errors. Actual local Justfile compilation was exercised twice with both outputs preserved, and the server returned HTTP 200 before normal shutdown. [Follow-up evidence](../../.artifacts/notes/ts-lib-standalone-evidence/README.md) and [checkpoint](../../.artifacts/checkpoint/ts-lib-standalone.md) retain details. This dev/test/example follow-up does not change the shared refresh path; the performance limitation above remains open.
 
-By explicit user request, this app has its own package.json and tsconfig.json for VS Code, overriding the former no-manifests-under-Apps policy. Its `tao.compile` manifest configuration supplies entry, output and package name. `tao compile Demo --package src/ts` selects a declaration; omitting Demo infers a sole target; explicit app entry paths remain supported. Local `.tao/cache/libraries/Demo` output updates an owned symlink atomically and retains previous generations; unrelated output is rejected without deletion. The consumer dependency names that actual output. Existing pinned dependencies are linked without installation or version changes; no aliases or fake declarations hide package exports.
+By explicit user request, this app has its own package.json and tsconfig.json for VS Code, overriding the former no-manifests-under-Apps policy. Its `tao.compile` manifest configuration supplies entry and package name. `tao compile Demo --package src/ts` selects a declaration; omitting Demo infers a sole target; explicit app entry paths remain supported.
+
+The accepted session-isolation follow-up replaces shared output with `.tao/cache/sessions/<session>/libraries/Demo`. Publication replaces a real directory within that Tao-managed namespace, rejecting symlinks and paths escaping the session boundary. Direct library compilation outside publication requires a fresh output directory. The ordinary standalone consumer selects `.cli`; managed consumers select their own session's generated package through Metro's package resolver. Installed dependencies for apps, sidecars and imported projects remain shared with their existing resolution. Generated packages and mutable build output belong to the session. Dependency installation per session, source mirroring and a custom dependency-link graph are not required by this design.
+
+The review-build workflow uses ordinary compilation to retain output for both example projects. See [Generated Output](../Dev%20Env/Generated%20Output.md) for paths and exclusions.
 
 `tao init <existing-directory> --library` creates a nonnested library/React starter without installing dependencies or overwriting existing files. Its generic Justfile uses an installed `tao` by default. The separate static starter copy was removed in favor of `Apps/TS Lib App`, whose Justfile defaults to the checkout CLI resolved from its folder and permits a `TAO` override. The permanent initializer acceptance test still generates, compiles, typechecks and renders a fresh consumer with its compiled Tao prop. Current managed-host evidence and limitations are retained in [the checkpoint](../../.artifacts/checkpoint/managed-expo-host.md); earlier editor and standalone receipts remain historical.
+
+## Cross-library disabled inheritance
+
+When the layout and style bracket system adds [disabled interaction](../Specification/Actions%20and%20Results.md#disabled-interaction), controls from independently compiled Tao libraries must inherit interaction state from an enclosing Tao container. Coordinate that requirement with the package/runtime layout so both libraries use a shared interaction context.
+
+- [ ] Establish shared interaction context across compiled libraries when implementing disabled interaction.
+- [ ] Prove it through an ordinary TypeScript consumer composing two independently compiled libraries: inherited disabling, a child unable to override it, re-enabling with state retained, and an enabled sibling remaining interactive.

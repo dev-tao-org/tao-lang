@@ -1,55 +1,59 @@
 import * as AST from '@ast-gen'
 import { Switch } from '@shared'
-import { emitLiteral, getScopeValue, type ScopeCode } from './codegen-util'
-import { emitLetDeclaration, emitName } from './RuntimeEmitter'
+import { emitLiteral, getScopeValue, listMap, type ScopeCode } from './codegen-util'
+import { emitLetDeclaration, emitLocalAlias, emitName, emitStateDeclaration } from './RuntimeEmitter'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: ScopeCode): string {
   return Switch.kind(node, {
     Name: name => emitName(name, scope),
     TextLiteral: emitLiteral,
-    BooleanLiteral: literal => literal.value ? 'true' : 'false',
   })
 }
 
 /** compileLetDeclaration emits one ordered immutable scope binding. */
 export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode): string {
-  const value = compileExpression(node.value, scope)
-  return emitLetDeclaration(node, getScopeValue(scope), value)
+  const scopeName = getScopeValue(scope)
+  if (typeof scope !== 'string' && scope.liveLocalAliases && AST.IsKind(node.value, 'Name')) {
+    return emitLocalAlias(node, scopeName, node.value)
+  }
+  return emitLetDeclaration(node, scopeName, compileExpression(node.value, scope))
 }
 
-type TypeScriptParameterType = 'string' | 'boolean'
-
-/** getTypeScriptParameterType maps supported Tao parameter types to their host types. */
-export function getTypeScriptParameterType(parameter: AST.Parameter): TypeScriptParameterType | undefined {
-  if (parameter.type.value === 'text') {
-    return 'string'
-  }
-  if (parameter.type.value === 'boolean') {
-    return 'boolean'
-  }
-  return undefined
+/** compileViewValueDeclaration emits one immutable name or retained state slot. */
+export function compileViewValueDeclaration(node: AST.ViewValueDeclaration, scope: ScopeCode): string {
+  return Switch.kind(node, {
+    LetDeclaration: definition => compileLetDeclaration(definition, scope),
+    StateDeclaration: definition =>
+      emitStateDeclaration(definition, getScopeValue(scope), compileExpression(definition.value, scope)),
+  })
 }
 
-/** hasSupportedViewParameters checks whether every view parameter has an implemented TypeScript type. */
-export function hasSupportedViewParameters(declaration: AST.ViewDeclaration): boolean {
-  return declaration.parameters.every(parameter => getTypeScriptParameterType(parameter) !== undefined)
+type Invocation = AST.ViewRenderExpression | AST.DoStatement
+/** compileArguments emits the positional values of a view or action invocation. */
+export function compileArguments(node: Invocation, scope: ScopeCode): string {
+  return listMap(node.arguments, argument => compileExpression(argument, scope))
+}
+
+/** isTextParameter identifies a parameter declared with Tao's text type. */
+export function isTextParameter(node: AST.Parameter): boolean {
+  return node.type.value === 'text'
 }
 
 /** isTextExpression recognizes text literals or names resolved as text in their owning scope. */
 export function isTextExpression(node: AST.Expression, resolveName: (name: AST.Name) => boolean): boolean {
-  return AST.IsKind(node, 'TextLiteral') || AST.IsKind(node, 'Name') && resolveName(node)
+  return AST.IsKind(node, 'TextLiteral') || resolveName(node)
 }
 
 /** collectTextBindings identifies implemented text expressions for native capture annotations. */
 export function collectTextBindings(
-  definitions: readonly AST.LetDeclaration[],
+  definitions: readonly AST.ViewValueDeclaration[],
   inherited: ReadonlySet<string> = new Set(),
   parameters: readonly AST.Parameter[] = [],
 ): ReadonlySet<string> {
   const names = new Set(inherited)
   for (const parameter of parameters) {
-    updateBinding(names, parameter.name.value, parameter.type.value === 'text')
+    updateBinding(names, parameter.name.value, isTextParameter(parameter))
   }
   for (const definition of definitions) {
     const isText = isTextExpression(definition.value, name => names.has(name.value))

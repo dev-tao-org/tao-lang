@@ -7,7 +7,7 @@ import { transform } from '../ast-gen-src/Transform'
 Tests.test('comments between syntax nodes do not become declarations, parameters or reference segments', () => {
   const source = S`
     // Public entry
-    public view Main(Value /* parameter type */ text) {
+    package view Main(Value /* parameter type */ text) {
       let Copy = Value
       render UI./* namespace */Text(Copy)
     }

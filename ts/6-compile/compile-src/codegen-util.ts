@@ -9,6 +9,7 @@ export type NamedValue = NamedDeclarationValue | NamedBindingValue
 /** ScopeCode retains a lexical expression and optional resolved generated reference anchors. */
 export type ScopeCode = string | {
   value: string
+  liveLocalAliases: boolean
   resolveReference(name: string): string | undefined
 }
 
@@ -30,6 +31,11 @@ export function getScopeValue(scope: ScopeCode): string {
 /** emitStringLiteral escapes an external string for a generated JavaScript literal. */
 export function emitStringLiteral(value: string): string {
   return Json.Print(value, { prettyPrint: false })
+}
+
+/** emitJsonDocument emits a formatted JSON document for generated package metadata. */
+export function emitJsonDocument(value: unknown): string {
+  return Json.Print(value)
 }
 
 type LiteralNode = AST.Name | AST.TextLiteral | AST.RenderTag
@@ -71,7 +77,12 @@ export function listMap<T>(values: readonly T[], compile: (value: T) => string):
   `
 }
 
-type DeclarationNameNode = AST.ValueDeclaration | AST.Parameter | AST.Capture
+type DeclarationNameNode =
+  | AST.ValueDeclaration
+  | AST.StateDeclaration
+  | AST.ActionDeclaration
+  | AST.Parameter
+  | AST.Capture
 type NamedDeclarationValue = Pick<DeclarationNameNode, 'name'>
 type NamedBindingValue = Pick<Typecheck.ModuleBinding, 'name'>
 type OptionalCodePart = string | undefined

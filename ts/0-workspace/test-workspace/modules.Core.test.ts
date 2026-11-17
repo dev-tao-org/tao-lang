@@ -20,7 +20,7 @@ Tests.test('recompilation reloads changed dependencies and recovers from invalid
     await writeFixture(directory, dependency)
     Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     Tests.expect(compiledContents(publications.at(-1))).toContain('"First value"')
-    await FS.writeFile(dependency, 'project view Card {')
+    await FS.writeFile(dependency, 'package view Card {')
     Tests.expect((await workspace.files.compileFile(entry)).status).toBe('failed')
     Tests.expect(publications).toHaveLength(1)
     await FS.writeFile(dependency, card('Repaired value'))
@@ -54,15 +54,18 @@ Tests.test('root requirement observation never links unrelated root declarations
     await FS.writeFile(
       rootFile,
       S`
-        view Hidden { render Unknown }
+        view Hidden {}
         app Other { root Hidden }
       `,
     )
-    const result = await workspace.openFile(Path.join(directory, 'feature/App.tao'))
+    const result = await workspace.files.compileFile(Path.join(directory, 'feature/App.tao'))
     Tests.expect(result.status).toBe('published')
     Tests.expect(observed).toContain(rootFile)
     Tests.expect(compiledContents(publications[0])).not.toContain('Hidden')
-    Tests.expect(compiledContents(publications[0])).not.toContain('Unknown')
+    await FS.writeFile(rootFile, 'view Hidden { requires npm:react version 19.2.3 }')
+    const invalid = await workspace.files.compileFile(Path.join(directory, 'feature/App.tao'))
+    Tests.expect(invalid.status).toBe('failed')
+    Tests.expect(invalid.status === 'failed' && invalid.error).toContain('Requirements belong at file scope.')
   }, {
     async finally() {
       await workspace.dispose()
@@ -85,7 +88,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 function card(value: string): string {
   return S`
     use tao@ui Text
-    project view Card { render Text(${Json.Print(value)}) }
+    package view Card { render Text(${Json.Print(value)}) }
   `
 }
 

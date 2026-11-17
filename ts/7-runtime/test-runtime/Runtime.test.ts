@@ -3,12 +3,24 @@ import { Json } from '@shared'
 import { NewlineCharacter, S, Try } from '@shared'
 import * as Tests from '@shared-tests'
 import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
-import { TypeScript } from '../../shared/shared-src/bridges/Bridge_typescript'
+import { TypeScript } from '@tao/shared/typescript'
 import * as RuntimeDependencyPolicy from '../runtime-src/expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../runtime-src/expo/Scaffold'
 import * as Toolchain from '../runtime-src/expo/Toolchain'
 import * as ToolchainIdentity from '../runtime-src/expo/ToolchainIdentity'
 import * as Runtime from '../runtime-src/Runtime'
+
+Tests.test('authored TypeScript mappings retain the stable runtime entry instead of a source-build identity', () => {
+  const resources = Repo.resolvePath('ts/7-runtime/_gen_runtime')
+  const paths = Runtime.runtimeTypeScriptPaths()
+  Tests.expect(paths).toEqual({
+    '@runtime/client/*': [Path.join(resources, 'runtime/*')],
+    '@tao/runtime-api': [Path.join(resources, 'runtime/TaoRuntimeAPI.ts')],
+    '@shared': [Path.join(resources, 'shared/shared.ts')],
+  })
+  Tests.expect(FS.existsSync(paths['@tao/runtime-api']![0]!)).toBe(true)
+  Tests.expect(FS.existsSync(paths['@shared']![0]!)).toBe(true)
+})
 
 Tests.test('web preview scaffold excludes native platforms that trigger Expo Xcode probes', async () => {
   const directory = Artifacts.resolvePath('tmp', 'web-scaffold-' + Platform.randomUUID())
@@ -312,10 +324,10 @@ function verifyAppTypechecks(directory: string, appPath: string): void {
 }
 
 const appSource = S`
-  import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@runtime'
+  import { AppDeclaration, ViewDeclaration, beginViewRender, finishViewRender } from '@tao/runtime/generated'
   import Tao from '@tao/runtime-api'
   import React from '@runtime/client/Bridge_react/Bridge_react'
-  import type { ViewComponentProps } from '@runtime'
+  import type { ViewComponentProps } from '@tao/runtime/generated'
 
   function RootView(props: ViewComponentProps) {
     const context = beginViewRender(props)

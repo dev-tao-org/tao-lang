@@ -13,7 +13,7 @@ This index names Tao language and authoring concepts: unmarked entries describe 
   - **Render tree**: Nested render expressions describing UI structure.
   - **Render tag**: An authored `#name` identifying a rendered target for interactions and assertions.
   - **Children**: Ordered nested render expressions supplied to a parent view and available to its injection through `@@children`.
-- **Declaration name**: An authored Tao name that starts with an uppercase letter, such as `Main` or `Caption`. Explicit import, dependency and publication aliases, parameters, and injection captures follow the same rule. Package paths and names supplied by the Tao SDK, such as `text`, keep their own spelling.
+- **Declaration name**: An authored Tao name that starts with an uppercase letter, such as `Main` or `Caption`. Explicit import and dependency aliases, parameters, and injection captures follow the same rule. Package paths and names supplied by the Tao SDK, such as `text`, keep their own spelling.
 - **Parameter**: A declared input to a view; currently supported view parameters use `text`.
 - **Argument**: A value supplied to a parameter; current view arguments bind by position.
 - **Let binding**: An immutable named value in its lexical scope.
@@ -30,13 +30,13 @@ Sources: [grammar](../../ts/1-grammar/grammar-src/treesitter-grammar.js), [view 
 
 #### Projects and dependencies
 
-- **Project**: A source root identified by `.tao`, owning modules, dependencies and sessions.
-  - **Named module**: An `@name` directory whose Tao files form an import boundary.
+- **Project**: A source root identified by `.tao`, owning packages, dependencies and sessions.
+  - **Named package**: An `@name` folder that establishes a package boundary.
   - **Source file**: An authored `.tao` file containing declarations.
   - **Dependency**: An external source project or npm requirement declared with `requires`.
   - **Dependency alias**: A project-local name selecting a source dependency in imports.
-  - **Import**: A `use` declaration bringing names or a namespace into scope.
-  - **Visibility**: A declaration's `file`, `folder`, `package`, `project` or `public` access boundary.
+  - **Import**: A `use` statement bringing individual declaration names into scope.
+  - **Visibility**: A declaration's `file`, `folder` or `package` access level. The default is `file`.
   - **Session**: An isolated prepared working context using the project's dependency pins.
   - **Store**: Durable, committed `.tao/store/` data, including dependency locks.
   - **Cache**: Disposable generated data under `.tao/cache/`.
@@ -82,7 +82,7 @@ Source: [live previews](Live%20Previews.md); Canvas and content-placement entrie
   - **Apply (WIP)**: Publishing working-copy changes into project source.
   - **Autosave (WIP)**: Persisting local working state durably.
 - **Local storage (WIP)**: Proposed ignored `.tao/local/` storage for durable local authoring state, retained across ordinary cleanup.
-- **View state (WIP)**: A proposed view-local value retained across rerenders, with persistence and identity rules still being defined.
+- **View state (WIP)**: A value owned by a mounted view instance and retained across renders. Text state is implemented; persistence is planned.
   - **Data draft (WIP)**: A detached editable data value saved through explicit create or update.
 
 Sources: [local state and data drafts](Local%20State%20and%20Data%20Drafts.md), [current entry-source updates](../../ts/0-workspace/workspace-src/FileManager/FileManager.ts); general file working copies and `.tao/local/` are proposals.

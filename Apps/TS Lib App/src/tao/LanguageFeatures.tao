@@ -1,8 +1,7 @@
-use tao@ui all
-use tao@ui Text as AliasText
-use ./cards all
-use package ./cards as Cards
-use FolderScope, PackageScope, ProjectScope
+use tao@ui Button, Col, Input, Text, Text as AliasText
+use @cards Caption, Caption as PackageCaption
+use @cards/details DetailedCard
+use FolderScope, PackageScope
 
 file
 let FileCaption is text = "File-scoped text"
@@ -10,16 +9,16 @@ let FileCaption is text = "File-scoped text"
 file
 let EscapedCaption = "Escaped \"text\", backslash \\ and Unicode \u263A"
 
-public
+package
 view LanguageFeatures(Name text) {
   render Col {
     Text(FileCaption)
     FolderScope
     PackageScope
-    ProjectScope
-    Caption("Wildcard import")
+    Caption("Package import")
     AliasText("Tao alias")
-    Cards.Caption("Namespace member")
+    PackageCaption("Aliased package import")
+    DetailedCard("Tao import from a package subfolder")
     Col {
       let FileCaption = "Nested lexical text"
       Text(FileCaption)
@@ -29,12 +28,35 @@ view LanguageFeatures(Name text) {
     #libraryInput
     Input("Library input")
     Text(EscapedCaption)
+    #state-first
+    StateEditor(Name)
+    #state-second
+    StateEditor("Second initial state")
   }
 
   view CapturedCaption(Value text) {
     render inject Caption Value ```ts
       return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
     ```
+  }
+
+  view StateEditor(Initial text) {
+    state Status = Initial
+    action Save() {
+      set Status = "Saved state"
+    }
+    action Reset() {
+      set Status = Initial
+    }
+    render Col {
+      Text(Status)
+      Button("Save state") {
+        on press Save
+      }
+      Button("Read current input") {
+        on press -> do Reset()
+      }
+    }
   }
 }
 

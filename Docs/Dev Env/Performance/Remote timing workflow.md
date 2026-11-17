@@ -137,6 +137,16 @@ causes a nonzero command exit.
 The runner keeps the comparison index, fixed fixture and raw timings under the printed comparison
 directory. To collect the evidence, retrieve that directory including its `sessions/` children.
 These sessions are separate from the jobs searched by the standalone `timing-report` command.
+
+## Run a timing job
+
+Use the dedicated speed-testing machine in an isolated, prepared checkout under its shared timing
+lock for all formal speed tests. Run `just timing <runner-checkout> --host <runner>` or set
+`TAO_TIMING_HOST` and `TAO_TIMING_CHECKOUT` to use `just timing` without arguments. The shortcut
+uses five independent sessions of 24 edits and measures the named runner checkout. Prepare the
+exact revision there before starting. `just performance` uses the same route.
+
+Use `just timing --local` for one diagnostic preview run in the current local checkout.
 An interrupted or failed run retains evidence separately
 from completed comparisons. Compare revisions with the same launch and reopen workloads.
 The browser endpoint is React-applied with a DOM check. The native
@@ -144,10 +154,13 @@ Studio app and its benchmark are still in the legacy implementation.
 
 ## Repeat an existing immutable benchmark
 
-Run `just timing-watch` in Terminal on the timing laptop from a checkout that supports it. Leave
-the window open to see each job, session and result as it arrives. Jobs share an append-only log in
-the timing home, so the same window follows subsequent runs from any updated tooling checkout.
-Press Ctrl+C to close the display.
+From the controlling Mac, run `just timing-watch` to follow the runner over SSH. Set
+`TAO_TIMING_HOST` to the runner's existing SSH alias or login, or supply it as
+`just timing-watch HOST`. The default runner is `ro@192.168.50.199`. On the runner itself, use
+`just timing-watch --local`. Press Ctrl+C to close the display.
+
+Jobs share one append-only log in the timing home. The start line includes the optional
+`--label` from `timing-run`, `timing-session`, or `timing-compare`.
 
 From the controlling Mac, after preparing or relocating the immutable checkpoint:
 

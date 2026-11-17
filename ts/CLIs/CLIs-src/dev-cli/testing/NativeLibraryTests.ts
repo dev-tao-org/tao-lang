@@ -7,7 +7,7 @@ import { Artifacts, FS, Path, Platform, Repo } from '@shared/os'
 import * as Workspace from '@workspace'
 import type { NativeTestPlatform } from './NativeTestDevice'
 
-/** verifyNativeLibrary runs disabled interaction through an ordinary consumer of the compiled Tao library. */
+/** verifyNativeLibrary tests compiled Tao views through an ordinary React Native consumer. */
 export async function verifyNativeLibrary(
   target: Workspace.AppTestTarget,
   platform: NativeTestPlatform,
@@ -15,7 +15,7 @@ export async function verifyNativeLibrary(
   const directory = await prepareConsumerFixture()
   const session = 'native-' + platform
   await Workspace.withConsumerProject(directory, session, host => runLibraryJourney(target, platform, host), platform)
-  IO.print(`PASS compiled TypeScript library disabled-controls journey (${platform})`)
+  IO.print(`PASS compiled TypeScript library consumer journey (${platform})`)
 }
 
 async function runLibraryJourney(
@@ -27,7 +27,7 @@ async function runLibraryJourney(
   const device = await target.openDevice()
   await Try(async () => {
     await device.open(expo.url)
-    await verifyDisabledLibraryControls(device)
+    await verifyCompiledLibraryControls(device)
   }, {
     async finally() {
       await Try(() => device.dispose(), { finally: () => closeConsumerHost(expo, platform) })
@@ -35,28 +35,12 @@ async function runLibraryJourney(
   })
 }
 
-async function verifyDisabledLibraryControls(device: Workspace.AppTestDevice): Promise<void> {
-  await device.expectText('Lock preview', 'previewLock')
-  await device.type('previewInput', 'Before locking')
-  await device.expectInput('previewInput', 'Before locking')
-  await device.press('previewLock')
-  await device.expectText('Programmatic: 1')
-  await device.expectInput('previewInput', 'Before locking')
-  await device.press('taoPreviewPress')
-  await device.press('rawPreviewPress')
-  await device.type('previewInput', 'Must not change')
-  await device.expectText('Tao presses: 0', 'taoPreviewPress')
-  await device.expectText('Raw presses: 0', 'rawPreviewPress')
-  await device.expectInput('previewInput', 'Before locking')
-  await device.press('previewLock')
-  await device.expectText('Lock preview', 'previewLock')
-  await device.press('taoPreviewPress')
-  await device.press('rawPreviewPress')
-  await device.type('previewInput', 'After unlocking')
-  await device.expectText('Tao presses: 1', 'taoPreviewPress')
-  await device.expectText('Raw presses: 1', 'rawPreviewPress')
-  await device.expectInput('previewInput', 'After unlocking')
-  await device.expectText('Programmatic: 1')
+async function verifyCompiledLibraryControls(device: Workspace.AppTestDevice): Promise<void> {
+  await device.expectText('Ada', 'instance-A')
+  await device.expectText('Published package', 'instance-A')
+  await device.expectText('Published subfolder', 'instance-A')
+  await device.press('update')
+  await device.expectText('Grace', 'instance-A')
 }
 
 async function closeConsumerHost(expo: Runtime.ExpoSession, platform: NativeTestPlatform): Promise<void> {
@@ -78,7 +62,6 @@ async function prepareConsumerFixture(): Promise<string> {
   for (
     const filename of [
       'Consumer.tsx',
-      'DisabledPreviewDemo.tsx',
       'ForeignGreeting.tsx',
       'package.json',
       'tsconfig.json',
@@ -92,10 +75,10 @@ async function prepareConsumerFixture(): Promise<string> {
 
 async function linkConsumerDependencies(directory: string, packageDirectory: string): Promise<void> {
   const modules = Path.join(packageDirectory, 'node_modules')
-  await FS.mkdir(Path.join(modules, '@example'))
+  await FS.mkdir(Path.join(modules, '@tao'))
   await FS.symlink(
-    Path.join(directory, '.tao/cache/libraries/Demo'),
-    Path.join(modules, '@example/tao-library'),
+    Path.join(directory, '.tao/cache/runtime-package'),
+    Path.join(modules, '@tao/runtime'),
     'dir',
   )
   const runtimeModules = Repo.resolvePath('ts/7-runtime/node_modules')
@@ -108,6 +91,7 @@ async function linkConsumerDependencies(directory: string, packageDirectory: str
       'react-dom',
       'react-native',
       'react-native-web',
+      'zod',
       '.bin',
     ]
   ) {

@@ -38,4 +38,4 @@ const XmlAttribute = /([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g
 /** XmlEntity matches numeric references and the predefined XML entities. */
 const XmlEntity = /&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos);/gi
 /** PackageOrderPrefixRegx matches the ordering prefix on a workspace package directory. */
-export const PackageOrderPrefixRegx = /^\d+-/
+export const PackageOrderPrefixRegx = /^\d+(?:\.\d+)?-/

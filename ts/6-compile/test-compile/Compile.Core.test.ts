@@ -13,10 +13,10 @@ import { compile } from '../compile-src/Compile'
 import { executeGeneratedFiles, transpileGeneratedFiles } from './Compile.test-utils'
 
 Tests.test('Preview performance fixture generates generic runtime calls and authored native injections', async () => {
-  const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const tree = Grammar.createParser().parse(source)
   const document = AST.transform(tree)!
-  const entryPath = Repo.resolvePath('ts/perf/perf-fixtures/Performance/Performance.tao')
+  const entryPath = Repo.resolvePath('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
   const program = await linkedUIProgram(entryPath, document)
   const code = combineGeneratedText(compile(document, { revision: 'test-1', program }))
   Tests.expect(code).toContain('TR.ViewDeclaration("Text", ["Value"]')
@@ -32,7 +32,7 @@ Tests.test('Preview performance fixture generates generic runtime calls and auth
 Tests.test('foreign views compile to named imports and the runtime foreign-view adapter', () => {
   const source = S`
     app Calendar { root FormattedDate }
-    public view FormattedDate(Value text) from ./FormattedDate.tsx
+    package view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const document = AST.transform(Grammar.createParser().parse(source))!
   const code = combineGeneratedText(compile(document, {
@@ -44,12 +44,12 @@ Tests.test('foreign views compile to named imports and the runtime foreign-view 
   Tests.expect(code).toContain('TR.ForeignView("FormattedDate", ["Value"], _taoForeignView0, _Scope)')
 })
 
-Tests.test('foreign views reject unsupported parameter types', () => {
+Tests.test('foreign views reject non-text parameter contracts', () => {
   const source = 'app Calendar { root FormattedDate } view FormattedDate(Value number) from ./FormattedDate.tsx'
   const document = AST.transform(Grammar.createParser().parse(source))!
 
   Tests.expect(() => compile(document, { revision: 'foreign-view-type' }))
-    .toThrow('parameters must all use text or boolean')
+    .toThrow('parameters must all use the text type')
 })
 
 Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {
@@ -57,13 +57,13 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
   const interactionsPath = '/interactions.tao'
   const hello = AST.transform(
     Grammar.createParser().parse(S`
-      app HelloWorld { root RootView }
+      folder app HelloWorld { root RootView }
       view RootView { render inject \`\`\`ts return null \`\`\` }
     `),
   )!
   const interactions = AST.transform(
     Grammar.createParser().parse(S`
-      app Interactions { root Form }
+      folder app Interactions { root Form }
       view Form { render inject \`\`\`ts return null \`\`\` }
     `),
   )!
@@ -75,7 +75,7 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "HelloWorld", () => _Scope["RootView"]);')
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Interactions", () => _Scope["Form"]);')
   Tests.expect(code).toContain(
-    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["source/interactions.ts"]!["Interactions"]);',
+    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["ts/packages/interactions.ts"]!["Interactions"]);',
   )
 })
 
@@ -98,12 +98,12 @@ Tests.test('generated bootstrap initializes imported values before entry values'
   const entryPath = '/app/Main.tao'
   const valuePath = '/app/Values.tao'
   const entry = AST.transform(parser.parse(S`
-    use ./Values Value
+    use Value
     app Main { root Root }
     view Root { render inject \`\`\`ts return null \`\`\` }
     let Copy = Value
   `))!
-  const values = AST.transform(parser.parse('public let Value = "ready"'))!
+  const values = AST.transform(parser.parse('package let Value = "ready"'))!
   const statement = AST.GetImportStatements(entry)[0]!
   const program = Typecheck.linkModules(entryPath, [
     {
@@ -144,38 +144,44 @@ Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles',
 
   Tests.expect(code).toContain('const _scope0 = TR.Scope() as Source0.Scope;')
   Tests.expect(code).toContain('const _scope1 = TR.Scope() as Source1.Scope;')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["source/common.ts"]!["Root"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["source/entry.ts"]!["Shared"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "LocalShared", () => _Modules["source/entry.ts"]!["Shared"]);')
-  Tests.expect(code).toContain('_Scope["UI.Root"]')
-  Tests.expect(code).toContain('_Imported_Entry$Shared["Shared"]')
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "ImportedRoot", () => _Modules["ts/packages/common.ts"]!["Root"]);',
+  )
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "EntryShared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "LocalShared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
+  Tests.expect(code).toContain('_Scope["ImportedRoot"]')
+  Tests.expect(code).toContain('_Imported_EntryShared["Shared"]')
   Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Shared", TR.ViewDeclaration("Shared"')
   Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Root", TR.ViewDeclaration("Root"')
-  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["UI.Root"], "modules")')
+  Tests.expect(code).toContain('TR.AppDeclaration(_scope0["ImportedRoot"], "modules")')
   Tests.expect(files['App.tsx']!.indexOf('bindDeclarations')).toBeLessThan(
     files['App.tsx']!.indexOf('initializeCaption'),
   )
   Tests.expect(code).not.toContain('const _views')
 
-  const importedApp = combineGeneratedText(compile(entry, { revision: 'selected-app', app: 'UI.Extra', program }))
+  const importedApp = combineGeneratedText(compile(entry, { revision: 'selected-app', app: 'OtherApp', program }))
   Tests.expect(importedApp).toContain('TR.AppDeclaration(_scope1["Root"], "selected-app")')
 })
 
 function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.LinkedProgram } {
   const entry = AST.transform(
     Grammar.createParser().parse(S`
-      use package @common as UI
-      use ./entry Shared as LocalShared
-      app Main { root UI.Root }
-      view Shared { render UI.Root }
+      use @common Extra as OtherApp, Root as ImportedRoot
+      use ./ Shared as LocalShared
+      app Main { root ImportedRoot }
+      view Shared { render ImportedRoot }
       let Caption = "module value"
     `),
   )!
   const common = AST.transform(
     Grammar.createParser().parse(S`
-      use ./entry Shared as Entry
+      use ../ Shared as EntryShared
       app Extra { root Root }
-      view Root { render Entry.Shared }
+      view Root { render EntryShared }
     `),
   )!
   return {
@@ -188,8 +194,8 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
           document: entry,
           imports: [],
           bindings: [
-            { name: 'UI.Root', source: '/common', target: 'Root' },
-            { name: 'UI.Extra', source: '/common', target: 'Extra' },
+            { name: 'ImportedRoot', source: '/common', target: 'Root' },
+            { name: 'OtherApp', source: '/common', target: 'Extra' },
             { name: 'LocalShared', source: '/entry', target: 'Shared' },
           ],
         },
@@ -197,7 +203,7 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
           path: '/common',
           document: common,
           imports: [],
-          bindings: [{ name: 'Entry.Shared', source: '/entry', target: 'Shared' }],
+          bindings: [{ name: 'EntryShared', source: '/entry', target: 'Shared' }],
         },
       ],
       definitions: [{
@@ -210,8 +216,8 @@ function cyclicModuleFixture(): { entry: AST.Document; program: Typecheck.Linked
 
 Tests.test('standalone compilation rejects unresolved use statements', () => {
   const tree = Grammar.createParser().parse(S`
-    use package @common as UI
-    app Main { root UI.Root }
+    use @common Extra as OtherApp, Root as ImportedRoot
+    app Main { root ImportedRoot }
   `)
   const document = AST.transform(tree)!
 

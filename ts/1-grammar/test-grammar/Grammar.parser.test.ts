@@ -21,7 +21,7 @@ Tests.test(
 Tests.test(
   'Performance produces a positioned CST with named app, root, view and text nodes',
   Timings.createTopLevelTimer(async timings => {
-    const source = await Tests.readFixture('ts/perf/perf-fixtures/Performance/Performance.tao')
+    const source = await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao')
 
     const parser = createParser()
     const tree = timings.run(parser.parse, source)
@@ -81,6 +81,7 @@ Tests.test('syntax diagnostics reject incomplete statements and superseded impor
     'tests { test { type into #save } }',
     'use Text from tao@ui',
     'use all from tao@ui',
+    'use package tao@ui as UI',
   ]
 
   for (const source of invalidSources) {
@@ -92,16 +93,14 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
   const source = S`
     use ./views/common Name, Other as Alias
     use Standalone
-    use tao@ui all
-    use package tao@ui as UI
+    use tao@ui Text
     file app Demo { root UI.Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
-    public let Value is UI.Text = UI.Default
+    package let Value is UI.Text = UI.Default
   `
   const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)
   Tests.expect(tree.rootNode.descendantsOfType('UseStatement')).toHaveLength(3)
-  Tests.expect(tree.rootNode.descendantsOfType('UsePackageStatement')).toHaveLength(1)
   Tests.expect(tree.rootNode.descendantsOfType('QualifiedName').map(node => node.text)).toEqual([
     'UI.Home',
     'UI.Text',
@@ -111,7 +110,7 @@ Tests.test('module imports, visibility prefixes and qualified references parse',
     'UI.Default',
   ])
   Tests.expect(tree.rootNode.descendantsOfType('Visibility').map(node => node.text))
-    .toEqual(['file', 'folder', 'public'])
+    .toEqual(['file', 'folder', 'package'])
 })
 
 Tests.test('requirements, package subpath imports and foreign views parse', () => {
@@ -122,7 +121,7 @@ Tests.test('requirements, package subpath imports and foreign views parse', () =
     requires bundled:tao version v2 as TaoSource
     use @store Save
     use Widgets@ui/controls Button
-    public view FormattedDate(Value text) from ./FormattedDate.tsx
+    package view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = createParser().parse(source)
   Tests.expect(tree.rootNode.hasError).toBe(false)

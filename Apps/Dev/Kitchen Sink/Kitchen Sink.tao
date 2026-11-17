@@ -1,11 +1,8 @@
 // Standard views are ordinary imported Tao declarations.
 // Project dependency declarations live in ../Dependencies.tao.
-use tao@ui all
-use ModuleCaption
-use tao@ui Text as Caption
-use package tao@ui as UI
-use ModuleCaption as ImportedCaption
-use package ./Modules
+use tao@ui Button, Col, Input, Row, Text, Text as Caption
+use ModuleCaption, ModuleCaption as ImportedCaption
+use @examples/details PackageBadge
 use ./Library LibraryGreeting
 
 file
@@ -22,7 +19,7 @@ view RootView {
     PrivateGreeting
     LibraryGreeting("Typed", "TypeScript props")
     Text(Title)
-    Text(Modules.ModuleCaption)
+    PackageBadge
     Text(ModuleCaption)
     Text(ImportedCaption)
     SidecarGreeting("Validated TypeScript sidecar")
@@ -34,16 +31,12 @@ view RootView {
     Input("Original")
     #save
     SaveButton
-    Col [disabled yes] {
-      SaveButton [disabled no]
-      Input("Disabled by its container")
-    }
     Text("Text: \"quotes\", a backslash \\, Unicode \u263A\nand a new line")
     Panel("Nested children and aliased captures") {
       Pair("First parameter", "Second parameter")
       Row() {
         Caption("Left")
-        UI.Text("Right")
+        Text("Right")
       }
     }
   }
@@ -75,27 +68,25 @@ view Panel(Title text) {
   ```
 }
 
-project
+package
 view Heading {
   render inject ```ts
     return <Tao.Text style={{ fontSize: 24 }}>Kitchen Sink</Tao.Text>
   ```
 }
 
-public
+package
 view SaveButton {
-  render inject ```ts
-    const saved = Tao.useWritable(() => false)
-    const isSaved = Tao.useValue(saved)
-    return (
-      <Tao.Pressable onPress={() => saved.update(true)}>
-        <Tao.Text>{isSaved ? 'Saved' : 'Save'}</Tao.Text>
-      </Tao.Pressable>
-    )
-  ```
+  state Caption = "Save"
+  action Save() {
+    set Caption = "Saved"
+  }
+  render Button(Caption) {
+    on press Save
+  }
 }
 
-public
+package
 view SidecarGreeting(Value text) from ./SidecarGreeting.tsx
 
 tests "Kitchen Sink" {
@@ -103,6 +94,7 @@ tests "Kitchen Sink" {
     run KitchenSink
     expect text "Kitchen Sink"
     expect text "Private nested view"
+    expect text "Named package subfolder"
     expect text "Sidecar: Validated TypeScript sidecar"
     expect text "Nested lexical scope"
     type "Edited text" into #editable

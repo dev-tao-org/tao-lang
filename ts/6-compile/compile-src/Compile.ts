@@ -1,7 +1,11 @@
-export * from './Compile/Compile'
+export { compile, type CompileOptions } from './Compile/Compile'
 export * from './Compile/ForeignViewContractCompiler'
-export * from './Compile/LibraryCompiler'
+export { type CompiledLibrary, compileLibrary } from './Compile/LibraryCompiler'
 export * from './Compile/LibraryPackageCompiler'
-export * from './Compile/LibraryPublications'
-export * from './Compile/ModulesCompiler'
-export { hasSupportedViewParameters } from './ValuesCompiler'
+export {
+  collectLibraryPublications,
+  type PublishedPackageRoots,
+  requireLibraryPublication,
+} from './Compile/LibraryPublications'
+export type { CompiledFiles, ForeignViewPathResolver } from './Compile/ModulesCompiler'
+export { resolveModuleSpecifier } from './GeneratedPaths'
