@@ -75,7 +75,7 @@ Tests.test('folder-visible apps register root views for sibling lazy bindings', 
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "HelloWorld", () => _Scope["RootView"]);')
   Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Interactions", () => _Scope["Form"]);')
   Tests.expect(code).toContain(
-    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["source/interactions.ts"]!["Interactions"]);',
+    'TR.AliasBinding(_Scope, "Interactions", () => _Modules["ts/packages/interactions.ts"]!["Interactions"]);',
   )
 })
 
@@ -144,9 +144,13 @@ Tests.test('linked modules preserve owner scopes, lazy aliases and view cycles',
 
   Tests.expect(code).toContain('const _scope0 = TR.Scope() as Source0.Scope;')
   Tests.expect(code).toContain('const _scope1 = TR.Scope() as Source1.Scope;')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["source/common.ts"]!["Root"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["source/entry.ts"]!["Shared"]);')
-  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "LocalShared", () => _Modules["source/entry.ts"]!["Shared"]);')
+  Tests.expect(code).toContain('TR.AliasBinding(_Scope, "UI.Root", () => _Modules["ts/packages/common.ts"]!["Root"]);')
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "Entry.Shared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
+  Tests.expect(code).toContain(
+    'TR.AliasBinding(_Scope, "LocalShared", () => _Modules["ts/packages/entry.ts"]!["Shared"]);',
+  )
   Tests.expect(code).toContain('_Scope["UI.Root"]')
   Tests.expect(code).toContain('_Imported_Entry$Shared["Shared"]')
   Tests.expect(code).toContain('TR.LetDeclaration(_Scope, "Shared", TR.ViewDeclaration("Shared"')

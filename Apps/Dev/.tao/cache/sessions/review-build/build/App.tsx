@@ -1,18 +1,18 @@
 import * as TR from '@runtime';
-import * as Source0 from "./source/Kitchen Sink";
-import * as Source1 from "./source/Modules";
-import * as Source2 from "./tao/ui/Views";
-import * as Source3 from "./source/Library/Demo";
+import * as Source0 from "./ts/packages/Kitchen Sink/Kitchen Sink";
+import * as Source1 from "./ts/packages/Kitchen Sink/Modules";
+import * as Source2 from "./ts/dependencies/tao/@ui/Views";
+import * as Source3 from "./ts/packages/Kitchen Sink/Library/Demo";
 
 TR.ModuleApplied("r1");
 const _scope0 = TR.Scope() as Source0.Scope;
 const _scope1 = TR.Scope() as Source1.Scope;
 const _scope2 = TR.Scope() as Source2.Scope;
 const _scope3 = TR.Scope() as Source3.Scope;
-const _Modules = { "source/Kitchen Sink.ts": _scope0,
-"source/Modules.ts": _scope1,
-"tao/ui/Views.ts": _scope2,
-"source/Library/Demo.ts": _scope3 };
+const _Modules = { "ts/packages/Kitchen Sink/Kitchen Sink.ts": _scope0,
+"ts/packages/Kitchen Sink/Modules.ts": _scope1,
+"ts/dependencies/tao/@ui/Views.ts": _scope2,
+"ts/packages/Kitchen Sink/Library/Demo.ts": _scope3 };
 Source0.bindAliases(_scope0, _Modules);
 Source1.bindAliases(_scope1, _Modules);
 Source2.bindAliases(_scope2, _Modules);

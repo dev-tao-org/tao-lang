@@ -1,14 +1,14 @@
 import * as TR from '@runtime';
 import { createLibrary, createViewComponent } from '@tao/ts-api';
 import type { ViewProps } from '@tao/ts-api';
-import * as Source0 from "./source/Library";
-import * as Source1 from "./source/LanguageFeatures";
-import * as Source2 from "./source/ScopeExamples";
-import * as Source3 from "./source/ValueSnapshots";
-import * as Source4 from "./tao/ui/Views";
-import * as Source5 from "./source/cards/Card";
-import * as Source6 from "./source/cards/Other";
-import * as Source7 from "./source/cards/Publication";
+import * as Source0 from "./ts/packages/src/tao/Library";
+import * as Source1 from "./ts/packages/src/tao/LanguageFeatures";
+import * as Source2 from "./ts/packages/src/tao/ScopeExamples";
+import * as Source3 from "./ts/packages/src/tao/ValueSnapshots";
+import * as Source4 from "./ts/dependencies/tao/@ui/Views";
+import * as Source5 from "./ts/packages/src/tao/cards/Card";
+import * as Source6 from "./ts/packages/src/tao/cards/Other";
+import * as Source7 from "./ts/packages/src/tao/cards/Publication";
 
 const library = createLibrary(() => {
   const _scope0 = TR.Scope() as Source0.Scope;
@@ -19,14 +19,14 @@ const library = createLibrary(() => {
   const _scope5 = TR.Scope() as Source5.Scope;
   const _scope6 = TR.Scope() as Source6.Scope;
   const _scope7 = TR.Scope() as Source7.Scope;
-  const _Modules = { "source/Library.ts": _scope0,
-  "source/LanguageFeatures.ts": _scope1,
-  "source/ScopeExamples.ts": _scope2,
-  "source/ValueSnapshots.ts": _scope3,
-  "tao/ui/Views.ts": _scope4,
-  "source/cards/Card.ts": _scope5,
-  "source/cards/Other.ts": _scope6,
-  "source/cards/Publication.ts": _scope7 };
+  const _Modules = { "ts/packages/src/tao/Library.ts": _scope0,
+  "ts/packages/src/tao/LanguageFeatures.ts": _scope1,
+  "ts/packages/src/tao/ScopeExamples.ts": _scope2,
+  "ts/packages/src/tao/ValueSnapshots.ts": _scope3,
+  "ts/dependencies/tao/@ui/Views.ts": _scope4,
+  "ts/packages/src/tao/cards/Card.ts": _scope5,
+  "ts/packages/src/tao/cards/Other.ts": _scope6,
+  "ts/packages/src/tao/cards/Publication.ts": _scope7 };
   Source0.bindAliases(_scope0, _Modules);
   Source1.bindAliases(_scope1, _Modules);
   Source2.bindAliases(_scope2, _Modules);

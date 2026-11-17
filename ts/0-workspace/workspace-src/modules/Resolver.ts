@@ -32,6 +32,7 @@ export type ModuleTarget = {
   relation: Typecheck.SourceModule['imports'][number]['targets'][number]['relation']
   source?: string
   projectRoot?: string
+  projectAlias?: string
 }
 
 /** ModuleResolutionContext contains the owning project boundary and dependency resolver. */
@@ -94,7 +95,8 @@ async function resolveProjectModuleTargets(
   const files = imported.parts.length === 0
     ? await Catalog.listRecursiveSourceFiles(targetDirectory, packageRoot, projectRoot)
     : await Catalog.listDirectSourceFiles(targetDirectory, projectRoot)
-  return files.map(path => ({ path, relation: 'public', projectRoot }))
+  const projectAlias = imported.alias
+  return files.map(path => ({ path, relation: 'public', projectRoot, projectAlias }))
 }
 
 async function relativeTargets(

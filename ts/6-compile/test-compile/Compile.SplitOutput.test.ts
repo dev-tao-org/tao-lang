@@ -8,7 +8,7 @@ import { S } from '@shared'
 import { compile } from '../compile-src/Compile'
 import { createGeneratedPaths } from '../compile-src/GeneratedPaths'
 
-const GeneratedMemoryViewsPathRegx = /^source\/Foo\.views\.source-[a-f0-9]{8}\.ts$/
+const GeneratedMemoryViewsPathRegx = /^ts\/packages\/Foo\.views\.source-[a-f0-9]{8}\.ts$/
 
 Tests.test('generated source files own stable components while revision changes stay in bootstrap', () => {
   const document = AST.transform(
@@ -19,12 +19,12 @@ Tests.test('generated source files own stable components while revision changes 
   )!
   const first = compile(document, { revision: 'first' })
   const second = compile(document, { revision: 'second' })
-  Tests.expect(Object.keys(first).sort()).toEqual(['App.tsx', 'source/Memory.ts', 'source/Memory.views.tsx'])
-  Tests.expect(first['source/Memory.ts']).toBe(second['source/Memory.ts'])
-  Tests.expect(first['source/Memory.views.tsx']).toBe(second['source/Memory.views.tsx'])
+  Tests.expect(Object.keys(first).sort()).toEqual(['App.tsx', 'ts/packages/Memory.ts', 'ts/packages/Memory.views.tsx'])
+  Tests.expect(first['ts/packages/Memory.ts']).toBe(second['ts/packages/Memory.ts'])
+  Tests.expect(first['ts/packages/Memory.views.tsx']).toBe(second['ts/packages/Memory.views.tsx'])
   Tests.expect(first['App.tsx']).not.toBe(second['App.tsx'])
-  Tests.expect(first['source/Memory.views.tsx']).toContain('export function TaoView_Root_')
-  Tests.expect(first['source/Memory.views.tsx']).not.toContain('TR.ModuleApplied')
+  Tests.expect(first['ts/packages/Memory.views.tsx']).toContain('export function TaoView_Root_')
+  Tests.expect(first['ts/packages/Memory.views.tsx']).not.toContain('TR.ModuleApplied')
 })
 
 Tests.test('source names with category suffixes cannot shadow another input component module', () => {
@@ -39,7 +39,7 @@ Tests.test('source names with category suffixes cannot shadow another input comp
     ],
     definitions: [],
   })
-  Tests.expect(paths.get('/app/Foo.tao')).toBe('source/Foo.ts')
+  Tests.expect(paths.get('/app/Foo.tao')).toBe('ts/packages/Foo.ts')
   Tests.expect(paths.get('/app/Foo.views.tao')).toMatch(GeneratedMemoryViewsPathRegx)
 })
 
@@ -66,7 +66,7 @@ Tests.test('split initialization binds every module before globally ordered valu
   const bootstrap = files['App.tsx']!
   Tests.expect(bootstrap.indexOf('bindDeclarations')).toBeLessThan(bootstrap.indexOf('initializeValue'))
   Tests.expect(bootstrap.indexOf('initializeValue(_scope1')).toBeLessThan(bootstrap.indexOf('initializeCopy(_scope0'))
-  Tests.expect(files['source/Main.ts']).toContain('Pick<ImportedScope0, "Value">')
-  Tests.expect(files['source/Main.ts']).not.toContain('"ready"')
-  Tests.expect(files['source/Other.ts']).toContain('"ready"')
+  Tests.expect(files['ts/packages/Main.ts']).toContain('Pick<ImportedScope0, "Value">')
+  Tests.expect(files['ts/packages/Main.ts']).not.toContain('"ready"')
+  Tests.expect(files['ts/packages/Other.ts']).toContain('"ready"')
 })
