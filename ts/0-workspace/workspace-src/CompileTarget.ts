@@ -22,10 +22,7 @@ export async function resolveCompileTarget(directory: string, argument?: string)
   const configuration = isEntry ? { entry: explicit } : await requireCompileConfiguration(directory)
   const entry = Path.resolve(directory, configuration.entry)
   const selected = isEntry ? undefined : argument
-  const document = AST.transform(Grammar.createParser().parse(await FS.readFile(entry, 'utf8')))
-  if (!document) {
-    Errors.ThrowUserInput(`Invalid Tao source: ${entry}.`)
-  }
+  const document = await readCompileDocument(entry)
   const declarations = [
     ...AST.GetAppDeclarations(document),
     ...AST.GetTypeScriptLibraryDeclarations(document),
@@ -41,6 +38,29 @@ export async function resolveCompileTarget(directory: string, argument?: string)
     target: declaration.name.value,
     name: configuration.name,
   }
+}
+
+/** resolveLibraryCompileTarget selects a named library from an explicit entry or authored package settings. */
+export async function resolveLibraryCompileTarget(
+  directory: string,
+  library: string,
+  explicitEntry?: string,
+): Promise<CompileTarget> {
+  const configuration = explicitEntry === undefined
+    ? await requireCompileConfiguration(directory)
+    : undefined
+  const entry = explicitEntry ?? Path.resolve(directory, configuration!.entry)
+  const document = await readCompileDocument(entry)
+  if (AST.GetTypeScriptLibraryDeclarations(document, library).length !== 1) {
+    Errors.ThrowUserInput(`Select one ts-library named ${library} in ${entry}.`)
+  }
+  const name = configuration?.name ?? library.toLowerCase()
+  return { kind: 'library', entry, target: library, name }
+}
+
+async function readCompileDocument(entry: string): Promise<AST.Document> {
+  const document = AST.transform(Grammar.createParser().parse(await FS.readFile(entry, 'utf8')))
+  return document ?? Errors.ThrowUserInput(`Invalid Tao source: ${entry}.`)
 }
 
 async function requireCompileConfiguration(directory: string) {

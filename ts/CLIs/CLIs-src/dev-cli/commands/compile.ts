@@ -1,12 +1,12 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { NewlineCharacter } from '@shared'
+import { Errors, NewlineCharacter } from '@shared'
 import * as Workspace from '@workspace'
 
 import { prepareCompiledApplication, publishCompiledLibrary } from '../../tao-cli/CompileApplication'
 import { registerCommand } from './_command-runner'
 
-type CompileCommandOptions = { session?: string; yes?: boolean; package?: string }
+type CompileCommandOptions = { session?: string; yes?: boolean; package?: string; tsLib?: string; out?: string }
 
 /** compileCommand compiles an explicit Tao entry or a package-configured app or library target. */
 export default registerCommand({
@@ -17,9 +17,16 @@ export default registerCommand({
     { flags: '--session <id>', description: 'Use an independent named session.' },
     { flags: '--yes', description: 'Authorize required dependency setup.' },
     { flags: '--package <directory>', description: 'Select the authored TypeScript package directory.' },
+    { flags: '--ts-lib <declaration>', description: 'Select a ts-library for explicit output.' },
+    { flags: '--out <directory>', description: 'Write the TypeScript library into a fresh directory.' },
   ],
   async action(argument?: string, options: CompileCommandOptions = {}) {
-    const target = await Workspace.resolveCompileTarget(CLIKit.resolveCallerPath(options.package ?? '.'), argument)
+    const directory = CLIKit.resolveCallerPath(options.package ?? '.')
+    if (options.tsLib || options.out) {
+      await compileExplicitLibrary(directory, argument, options)
+      return
+    }
+    const target = await Workspace.resolveCompileTarget(directory, argument)
     if (target.kind === 'library') {
       IO.print(await publishCompiledLibrary(target, options.session))
       return
@@ -27,6 +34,18 @@ export default registerCommand({
     await compileEntry(target, options.session, options.yes)
   },
 })
+
+type EntryArgument = string | undefined
+
+async function compileExplicitLibrary(directory: string, argument: EntryArgument, options: CompileCommandOptions) {
+  if (!options.tsLib || !options.out) {
+    Errors.ThrowUserInput('Use --ts-lib <declaration> together with --out <directory>.')
+  }
+  const entry = argument === undefined ? undefined : CLIKit.resolveCallerPath(argument)
+  const target = await Workspace.resolveLibraryCompileTarget(directory, options.tsLib, entry)
+  const output = CLIKit.resolveCallerPath(options.out)
+  IO.print(await publishCompiledLibrary(target, options.session, output))
+}
 
 async function compileEntry(target: Workspace.CompileTarget, session?: string, yes?: boolean): Promise<void> {
   const workspace = await prepareCompiledApplication(target, session, yes)

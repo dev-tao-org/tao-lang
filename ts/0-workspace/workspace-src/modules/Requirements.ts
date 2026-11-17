@@ -33,7 +33,13 @@ export async function loadRequirementModules(
       validateRequirementPlacement(document, path, owner)
       const declarations = AST.GetDeclarations(document).filter(isNpmRequirement)
       if (declarations.length > 0) {
-        metadata.push({ path, document: createRequirementDocument(document, declarations), imports: [], siblings: [] })
+        metadata.push({
+          path,
+          document: createRequirementDocument(document, declarations),
+          imports: [],
+          siblings: [],
+          project: { root: owner },
+        })
       }
     }
   }

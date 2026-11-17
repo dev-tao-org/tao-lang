@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@tao-dev/ts-lib-example": "file:../../.tao/cache/sessions/.cli/libraries/Demo",
+    "@tao/runtime": "file:../../.tao/cache/runtime-package",
     "expo": "57.0.30",
     "@expo/metro-runtime": "57.0.17",
     "react": "19.2.3",

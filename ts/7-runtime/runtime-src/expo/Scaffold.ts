@@ -74,7 +74,8 @@ const expoTypeScriptConfig = {
     jsxImportSource: '@runtime/client/Bridge_react',
     preserveSymlinks: true,
     paths: {
-      '@runtime': ['src/_gen_runtime/runtime/TR.ts'],
+      '@tao/runtime/generated': ['src/_gen_runtime/runtime/TR.ts'],
+      '@tao/runtime/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
       '@runtime/client/*': ['src/_gen_runtime/runtime/*'],
       '@tao/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
       '@shared': ['src/_gen_runtime/shared/shared.ts'],

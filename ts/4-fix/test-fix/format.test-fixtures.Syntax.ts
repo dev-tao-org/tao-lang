@@ -10,8 +10,7 @@ export const syntaxFixture = S`
   use Local
   requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
-  ts-library Demo{publish{Root,}}
-  publish{Root,}
+  ts-library Demo{publish{Root,@cards,}}
   file let Caption is text="Hello"
   folder app Demo{root Root}
   public view Root( Title text,Subtitle text ){
@@ -40,11 +39,8 @@ export const formattedSyntaxFixture = S`
   ts-library Demo {
     publish {
       Root,
+      @cards,
     }
-  }
-
-  publish {
-    Root,
   }
 
   file

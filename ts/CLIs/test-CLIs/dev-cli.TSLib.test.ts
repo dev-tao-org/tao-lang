@@ -23,14 +23,13 @@ Tests.test('standalone TS-Lib Justfile compiles repeatedly and checks its author
   Tests.expect(first).toBe(second)
   Tests.expect(FS.lstatSync(output).isSymbolicLink()).toBe(false)
   Tests.expect(FS.existsSync(Path.join(output, 'stale.js'))).toBe(false)
-  Tests.expect(await FS.readFile(Path.join(output, 'source/Library.ts'), 'utf8')).toContain('export')
-  await Exec.captureStdout('tsc', ['--project', Path.join(output, 'source/tsconfig.json'), '--noEmit'])
+  Tests.expect(await FS.readFile(Path.join(output, 'ts/Library.ts'), 'utf8')).toContain(' as Greeting')
   Tests.expect(FS.existsSync(Path.join(first, 'package.json'))).toBe(true)
   Tests.expect(FS.existsSync(Path.join(second, 'package.json'))).toBe(true)
   const packageDirectory = Path.join(directory, 'src/ts')
   Tests.expect(FS.realpathSync(Path.join(packageDirectory, 'node_modules/@tao-dev/ts-lib-example'))).toBe(second)
-  Tests.expect(FS.resolveModule('@tao-dev/ts-lib-example/Greeting', packageDirectory)).toBe(
-    Path.join(second, 'view0.js'),
+  Tests.expect(FS.resolveModule('@tao-dev/ts-lib-example/@cards/details', packageDirectory)).toBe(
+    Path.join(second, 'ts/@cards/details.ts'),
   )
   await runRecipe(directory, 'check')
   const inferred = await Exec.captureStdout('../../tao', 'compile --package src/ts', { cwd: directory })
@@ -88,6 +87,13 @@ Tests.test('unified compile rejects unknown and ambiguous targets and still comp
   await Tests.expect(Workspace.resolveCompileTarget(root)).rejects.toThrow('found 2 matching targets')
   await Tests.expect(Workspace.resolveCompileTarget(root, 'Missing')).rejects.toThrow('found 0 matching targets')
   Tests.expect((await Workspace.resolveCompileTarget(root, 'Two')).target).toBe('Two')
+  await FS.writeJson(Path.join(root, 'package.json'), { private: true, tao: { run: false } })
+  const standalone = Path.join(root, 'exported')
+  await Exec.captureStdout(Repo.resolvePath('tao'), ['compile', entry, '--ts-lib', 'Two', '--out', standalone], {
+    cwd: root,
+  })
+  const published = await FS.readFile(Path.join(standalone, 'package.json'), 'utf8')
+  Tests.expect(published).toContain('"name": "two"')
   await writePreparedTaoApp(root)
   const result = await Exec.captureStdout(Repo.resolvePath('tao'), ['compile', entry, '--session', 'review-build'], {
     cwd: root,

@@ -17,15 +17,20 @@ export async function prepareCompiledApplication(target: Workspace.CompileTarget
 }
 
 /** publishCompiledLibrary validates package settings before publishing the selected library generation. */
-export async function publishCompiledLibrary(target: Workspace.CompileTarget, session?: string): Promise<string> {
+export async function publishCompiledLibrary(
+  target: Workspace.CompileTarget,
+  session?: string,
+  destination?: string,
+): Promise<string> {
   const project = await Workspace.discoverProject(target.entry)
   if (!project) {
     return Errors.ThrowUserInput(`No Tao project owns ${target.entry}.`)
   }
+  await prepareRuntime()
   return await Workspace.withDependencySession(
     project.root,
     session,
-    locked => Workspace.publishLibrary(target, locked),
+    locked => Workspace.publishLibrary(target, locked, destination),
   )
 }
 

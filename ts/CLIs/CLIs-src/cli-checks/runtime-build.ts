@@ -1,5 +1,6 @@
-import { Errors, Json, Sort, Timings, Try } from '@shared'
+import { Errors, Invariant, Json, Sort, Timings, Try } from '@shared'
 import { Artifacts, BuildLock, FS, Hash, Path, Platform, Repo } from '@shared/os'
+import { resolveLibraryRuntimeResources, writeRuntimeLibraryPackage } from './runtime-library-package'
 import * as RuntimeLock from './runtime-lock'
 import { metroBuildInputs, writeMetroResources } from './runtime-metro'
 import { readRuntimeSources, type RuntimeSourceContents, type RuntimeSourcePaths } from './runtime-sources'
@@ -13,7 +14,8 @@ export const prepareRuntime = Timings.createTopLevelTimer(async function(timings
     const patchRoot = Repo.resolvePath('ts/patches')
     const patches = Object.keys(inputs.sources).filter(path => Path.dirname(path) === patchRoot)
       .map(path => Path.join('patches', Path.basename(path)))
-    const requiredFiles = [...resourceFiles, ...Object.keys(inputs.runtimeSources), ...patches]
+    const libraryFiles = resolveLibraryRuntimeResources(inputs.runtimeSources)
+    const requiredFiles = [...resourceFiles, ...Object.keys(inputs.runtimeSources), ...patches, ...libraryFiles]
     if (!requiredFiles.every(file => FS.existsSync(Path.join(directory, file)))) {
       await timings.run(buildResources, directory, identity, inputs)
     }
@@ -55,6 +57,9 @@ async function readInputs(): Promise<RuntimeBuildInputs> {
     Repo.resolvePath('ts/7-runtime/package.json'),
     Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-lock.ts'),
     Path.fileURLToPath(import.meta.url),
+    Repo.resolvePath('ts/CLIs/CLIs-src/cli-checks/runtime-library-package.ts'),
+    Repo.resolvePath('ts/0-workspace/workspace-src/sidecars/SidecarAssets.ts'),
+    Repo.resolvePath('ts/6-compile/compile-src/Compile/ForeignViewContractCompiler.ts'),
     Repo.resolvePath('ts/bun.lock'),
     ...await metroBuildInputs(),
   ].sort(Sort.CompareStrings)
@@ -73,6 +78,7 @@ const buildResources = Timings.measured('runtime.build', async function(
     await writeRuntimeSources(stage, inputs.sources, inputs.runtimeSources)
     await writeMetroResources(stage, inputs.sources)
     const manifest = runtimeManifest(inputs.sources)
+    await writeRuntimeLibraryPackage(stage, inputs.sources, inputs.runtimeSources, manifest.dependencies)
     await FS.writeFile(Path.join(stage, 'package.json'), formatRuntimeManifest(manifest))
     await FS.writeFile(
       Path.join(stage, 'bun.lock'),
@@ -95,9 +101,7 @@ const buildResources = Timings.measured('runtime.build', async function(
 function runtimeManifest(sources: RuntimeSourceContents): RuntimeLock.RuntimeManifest {
   const parsed = parseRuntimePackage(sources[Path.join(packageRoot, 'package.json')]!)
   const dependencies = parsed.dependencies
-  if (dependencies === undefined) {
-    Errors.ThrowShouldNeverHappen('Runtime package has no dependencies.')
-  }
+  Invariant(dependencies !== undefined, 'Runtime package has no dependencies.')
   const devDependencies = parsed.devDependencies === undefined ? {} : parsed.devDependencies
   const workspace = parseRuntimeWorkspace(sources[Repo.resolvePath('ts/package.json')]!)
   return {

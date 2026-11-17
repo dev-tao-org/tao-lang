@@ -1,0 +1,6 @@
+use tao@ui Text
+
+public
+view DetailedCard(Value text) {
+  render Text(Value)
+}

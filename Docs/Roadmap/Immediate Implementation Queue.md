@@ -19,6 +19,7 @@ Status: complete. Independently reviewed rollback `1d95d7b9` integrated here; re
 - Synchronous-batch repair integrated from `bc5d463a`: ordinary synchronous results with a noncallable `then` field are accepted. Disabled and Boolean support remain removed. Human review is still separate.
 - Reactive runtime follow-up remains under review. The read-only observation boundary replaces selective feedback containment in the runtime and its authored TypeScript API. Collection-publication benchmarks retain work counts and timings. Authored runtime type mappings remain stable across source rebuilds, avoiding unnecessary npm setup; preview validation and execution share one pinned runtime generation. Verification and measurement evidence live in the implementation checkpoint.
 - Finish the native CI worker's exact-tip verification and performance report; independently review, integrate and verify that branch separately. Earlier green CI is not evidence for a later tip.
+- [Studio output reconciliation](../Dev%20Env/Generated%20Output.md#reconciliation-of-the-studio-output-experiment) records the superseded pipeline and its retained evidence. The package layout slice owns foreign-view path relocation. Retain the old worktree pending durable evidence preservation and verification.
 - Preserve performance and review evidence, back up commits, and retire worktrees only when their unique evidence is safe. Remote archive publication remains separately deferred for this consolidation.
 
 ## 3. Reconcile the complete design ledger
@@ -52,9 +53,8 @@ Core-type and bracket design can proceed together. Implement the necessary type 
 Owner: [TypeScript libraries](TypeScript%20Library%20Decisions%20and%20PoC.md).
 
 - Address folder-defined packages through explicit imports and the accepted visibility rules; remove superseded whole-package imports and publication aliases.
-- Implement centralized library publication and agreed shared app/library output organization: TypeScript source by default, explicit distribution build, generated manifests/configuration/dependency mappings and package facades.
-- Provide automatic initialization and singular top-level state. Resolve runtime identity and package initialization boundaries without duplicating shared runtime contexts.
-- Prove ordinary TypeScript consumption, relocation and multiple-library use.
+- Add the explicit distribution build for already generated TypeScript source packages. Define its JavaScript and declaration targets and manifest rules.
+- Extend authored-sidecar package resolution and verify multiple independently compiled libraries share the installed Tao runtime in one consumer. The [source package implementation](TypeScript%20Library%20Decisions%20and%20PoC.md#generated-source-packages) covers explicit exports, single library initialization, ordinary TypeScript consumption and relocation.
 
 Keep cross-library interaction requirements with this runtime boundary and the redesigned bracket system; do not restore the removed disabled implementation merely to satisfy an older task entry.
 
@@ -84,8 +84,10 @@ Start with a complete Notes schema, generated datasource contract and real Insta
 
 ## Cross-cutting follow-ups
 
-- Settle internal invariant versus user-input checking APIs and classify checks by owner before migrating them.
-- Assess remaining package-export/ownership and AST-generation proposals; do not treat audit suggestions as accepted implementation.
+- The [shared invariant and user-input checks](../Dev%20Env/Repository%20APIs.md#invariants-and-user-input)
+  are implemented. Classify remaining checks by owner when migrating them. Establish who validates
+  the publication block for direct `compileLibrary(LinkedProgram)` calls before changing that check.
+- The retained [package and API ownership audit](../Dev%20Env/Package%20Analysis%20Integration.md#package-and-api-ownership-audit-reconciliation) has been reconciled against `bfc14aa2dc`. Its remaining ownership candidates await decisions or slice selection. The separate AST-generation proposals still need assessment.
 - Complete runtime/stdlib architecture review: centralize execution semantics, keep generated code compact, and coordinate UI ownership changes with package layout.
 - Re-rank navigation, scrolling, keyed composition and remaining app-authoring gaps rather than assuming an old proposed opening sequence remains approved.
 

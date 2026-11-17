@@ -30,9 +30,14 @@ export type InjectionCompilation = { hookDeclaration: string; invocation: string
 /** emitRuntimeImports supplies the private generated boundary and the authored Tao API. */
 export function emitRuntimeImports(): string {
   return S`
-    import * as TR from '@runtime';
-    import Tao from '@tao/runtime-api';
+    ${emitGeneratedRuntimeImport()}
+    import Tao from '@tao/runtime/runtime-api';
   `
+}
+
+/** emitGeneratedRuntimeImport selects the shared runtime contract for generated modules. */
+export function emitGeneratedRuntimeImport(): string {
+  return "import * as TR from '@tao/runtime/generated';"
 }
 
 /** emitModuleApplied registers the generated revision with preview instrumentation. */

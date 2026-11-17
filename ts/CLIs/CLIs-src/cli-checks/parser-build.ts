@@ -1,12 +1,30 @@
 import * as CLIKit from '@cli-kit'
-import { Json } from '@shared'
+import { Errors, Json } from '@shared'
 import { NewlineCharacter, Timings } from '@shared'
 import { Artifacts, BuildLock, Env, FS, Path, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { nodeMetadataProbe } from '../../../shared/shared-src/os/bridges/Bridge_node/Bridge_node-emission'
 import { writeCSTTypes } from './cst-types'
 import { nodeGypOptions } from './NodeGyp'
-import { writeSemanticAst } from './semantic-ast'
+import { SemanticAstOutputDirectory, writeSemanticAst } from './semantic-ast'
+
+const ParserOutputDirectory = 'ts/1-grammar/_gen_parser'
+
+/** assertParserOutputTrees verifies the generated trees before a targeted Tao source operation. */
+export async function assertParserOutputTrees(root: string): Promise<void> {
+  for (const path of [ParserOutputDirectory, SemanticAstOutputDirectory]) {
+    const directory = Path.join(root, path)
+    Repo.assertNewWorkspacePath(directory, root)
+    if (!FS.existsSync(directory)) {
+      continue
+    }
+    const linked = FS.lstatSync(directory).isSymbolicLink()
+      || (await FS.readdir(directory, { recursive: true, withFileTypes: true })).some(entry => entry.isSymbolicLink())
+    if (linked) {
+      Errors.ThrowUserInput(`Parser output must remain in a real workspace directory: ${directory}`)
+    }
+  }
+}
 
 /** prepareParser builds when declared inputs change or required generated output disappears.
  *  This prepare operation owns _gen_parser; callers finish it before loading the native addon. */
@@ -17,7 +35,7 @@ export const prepareParser = Timings.createTopLevelTimer(
 )
 
 const grammarRoot = Repo.resolvePath('ts/1-grammar/grammar-src')
-const outputRoot = Repo.resolvePath('ts/1-grammar/_gen_parser')
+const outputRoot = Repo.resolvePath(ParserOutputDirectory)
 
 type ParserSourceContents = Record<string, string>
 type ParserNodeMetadata = { version: string; executable: string }

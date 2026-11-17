@@ -1,61 +1,62 @@
-import { Objects, S } from '@shared'
+import { S } from '@shared'
 import * as Shared from '@shared'
 import type * as Typecheck from '@typecheck'
 import { emitStringLiteral } from '../codegen-util'
 import type { GeneratedModulePaths } from '../GeneratedPaths'
 import { compileModuleInitialization } from '../ModuleInitialization'
+import { emitGeneratedRuntimeImport } from '../RuntimeEmitter'
 import { projectTextViewParameterTypes } from './ForeignViewContractCompiler'
-import { collectLibraryPublications, compilePublicationExportName, type PublishedView } from './LibraryPublications'
-import { type CompiledFiles, compileModuleSources } from './ModulesCompiler'
+import * as LibraryPublications from './LibraryPublications'
+import { type CompiledFiles, compileModuleSources, type ForeignViewPathResolver } from './ModulesCompiler'
+
+/** LibraryScopePath is the shared private bootstrap used by every public library facade. */
+export const LibraryScopePath = 'ts/LibraryScope.ts'
 
 /** CompiledLibrary holds shared generated sources and explicit public component subpaths. */
-export type CompiledLibrary = { files: CompiledFiles; views: readonly PublishedView[] }
+export type CompiledLibrary = { files: CompiledFiles; views: readonly LibraryPublications.PublishedView[] }
 
-/** compileLibrary reuses compiled Tao module bodies with instance-owned ordered initialization. */
+/** compileLibrary reuses compiled Tao module bodies and initializes one scope per loaded library. */
 export function compileLibrary(
   program: Typecheck.LinkedProgram,
-  ownSources: ReadonlySet<string>,
-  target?: string,
+  views: readonly LibraryPublications.PublishedView[],
+  resolveForeignViewPath: ForeignViewPathResolver,
 ): CompiledLibrary {
-  const views = collectLibraryPublications(program, ownSources, target)
-  const sources = compileModuleSources(program)
-  const files = Objects.copy(sources.files)
-  files['Library.ts'] = compileLibraryBootstrap(program, views, sources.paths)
+  const sources = compileModuleSources(program, resolveForeignViewPath)
+  const scope = compileLibraryBootstrap(program, views, sources.paths)
+  const files = { ...sources.files, [LibraryScopePath]: scope }
   return { files, views }
 }
 
 function compileLibraryBootstrap(
   program: Typecheck.LinkedProgram,
-  publications: readonly PublishedView[],
+  publications: readonly LibraryPublications.PublishedView[],
   paths: GeneratedModulePaths,
 ): string {
-  const initialization = compileModuleInitialization(program, 'Library.ts', paths)
-  const exports = publications.map(view => {
+  const initialization = compileModuleInitialization(program, LibraryScopePath, paths)
+  const components = publications.map(view => {
     const scope = initialization.scopes.get(view.source)!
-    return `${emitStringLiteral(view.path)}: ${scope}[${emitStringLiteral(view.declaration.name.value)}]`
+    return compilePublicComponent(view, scope)
   })
-  const components = publications.map((view, index) => compilePublicComponent(view, index))
   return S`
-    import * as TR from '@runtime';
-    import { createLibrary, createViewComponent } from '@tao/ts-api';
-    import type { ViewProps } from '@tao/ts-api';
+    ${emitGeneratedRuntimeImport()}
     ${initialization.imports}
 
-    const library = createLibrary(() => {
-      ${initialization.body}
-      return { ${exports.join(', ')} };
-    });
+    ${initialization.body}
+
     ${Shared.joinTextLines(...components)}
-    export default library;
   `
 }
 
-function compilePublicComponent(view: PublishedView, index: number): string {
+function compilePublicComponent(view: LibraryPublications.PublishedView, scope: string): string {
   const types = projectTextViewParameterTypes(view.declaration)
   const props = Object.entries(types).map(([name, type]) => `${emitStringLiteral(name)}: ${type}`)
   const parameters = Object.keys(types).map(emitStringLiteral)
-  const exportName = compilePublicationExportName(index)
-  return `export const ${exportName} = createViewComponent<ViewProps & { ${props.join('; ')} }>(library, ${
-    emitStringLiteral(view.path)
-  }, [${parameters.join(', ')}]);`
+  const binding = LibraryPublications.publishedViewBinding(view)
+  const declaration = `${scope}[${emitStringLiteral(view.name)}]`
+  const propsType = props.length === 0 ? 'TR.LibraryViewProps' : `TR.LibraryViewProps & { ${props.join('; ')} }`
+  return S`
+    export function ${binding}(props: ${propsType}) {
+       return TR.LibraryView(${declaration}, [${parameters.join(', ')}], props);
+    }
+  `
 }

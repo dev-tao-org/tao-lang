@@ -7,6 +7,7 @@ import * as RuntimeDependencyPolicy from '../expo/RuntimeDependencyPolicy'
 export { resolveRuntimeSingletonPackages } from '../expo/RuntimeDependencyPolicy'
 import { writeExpoApplication } from '../expo/Scaffold'
 import { findPreparedToolchain, prepareToolchain, type RuntimeInstaller } from '../expo/Toolchain'
+import { RuntimeLibraryResourceDirectory } from './RuntimeResources'
 
 /** RuntimePackageVersions maps package names to their pinned install specifications. */
 export type RuntimePackageVersions = Record<string, string>
@@ -127,6 +128,11 @@ export function runtimeTypeScriptPaths(resourceDirectory = defaultResourcesDirec
 /** resolveRuntimeResourcesDirectory pins a session to one immutable runtime generation. */
 export function resolveRuntimeResourcesDirectory(directory = defaultResourcesDirectory()): string {
   return FS.realpathSync(Path.resolve(directory))
+}
+
+/** libraryRuntimePackageDirectory locates the independent installer-facing runtime package. */
+export function libraryRuntimePackageDirectory(): string {
+  return Path.join(resolveRuntimeResourcesDirectory(), RuntimeLibraryResourceDirectory)
 }
 
 /** runtimeDependencies returns centrally pinned packages for the managed app and sidecar contracts. */
