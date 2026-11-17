@@ -36,6 +36,8 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   ImportPath: constructImportPath,
   ViewDeclaration: constructViewDeclaration,
   ViewRenderExpression: constructViewRenderExpression,
+  ActionDeclaration: constructActionDeclaration,
+  DoStatement: constructDoStatement,
   ExpectStatement: constructExpectStatement,
   Injection: constructInjection,
   InjectionCapture: constructCapture,
@@ -88,26 +90,48 @@ function constructFile(cst: CST.SyntaxNode): Generated.File {
 
 function constructViewDeclaration(cst: CST.SyntaxNode): Generated.ViewDeclaration {
   const body = CST.RequiredField(cst, 'body')
-  const parametersNode = cst.childForFieldName('parameters')
-  const parameters = constructChildren(parametersNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
   const implementation = Construct(body, ['Block', 'ForeignView'])
   return makeNode(cst, 'ViewDeclaration', {
     body: implementation,
     name: constructFieldNode(cst, 'name', 'Name'),
-    parameters,
+    parameters: constructParameters(cst),
     visibility: constructOptionalVisibility(cst),
   })
 }
 
+function constructActionDeclaration(cst: CST.SyntaxNode): Generated.ActionDeclaration {
+  return makeNode(cst, 'ActionDeclaration', {
+    name: constructFieldNode(cst, 'name', 'Name'),
+    parameters: constructParameters(cst),
+    block: constructFieldNode(cst, 'block', 'Block'),
+  })
+}
+
+function constructParameters(cst: CST.SyntaxNode): Generated.Parameter[] {
+  const parameters = cst.childForFieldName('parameters')
+  return constructChildren(parameters?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
+}
+
 function constructViewRenderExpression(cst: CST.SyntaxNode): Generated.ViewRenderExpression {
-  const argumentList = cst.childForFieldName('argumentList')
   const block = constructOptionalField(cst, 'block', 'Block')
   return makeNode(cst, 'ViewRenderExpression', {
-    arguments: constructChildren(argumentList?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral']),
+    arguments: constructArguments(cst),
     block,
     tag: constructOptionalField(cst, 'tag', 'RenderTag'),
     target: constructFieldNode(cst, 'view', 'Name'),
   })
+}
+
+function constructDoStatement(cst: CST.SyntaxNode): Generated.DoStatement {
+  return makeNode(cst, 'DoStatement', {
+    arguments: constructArguments(cst),
+    target: constructFieldNode(cst, 'target', 'Name'),
+  })
+}
+
+function constructArguments(cst: CST.SyntaxNode): Generated.Expression[] {
+  const argumentsNode = cst.childForFieldName('argumentList')
+  return constructChildren(argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral'])
 }
 
 function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatement {

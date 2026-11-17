@@ -1,8 +1,8 @@
-import type * as AST from '@ast-gen'
 import { NewlineCharacter } from '@shared'
 import type * as Typecheck from '@typecheck'
 
 import { emitStringLiteral, type ScopeCode } from './codegen-util'
+import type { NamedValue } from './codegen-util'
 
 /** ViewReferences collects only used imported bindings and preserves their original TypeScript symbols. */
 export type ViewReferences = {
@@ -14,11 +14,13 @@ export type ViewReferences = {
 export function createViewReferences(
   bindings: readonly Typecheck.ModuleBinding[],
   shadowed: ReadonlySet<string>,
+  liveLocalAliases: boolean,
 ): ViewReferences {
   const imports = new Map(bindings.map(binding => [binding.name, binding]))
   const used = new Map<string, Typecheck.ModuleBinding>()
   const scope = {
     value: '_Scope',
+    liveLocalAliases,
     resolveReference(name: string) {
       const binding = shadowed.has(name) ? undefined : imports.get(name)
       if (!binding) {
@@ -40,12 +42,14 @@ export function createViewReferences(
 }
 
 /** shadowReferences keeps block-local bindings from using an imported definition anchor. */
-export function shadowReferences(scope: ScopeCode, definitions: readonly AST.LetDeclaration[]): ScopeCode {
+export function shadowReferences(scope: ScopeCode, definitions: readonly NamedValue[]): ScopeCode {
   if (typeof scope === 'string') {
     return scope
   }
-  const names = new Set(definitions.map(definition => definition.name.value))
-  return { value: scope.value, resolveReference: name => names.has(name) ? undefined : scope.resolveReference(name) }
+  const names = new Set(
+    definitions.map(definition => typeof definition.name === 'string' ? definition.name : definition.name.value),
+  )
+  return { ...scope, resolveReference: name => names.has(name) ? undefined : scope.resolveReference(name) }
 }
 
 function createProjectionName(binding: Typecheck.ModuleBinding): string {

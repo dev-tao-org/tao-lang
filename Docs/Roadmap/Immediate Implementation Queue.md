@@ -52,10 +52,11 @@ Core-type and bracket design can proceed together. Implement the necessary type 
 
 Owner: [TypeScript libraries](TypeScript%20Library%20Decisions%20and%20PoC.md).
 
-The explicit imports and visibility migration is implemented in its review branch. [Projects and Dependencies](../Specification/Projects%20and%20Dependencies.md) owns source addressing; [TypeScript Libraries](../Specification/TypeScript%20Libraries.md) owns publication.
+The explicit imports and visibility migration is integrated into the coordinating branch and imported into Partial Review; human approval remains separate. [Projects and Dependencies](../Specification/Projects%20and%20Dependencies.md) owns source addressing; [TypeScript Libraries](../Specification/TypeScript%20Libraries.md) owns publication.
 
 - Add the explicit distribution build for already generated TypeScript source packages. Define its JavaScript and declaration targets and manifest rules.
 - Extend authored-sidecar package resolution and verify multiple independently compiled libraries share the installed Tao runtime in one consumer. The [source package implementation](TypeScript%20Library%20Decisions%20and%20PoC.md#generated-source-packages) covers explicit exports, single library initialization, ordinary TypeScript consumption and relocation.
+- Retained review finding: captured sidecars can reference undeclared npm packages that the generated manifest omits. Resolve this with authored-sidecar dependency validation and an independently installed consumer proof.
 
 Keep cross-library interaction requirements with this runtime boundary and the redesigned bracket system; do not restore the removed disabled implementation merely to satisfy an older task entry.
 
@@ -71,7 +72,11 @@ The runtime and its authored TypeScript expression API enforce synchronous, read
 
 ## 6. Actions, control flow and collections
 
-Implement local state and updates, scoped actions and event bindings, render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton only after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
+The first slice implements view-local text state, `set`, synchronous scoped actions with text arguments, explicit `do`, and the standard Button’s named and anonymous `on press` bindings. See [Local State and Data Drafts](../Specification/Local%20State%20and%20Data%20Drafts.md) and [Actions and Results](../Specification/Actions%20and%20Results.md).
+
+Later slices cover render/control-flow `when` and first-match `pick`, agreed `check`/`guard` scope behavior, aggregate action inspection and failure presentation. Add ActionButton after its action and bracket foundations. Track ordinary collection operations and iteration; resolve remaining key/identity questions before implementing those parts.
+
+Retained compiler review finding: module-level text and imported text aliases can still pass render-target validation and fail at runtime. General render-target validation owns this follow-up; the first state/action slice rejects local text targets.
 
 Implement writable field projections and mapped writable inputs with the state/record/input slices, retaining one authoritative storage owner. Use the previous writable-lens behavior as reference, not its compatibility wrappers. Define transaction overlays and rollback in the owning mutation/action slice; synchronous reactive batching alone does not provide rollback or authorize making every UI action transactional.
 

@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import { Switch } from '@shared'
-import { emitLiteral, getScopeValue, type ScopeCode } from './codegen-util'
-import { emitLetDeclaration, emitName } from './RuntimeEmitter'
+import { emitLiteral, getScopeValue, listMap, type ScopeCode } from './codegen-util'
+import { emitLetDeclaration, emitLocalAlias, emitName, emitStateDeclaration } from './RuntimeEmitter'
 
 /** compileExpression emits a literal or lexical scope lookup. */
 export function compileExpression(node: AST.Expression, scope: ScopeCode): string {
@@ -13,8 +13,26 @@ export function compileExpression(node: AST.Expression, scope: ScopeCode): strin
 
 /** compileLetDeclaration emits one ordered immutable scope binding. */
 export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode): string {
-  const value = compileExpression(node.value, scope)
-  return emitLetDeclaration(node, getScopeValue(scope), value)
+  const scopeName = getScopeValue(scope)
+  if (typeof scope !== 'string' && scope.liveLocalAliases && AST.IsKind(node.value, 'Name')) {
+    return emitLocalAlias(node, scopeName, node.value)
+  }
+  return emitLetDeclaration(node, scopeName, compileExpression(node.value, scope))
+}
+
+/** compileViewValueDeclaration emits one immutable name or retained state slot. */
+export function compileViewValueDeclaration(node: AST.ViewValueDeclaration, scope: ScopeCode): string {
+  return Switch.kind(node, {
+    LetDeclaration: definition => compileLetDeclaration(definition, scope),
+    StateDeclaration: definition =>
+      emitStateDeclaration(definition, getScopeValue(scope), compileExpression(definition.value, scope)),
+  })
+}
+
+type Invocation = AST.ViewRenderExpression | AST.DoStatement
+/** compileArguments emits the positional values of a view or action invocation. */
+export function compileArguments(node: Invocation, scope: ScopeCode): string {
+  return listMap(node.arguments, argument => compileExpression(argument, scope))
 }
 
 /** isTextParameter identifies a parameter declared with Tao's text type. */
@@ -29,7 +47,7 @@ export function isTextExpression(node: AST.Expression, resolveName: (name: AST.N
 
 /** collectTextBindings identifies implemented text expressions for native capture annotations. */
 export function collectTextBindings(
-  definitions: readonly AST.LetDeclaration[],
+  definitions: readonly AST.ViewValueDeclaration[],
   inherited: ReadonlySet<string> = new Set(),
   parameters: readonly AST.Parameter[] = [],
 ): ReadonlySet<string> {

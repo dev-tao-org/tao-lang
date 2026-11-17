@@ -111,7 +111,9 @@ In the agreed future behavior, core Tao controls honor inherited disabled state 
 
 #### `Tao.Text`, `Tao.View`, `Tao.TextInput`, `Tao.Pressable`
 
-These components provide the supported native presentation capabilities. `Tao.Pressable` groups
+These components provide the supported native presentation capabilities. A button wrapper can capture
+its authored `on press` handler as `@@press` and pass it to `Tao.Pressable` as `onPress`. When the
+caller supplies no handler, the capture is `undefined`. `Tao.Pressable` groups
 synchronous updates made by its `onPress` callback into one batch.
 
 #### `Tao.useWritable(() => value)`

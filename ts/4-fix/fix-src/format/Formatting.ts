@@ -29,6 +29,28 @@ export const Formatting = {
     fm.oneSpaceAfter('let')
     fm.oneSpaceAround('=', 'is')
   },
+  StateDeclaration(fm) {
+    fm.oneSpaceAfter('state')
+    fm.oneSpaceAround('=', 'is')
+  },
+  ActionDeclaration(fm) {
+    fm.oneSpaceAfter('action')
+    fm.noSpaceBeforeProperty('parameters')
+  },
+  SetStatement(fm) {
+    fm.oneSpaceAfter('set')
+    fm.oneSpaceAround('=')
+  },
+  DoStatement(fm) {
+    fm.oneSpaceAfter('do')
+    fm.noSpaceBeforeProperty('argumentList')
+  },
+  PressBinding(fm) {
+    fm.oneSpaceAfter('on', 'press')
+  },
+  InlineAction(fm) {
+    fm.oneSpaceAfter('->')
+  },
   RenderInjectStatement(fm) {
     fm.oneSpaceAfter('render')
   },

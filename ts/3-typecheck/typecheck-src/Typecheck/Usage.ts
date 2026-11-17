@@ -1,5 +1,6 @@
 import * as AST from '@ast-gen'
 import { Range, Source, Switch, Timings } from '@shared'
+import { visitActionReferences, visitPressReferences } from '../ActionReferences'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
@@ -90,26 +91,50 @@ function visitView(node: AST.ViewDeclaration, parent: Scope): void {
     reference(parent, parameter.type)
     declare(scope, parameter.name, 'local', reportUnusedParameters)
   }
-  const statements = AST.GetViewDeclarationStatements(node)
-  if (statements) {
-    for (const child of AST.GetNestedViewDeclarations(statements)) {
-      declare(scope, child.name)
+  const statements = AST.GetViewDeclarationStatements(node) ?? []
+  const actions = []
+  for (const statement of statements) {
+    if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration'])) {
+      declare(scope, statement.name)
     }
-    for (const statement of statements) {
-      Switch.kind(statement, {
-        LetDeclaration(definition) {
-          visitLet(definition, scope)
-          declare(scope, definition.name)
-        },
-        RenderViewExpressionStatement: render => visitRender(render.expression, scope),
-        RenderInjectStatement: render => visitInjection(render.injection, scope),
-        ViewDeclaration: view => visitView(view, scope),
-      })
+    if (AST.IsKind(statement, 'ActionDeclaration')) {
+      actions.push(statement)
     }
+  }
+  for (const statement of statements) {
+    visitViewStatement(statement, scope)
+  }
+  for (const action of actions) {
+    visitAction(action, scope)
   }
 }
 
-function visitLet(node: AST.LetDeclaration, scope: Scope): void {
+function visitViewStatement(node: AST.ViewDeclarationStatement, scope: Scope): void {
+  Switch.kind(node, {
+    LetDeclaration: definition => visitLocalValue(definition, scope),
+    StateDeclaration: definition => visitLocalValue(definition, scope),
+    ActionDeclaration: Switch.nothing,
+    RenderViewExpressionStatement: render => visitRender(render.expression, scope),
+    RenderInjectStatement: render => visitInjection(render.injection, scope),
+    ViewDeclaration: view => visitView(view, scope),
+  })
+}
+
+function visitAction(node: AST.ActionDeclaration, scope: Scope): void {
+  const actionScope = createChildScope(scope)
+  for (const parameter of node.parameters) {
+    reference(scope, parameter.type)
+    declare(actionScope, parameter.name)
+  }
+  visitActionReferences(node.block, name => reference(actionScope, name))
+}
+
+function visitLocalValue(node: AST.ViewValueDeclaration, scope: Scope): void {
+  visitLet(node, scope)
+  declare(scope, node.name)
+}
+
+function visitLet(node: AST.ViewValueDeclaration, scope: Scope): void {
   if (node.type) {
     reference(scope, node.type)
   }
@@ -130,10 +155,8 @@ function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
     const childrenScope = createChildScope(scope)
     for (const child of statements) {
       Switch.kind(child, {
-        LetDeclaration(definition) {
-          visitLet(definition, childrenScope)
-          declare(childrenScope, definition.name)
-        },
+        LetDeclaration: definition => visitLocalValue(definition, childrenScope),
+        PressBinding: binding => visitPressReferences(binding.handler, name => reference(childrenScope, name)),
         ViewRenderExpression: render => visitRender(render, childrenScope),
       })
     }

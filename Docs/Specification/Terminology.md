@@ -82,7 +82,7 @@ Source: [live previews](Live%20Previews.md); Canvas and content-placement entrie
   - **Apply (WIP)**: Publishing working-copy changes into project source.
   - **Autosave (WIP)**: Persisting local working state durably.
 - **Local storage (WIP)**: Proposed ignored `.tao/local/` storage for durable local authoring state, retained across ordinary cleanup.
-- **View state (WIP)**: A proposed view-local value retained across rerenders, with persistence and identity rules still being defined.
+- **View state (WIP)**: A value owned by a mounted view instance and retained across renders. Text state is implemented; persistence is planned.
   - **Data draft (WIP)**: A detached editable data value saved through explicit create or update.
 
 Sources: [local state and data drafts](Local%20State%20and%20Data%20Drafts.md), [current entry-source updates](../../ts/0-workspace/workspace-src/FileManager/FileManager.ts); general file working copies and `.tao/local/` are proposals.

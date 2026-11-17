@@ -55,6 +55,53 @@ export function emitLetDeclaration(node: AST.LetDeclaration, scope: string, valu
   return emitNamedDeclaration(node, scope, value)
 }
 
+/** emitLocalAlias makes a view-local name follow its lexical source. */
+export function emitLocalAlias(node: AST.LetDeclaration, scope: string, reference: AST.Name): string {
+  return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${
+    CodegenUtil.emitLiteral(reference)
+  });`
+}
+
+/** emitStateDeclaration initializes a view-owned state slot on the first render. */
+export function emitStateDeclaration(node: AST.StateDeclaration, scope: string, initial: string): string {
+  // Fast Refresh detects changes to a view's hook sequence through use-prefixed calls.
+  return `TR.useStateDeclaration(${scope}, ${CodegenUtil.compileName(node)}, () => ${initial});`
+}
+
+/** emitActionDeclaration installs a deferred named action in the view scope. */
+export function emitActionDeclaration(node: AST.ActionDeclaration, scope: string, body: string): string {
+  const parameters = CodegenUtil.listMap(node.parameters, CodegenUtil.compileName)
+  return S`
+    TR.useActionDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${parameters}, ${scope} => {
+      ${body}
+    });
+  `
+}
+
+/** emitSetStatement writes one lexical state binding. */
+export function emitSetStatement(node: AST.SetStatement, scope: CodegenUtil.ScopeCode, value: string): string {
+  return `TR.SetStatement(${CodegenUtil.getScopeValue(scope)}, ${CodegenUtil.emitLiteral(node.target)}, ${value});`
+}
+
+/** emitDoStatement invokes a lexically resolved action explicitly. */
+export function emitDoStatement(node: AST.DoStatement, scope: CodegenUtil.ScopeCode, values: string): string {
+  return `TR.DoStatement(${emitName(node.target, scope)}, ${values});`
+}
+
+/** emitInlineAction defers anonymous statements until the event fires. */
+export function emitInlineAction(scope: string, body: string): string {
+  return S`
+    TR.InlineAction(${scope}, ${scope} => {
+      ${body}
+    })
+  `
+}
+
+/** emitPressBinding registers a compiled action with the surrounding invocation. */
+export function emitPressBinding(handler: string): string {
+  return `TR.PressBinding(_BindPress, ${handler});`
+}
+
 /** emitModuleBinding installs a linked import without eagerly resolving module cycles. */
 export function emitModuleBinding(node: Typecheck.ModuleBinding, scope: string, targetScope: string): string {
   return emitAliasBinding(node, scope, emitName(node, targetScope))
@@ -98,7 +145,7 @@ export function emitName(node: EmittableName, scope: CodegenUtil.ScopeCode): str
   return reference ?? `${CodegenUtil.getScopeValue(scope)}[${CodegenUtil.compileReferenceName(node)}]`
 }
 
-type InjectionCaptureType = 'text' | 'children' | 'unknown'
+type InjectionCaptureType = 'text' | 'children' | 'press' | 'unknown'
 
 /** emitViewRenderExpression invokes an authored view with compiled arguments and block children. */
 export function emitViewRenderExpression(
@@ -106,9 +153,11 @@ export function emitViewRenderExpression(
   scope: CodegenUtil.ScopeCode,
   argumentsCode: string,
   children: string,
+  hasPress: boolean,
 ): string {
   const tag = node.tag ? `, ${CodegenUtil.emitLiteral(node.tag)}` : ''
-  const argumentsValue = `TR.ViewRenderArguments(${argumentsCode}, ${children}${tag})`
+  const prepareArguments = hasPress ? 'TR.ViewPressArguments' : 'TR.ViewRenderArguments'
+  const argumentsValue = `${prepareArguments}(${argumentsCode}, ${children}${tag})`
   return S`
     TR.ViewRenderExpression(
       ${emitName(node.target, scope)},
@@ -118,10 +167,12 @@ export function emitViewRenderExpression(
 }
 
 /** emitViewRenderBlock evaluates child statements within their own lexical scope. */
-export function emitViewRenderBlock(scope: CodegenUtil.ScopeCode, statements: string): string {
+export function emitViewRenderBlock(scope: CodegenUtil.ScopeCode, statements: string, hasPress: boolean): string {
   const value = CodegenUtil.getScopeValue(scope)
+  const operation = hasPress ? 'TR.ViewPressBlock' : 'TR.ViewRenderBlock'
+  const pressParameter = hasPress ? ', _BindPress' : ''
   return S`
-    TR.ViewRenderBlock(${value}, (${value}, _Children) => {
+    ${operation}(${value}, (${value}, _Children${pressParameter}) => {
       ${statements}
     })
   `
@@ -163,6 +214,7 @@ function emitCaptureParameter(capture: InjectionCapture): string {
 function getCaptureParameterType(capture: InjectionCapture): string {
   return Switch.property(capture, 'type', {
     children: () => "TR.ViewComponentProps['children']",
+    press: () => "TR.ViewComponentProps['press']",
     text: () => 'string',
     unknown: () => 'unknown',
   })

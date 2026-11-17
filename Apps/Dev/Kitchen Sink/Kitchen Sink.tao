@@ -1,6 +1,6 @@
 // Standard views are ordinary imported Tao declarations.
 // Project dependency declarations live in ../Dependencies.tao.
-use tao@ui Col, Input, Row, Text, Text as Caption
+use tao@ui Button, Col, Input, Row, Text, Text as Caption
 use ModuleCaption, ModuleCaption as ImportedCaption
 use @examples/details PackageBadge
 use ./Library LibraryGreeting
@@ -77,15 +77,13 @@ view Heading {
 
 package
 view SaveButton {
-  render inject ```ts
-    const status = Tao.useWritable(() => ({ captions: ['Save'] }))
-    const snapshot = Tao.useValue(status)
-    return (
-      <Tao.Pressable onPress={() => status.update({ captions: ['Saved'] })}>
-        <Tao.Text>{snapshot.captions[0]}</Tao.Text>
-      </Tao.Pressable>
-    )
-  ```
+  state Caption = "Save"
+  action Save() {
+    set Caption = "Saved"
+  }
+  render Button(Caption) {
+    on press Save
+  }
 }
 
 package
