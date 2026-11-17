@@ -39,7 +39,7 @@ With Remote Login enabled for the runner's existing macOS user, connect from the
 ./dev timing-connect ro@192.168.50.199
 ```
 
-For password-free repeat connections, run `just ssh-key-setup ro@192.168.50.199` in Terminal
+For password-free repeat connections, run `just setup-ssh-key ro@192.168.50.199` in Terminal
 on the controller. Choose a passphrase and unlock the key when macOS Keychain prompts. SSH may
 ask for the laptop's login password to install the public key. The recipe manages its own entry
 in `~/.ssh/config` and verifies a new login with the old socket and SSH agent disabled.
@@ -57,13 +57,13 @@ needed. Local Wi-Fi timing does not require this installation.
 On the timing Mac:
 
 ```sh
-just timing-setup runner
+just setup-timing runner
 ```
 
 On the controlling Mac:
 
 ```sh
-just timing-setup controller
+just setup-timing controller
 ./dev timing-connect ro@tao-timing.netbird.cloud
 ```
 
@@ -203,7 +203,7 @@ that already supports the performance skill's `summarize` operation.
 
 Use the snapshot/receive/SSH/transfer operations in the linked skill reference to prepare new source
 or compare historical checkpoints. Do not present repeated sessions of one checkpoint as a branch
-comparison. The older optional `just tailscale-install` command remains available for explicit use.
+comparison.
 
 ## Measurement conditions
 

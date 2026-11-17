@@ -69,7 +69,7 @@ function registerSnapshotCommands(command: Command): void {
 }
 
 function registerRemoteCommands(command: Command): void {
-  command.command('hosts').description('List SSH aliases and Tailscale peers; never choose or connect to a host.')
+  command.command('hosts').description('List configured SSH aliases.')
     .action(async () => printResult(await discoverHosts()))
   command.command('ssh').description('Run argv on a chosen POSIX host through existing SSH configuration.')
     .argument('<host>', 'Existing SSH alias or user@hostname.')

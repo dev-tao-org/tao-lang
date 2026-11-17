@@ -40,7 +40,7 @@ async function enrollKey(host: string, identity: string): Promise<void> {
 
 async function copyKeyToHost(host: string, identity: string): Promise<void> {
   if (!Terminal.isInteractive()) {
-    Errors.ThrowUserInput('Run just ssh-key-setup HOST in Terminal to enroll the key.')
+    Errors.ThrowUserInput('Run just setup-ssh-key HOST in Terminal to enroll the key.')
   }
   await prepareKey(host, identity)
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', ['--apple-use-keychain', identity])

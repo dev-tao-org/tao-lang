@@ -36,25 +36,19 @@ doctor *ARGS:
 
 # Configure optional automatic development environments for this repository and its worktrees
 [group('Setup')]
-shell-setup:
+setup-shell:
     ./dev shell-setup --configure
-
-# Install the official Tailscale macOS app; sign in and approve native prompts afterward
-[group('Setup')]
-[positional-arguments]
-tailscale-install *ARGS:
-    ./dev tailscale-install "$@"
 
 # Set up private timing networking for the controller or runner
 [group('Setup')]
 [positional-arguments]
-timing-setup ROLE *ARGS:
+setup-timing ROLE *ARGS:
     shift; exec ./dev {{ quote("timing-setup-" + ROLE) }} "$@"
 
 # Set up a dedicated SSH key for a selected machine
 [group('Setup')]
 [positional-arguments]
-ssh-key-setup HOST *ARGS:
+setup-ssh-key HOST *ARGS:
     ./dev ssh-key-setup "$@"
 
 # Measure on the dedicated timing runner. Use --local for a diagnostic on this Mac.
@@ -114,14 +108,6 @@ package-graph:
 [positional-arguments]
 verify *ARGS:
     ./dev verify "$@"
-
-# Dev branch management
-#######################
-
-# Switch to your existing personal dev/* branch
-[group('Dev Branch Management')]
-my-branch name='':
-    ./dev my-branch {{ quote(name) }}
 
 # Dev environment services
 ##########################

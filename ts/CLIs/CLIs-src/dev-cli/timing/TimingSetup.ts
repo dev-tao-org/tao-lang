@@ -45,7 +45,7 @@ export async function setupTiming(options: TimingSetup): Promise<void> {
   }
   if (!io.interactive) {
     Errors.ThrowUserInput(
-      `Run just timing-setup ${options.role} in Terminal for administrator authorization and login.`,
+      `Run just setup-timing ${options.role} in Terminal for administrator authorization and login.`,
     )
   }
   await retainPackage(io, packageDirectory)

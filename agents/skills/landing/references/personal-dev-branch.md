@@ -16,15 +16,13 @@ is `merged/<name>/<utc>`.
 
 The branch is gone, so create it again from `main` in this worktree:
 
-```
-./dev my-branch
+```sh
+git switch -c dev/<name> main
 ```
 
-`./dev my-branch` creates `dev/<name>` from `main` when the branch does not exist. Pass the name
-when this checkout has no `tao.devBranch` and no `TAO_DEV_BRANCH`. The new `dev/<name>` branch points at `main`. Do not
-push it unless the Developer asks.
+Replace `<name>` with the personal branch suffix. Push only if the Developer asks.
 
-- Create it from `main`, which is what `./dev my-branch` does. The detached HEAD after land is the
+- Create it from `main`. The detached HEAD after land is the
   pre-squash tip, and a branch created there diverges from the squash.
 - Do not cherry-pick the landed commits. They are already the squash on `main`. Cherry-pick only a
   commit that is not contained in `main`.
@@ -53,6 +51,6 @@ edit or commit request.
 
 Do not commit on `main`. If this worktree is on `main` with the person's uncommitted work, and
 `dev/<name>` is missing or already contained in `main`, move that work onto `dev/<name>` at current
-`main` before committing. `./dev my-branch` does this when the branch is missing. When the branch
+`main` before committing. Use `git switch -c dev/<name> main` when the branch is missing. When the branch
 exists and is behind `main`, `git switch -C dev/<name>` resets it onto current `main` and keeps the
 uncommitted work; use it only when the old tip is an ancestor of `main`.
