@@ -7,8 +7,7 @@ import * as Typecheck from '@typecheck'
 
 import * as Paths from '../modules/Paths'
 import type { ContractExecutor } from '../sidecars/ForeignViewContracts'
-import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
-import { collectModuleSpecifiers, getFileExtension } from './Imports'
+import * as Imports from './Imports'
 import * as Snapshots from './Snapshots'
 
 /** SidecarPipelineOptions defines one compiler check and immutable sidecar snapshot. */
@@ -240,33 +239,28 @@ async function collectFileClosure(
     watchFiles.add(safePath)
     const contents = await FS.readFile(safePath)
     group.files.set(path, contents)
-    if (!isTypeScriptSource(path)) {
+    if (!Imports.isScriptSource(path)) {
       continue
     }
+    const declaration = await Imports.findScriptDeclaration(
+      path,
+      candidate => watchAttemptedPath(candidate, moduleRoot, watchFiles),
+    )
+    if (declaration) {
+      pending.push(declaration)
+    }
     const source = Text.decodeUtf8(contents)
-    for (const specifier of collectModuleSpecifiers(source)) {
+    for (const specifier of Imports.collectModuleSpecifiers(source)) {
       if (!specifier.startsWith('.')) {
         continue
       }
-      const target = await resolveRelativeImport(Path.resolve(Path.dirname(path), specifier), moduleRoot, watchFiles)
+      const target = await Imports.resolveRelativeImport(
+        Path.resolve(Path.dirname(path), specifier),
+        candidate => watchAttemptedPath(candidate, moduleRoot, watchFiles),
+      )
       pending.push(await resolveSafeModuleFile(target, moduleRoot, projectDirectory))
     }
   }
-}
-
-async function resolveRelativeImport(path: string, moduleRoot: string, watchFiles: Set<string>): Promise<string> {
-  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.json', ...sidecarAssetExtensions]
-  const candidates = getFileExtension(path) ? [path] : [
-    ...suffixes.map(suffix => `${path}${suffix}`),
-    ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
-  ]
-  for (const candidate of candidates) {
-    watchAttemptedPath(candidate, moduleRoot, watchFiles)
-    if (await FS.exists(candidate) && FS.lstatSync(candidate).isFile()) {
-      return candidate
-    }
-  }
-  Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
 }
 
 async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDirectory: string): Promise<string> {
@@ -342,8 +336,4 @@ function fingerprintFor(
       `${left.root}/${left.path}/${left.name}`.localeCompare(`${right.root}/${right.path}/${right.name}`)
     ),
   }, { prettyPrint: false }))
-}
-
-function isTypeScriptSource(path: string): boolean {
-  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx'].includes(getFileExtension(path))
 }

@@ -2,6 +2,8 @@
 
 A TypeScript library publishes selected Tao views as typed React components.
 
+Tao compilation validates Tao declarations and captures sidecar dependencies. The emitted package's TypeScript check validates sidecar exports and types; source emission itself does not run that check.
+
 ```tao
 use tao@ui Text
 
@@ -17,7 +19,7 @@ view Greeting(First text, Second text) {
 
 #### `publish { Greeting, @cards, }`
 
-A `ts-library` declares one `publish` block. Separate its entries with commas. A trailing comma is optional. An individual public view becomes a named root export. A local `@cards` package exposes its public views from the corresponding `@cards` subpath. A view in `@cards/details` is exported from `@cards/details`. Private helpers and dependencies remain internal.
+A `ts-library` declares one `publish` block. Separate its entries with commas. A trailing comma is optional. An individual public view becomes a named root export. A local `@cards` package exposes its public declarations from the corresponding `@cards` subpath. Publication currently supports only views with text parameters and rejects unsupported public declarations rather than silently omitting them. A view in `@cards/details` is exported from `@cards/details`. Private helpers and dependencies remain internal.
 
 #### Compiling the library
 

@@ -1,11 +1,49 @@
-import { Json } from '@shared'
-import { Path } from '@shared/os'
+import { Errors, Json } from '@shared'
+import { FS, Path } from '@shared/os'
 import { TypeScript } from '../../../shared/shared-src/bridges/Bridge_typescript'
+import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
 
 type ModuleSpecifierNode = TypeScript.Node | undefined
 
-/** getFileExtension returns the final extension used to resolve a sidecar dependency. */
-export const getFileExtension = Path.extname
+/** resolveRelativeImport resolves a sidecar source or asset and records attempted paths for invalidation. */
+export async function resolveRelativeImport(path: string, watch: (candidate: string) => void): Promise<string> {
+  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.mjs', '.cjs', '.json', ...sidecarAssetExtensions]
+  const candidates = Path.extname(path) ? [path] : [
+    ...suffixes.map(suffix => `${path}${suffix}`),
+    ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
+  ]
+  for (const candidate of candidates) {
+    watch(candidate)
+    if (await FS.exists(candidate) && FS.lstatSync(candidate).isFile()) {
+      return candidate
+    }
+  }
+  Errors.ThrowUserInput(`Cannot resolve foreign view sidecar import: ${path}`)
+}
+
+/** isScriptSource identifies TypeScript and JavaScript modules whose imports need capture. */
+export function isScriptSource(path: string): boolean {
+  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'].includes(Path.extname(path))
+}
+
+const ScriptDeclarationExtensions = new Map([
+  ['.js', '.d.ts'],
+  ['.jsx', '.d.ts'],
+  ['.mjs', '.d.mts'],
+  ['.cjs', '.d.cts'],
+])
+
+/** findScriptDeclaration captures an authored JavaScript module's optional declaration companion. */
+export async function findScriptDeclaration(path: string, watch: (candidate: string) => void) {
+  const extension = Path.extname(path)
+  const suffix = ScriptDeclarationExtensions.get(extension)
+  if (!suffix) {
+    return undefined
+  }
+  const candidate = path.slice(0, -extension.length) + suffix
+  watch(candidate)
+  return await FS.exists(candidate) ? candidate : undefined
+}
 
 /** collectModuleSpecifiers finds imports, exports, and require calls in TypeScript source. */
 export function collectModuleSpecifiers(source: string): string[] {
@@ -43,6 +81,12 @@ function visitModuleSpecifiers(node: TypeScript.Node, visit: SpecifierVisitor): 
   }
   if (TypeScript.isCallExpression(node) && isModuleLoader(node.expression)) {
     visitLiteralSpecifier(node.arguments[0], visit)
+  }
+  if (TypeScript.isImportTypeNode(node) && TypeScript.isLiteralTypeNode(node.argument)) {
+    visitLiteralSpecifier(node.argument.literal, visit)
+  }
+  if (TypeScript.isExternalModuleReference(node)) {
+    visitLiteralSpecifier(node.expression, visit)
   }
   TypeScript.forEachChild(node, child => visitModuleSpecifiers(child, visit))
 }

@@ -17,7 +17,16 @@ export type PublishedView = {
 export type LibraryPublication = {
   declaration: AST.PublishDeclaration
   ownSources: ReadonlySet<string>
-  packageRoots: ReadonlyMap<string, string>
+  packageRoots: PublishedPackageRoots
+}
+
+/** PublishedPackageRoots maps local published package names to their authored roots. */
+export type PublishedPackageRoots = ReadonlyMap<string, string>
+
+/** publishedViewBinding names the shared implementation binding for a public component. */
+export function publishedViewBinding(view: PublishedView): string {
+  const packageIdentity = Platform.hashText(view.subpath).slice(0, 12)
+  return `Published_${view.name}_${packageIdentity}`
 }
 
 /** requireLibraryPublication selects the single publish block of a validated library. */
@@ -135,10 +144,4 @@ function assertUniquePublications(views: readonly PublishedView[]): void {
 
 function publishedViewKey(view: PublishedView): string {
   return `${view.subpath}/${view.name}`
-}
-
-/** publishedViewBinding names the shared implementation binding for a public component. */
-export function publishedViewBinding(view: PublishedView): string {
-  const packageIdentity = Platform.hashText(view.subpath).slice(0, 12)
-  return `Published_${view.name}_${packageIdentity}`
 }

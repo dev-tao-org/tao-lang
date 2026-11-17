@@ -49,9 +49,11 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   }, parser)
   const ownSources = new Set(modules.filter(module => module.project?.root === root).map(module => module.path))
   const program = Typecheck.linkModules(entry, modules)
-  const sidecars = await captureLibrarySidecars(program, root, packageRoots)
   const selection = { declaration: publication, ownSources, packageRoots }
-  const library = Compile.compileLibrary(program, selection, sidecars.resolveImport)
+  const views = Compile.collectLibraryPublications(program, selection)
+  const specifiers = Compile.collectLibraryPackageSpecifiers(views)
+  const sidecars = await captureLibrarySidecars(program, root, specifiers)
+  const library = Compile.compileLibrary(program, views, sidecars.resolveImport)
   const packageFiles = await compileLibraryFiles(library, program, request.name)
   const output = Path.resolve(request.out)
   await FS.mkdir(Path.dirname(output))
@@ -65,7 +67,7 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
 async function resolvePublishedPackageRoots(
   root: string,
   publication: AST.PublishDeclaration,
-): Promise<Map<string, string>> {
+): Promise<Compile.PublishedPackageRoots> {
   const names = publication.members.map(member => member.value).filter(name => name.startsWith('@'))
   const packages = new Map<string, string>()
   for (const name of Lists.unique(names)) {
@@ -78,7 +80,7 @@ async function resolvePublishedPackageRoots(
   return packages
 }
 
-async function listPublishedPackageSources(root: string, packages: ReadonlyMap<string, string>): Promise<string[]> {
+async function listPublishedPackageSources(root: string, packages: Compile.PublishedPackageRoots): Promise<string[]> {
   const sources = await Promise.all(
     [...packages.values()].map(directory => listRecursiveSourceFiles(directory, directory, root)),
   )

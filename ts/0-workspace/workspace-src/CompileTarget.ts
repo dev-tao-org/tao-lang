@@ -48,7 +48,7 @@ export async function resolveLibraryCompileTarget(
 ): Promise<CompileTarget> {
   const configuration = explicitEntry === undefined
     ? await requireCompileConfiguration(directory)
-    : await readOptionalCompileConfiguration(directory)
+    : undefined
   const entry = explicitEntry ?? Path.resolve(directory, configuration!.entry)
   const document = await readCompileDocument(entry)
   if (AST.GetTypeScriptLibraryDeclarations(document, library).length !== 1) {
@@ -66,10 +66,4 @@ async function readCompileDocument(entry: string): Promise<AST.Document> {
 async function requireCompileConfiguration(directory: string) {
   const manifest = await readTypeScriptProjectPackage(directory)
   return manifest.compile ?? Errors.ThrowUserInput('Configure tao.compile in the authored package.json.')
-}
-
-async function readOptionalCompileConfiguration(directory: string) {
-  if (FS.existsSync(Path.join(directory, 'package.json'))) {
-    return (await readTypeScriptProjectPackage(directory)).compile
-  }
 }

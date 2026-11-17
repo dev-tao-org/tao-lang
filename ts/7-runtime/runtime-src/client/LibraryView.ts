@@ -8,10 +8,9 @@ export type LibraryViewProps = { children?: React.ReactNode }
 export function LibraryView<Props extends LibraryViewProps>(
   view: View,
   parameters: readonly (keyof Props)[],
-): React.ComponentType<Props> {
-  return function PublishedView(props: Props) {
-    const values = parameters.map(parameter => props[parameter])
-    const children = React.Children.toArray(props.children)
-    return ViewRenderExpression(view, ViewRenderArguments(values, children))
-  }
+  props: Props,
+): React.ReactNode {
+  const values = parameters.map(parameter => props[parameter])
+  const children = React.Children.toArray(props.children)
+  return ViewRenderExpression(view, ViewRenderArguments(values, children))
 }

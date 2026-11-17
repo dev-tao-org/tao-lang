@@ -33,11 +33,16 @@ export function createGeneratedPaths(program: Typecheck.LinkedProgram): Generate
 
 /** compileModuleImport emits a portable import between two generated source units. */
 export function compileModuleImport(from: string, to: string): string {
+  return emitStringLiteral(resolveModuleSpecifier(from, to))
+}
+
+/** resolveModuleSpecifier resolves an unquoted portable reference between generated TypeScript sources. */
+export function resolveModuleSpecifier(from: string, to: string): string {
   const relative = Path.relative(Path.dirname(from), to).replaceAll('\\', '/').replace(
     Regxs.TypeScriptSourceExtensionRegx,
     '',
   )
-  return emitStringLiteral(Path.toRelativeModuleSpecifier(relative))
+  return Path.toRelativeModuleSpecifier(relative)
 }
 
 /** resolveViewsPath names the component-only category of an input file. */

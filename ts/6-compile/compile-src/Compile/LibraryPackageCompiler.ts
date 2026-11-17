@@ -41,6 +41,11 @@ type LibraryPackageExports = Record<string, string>
 type LibraryPackageFiles = Record<string, string>
 type LibraryLocalPaths = Record<string, string[]>
 
+/** collectLibraryPackageSpecifiers lists the exact local facade addresses emitted for publications. */
+export function collectLibraryPackageSpecifiers(views: readonly PublishedView[]): ReadonlySet<string> {
+  return new Set([...groupPublishedViews(views).keys()].filter(path => path !== '.').map(path => path.slice(2)))
+}
+
 function groupPublishedViews(views: readonly PublishedView[]): Map<string, PublishedView[]> {
   const groups = new Map<string, PublishedView[]>([['.', []]])
   for (const view of views) {

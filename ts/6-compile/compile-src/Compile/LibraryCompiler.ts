@@ -18,10 +18,9 @@ export type CompiledLibrary = { files: CompiledFiles; views: readonly LibraryPub
 /** compileLibrary reuses compiled Tao module bodies and initializes one scope per loaded library. */
 export function compileLibrary(
   program: Typecheck.LinkedProgram,
-  publication: LibraryPublications.LibraryPublication,
+  views: readonly LibraryPublications.PublishedView[],
   resolveForeignViewPath: ForeignViewPathResolver,
 ): CompiledLibrary {
-  const views = LibraryPublications.collectLibraryPublications(program, publication)
   const sources = compileModuleSources(program, resolveForeignViewPath)
   const scope = compileLibraryBootstrap(program, views, sources.paths)
   const files = { ...sources.files, [LibraryScopePath]: scope }
@@ -55,5 +54,9 @@ function compilePublicComponent(view: LibraryPublications.PublishedView, scope: 
   const binding = LibraryPublications.publishedViewBinding(view)
   const declaration = `${scope}[${emitStringLiteral(view.name)}]`
   const propsType = props.length === 0 ? 'TR.LibraryViewProps' : `TR.LibraryViewProps & { ${props.join('; ')} }`
-  return `export const ${binding} = TR.LibraryView<${propsType}>(${declaration}, [${parameters.join(', ')}]);`
+  return S`
+    export function ${binding}(props: ${propsType}) {
+       return TR.LibraryView(${declaration}, [${parameters.join(', ')}], props);
+    }
+  `
 }

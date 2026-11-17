@@ -1,8 +1,10 @@
+import * as Compile from '@compile'
 import { Errors, Regxs } from '@shared'
 import { Path, Text } from '@shared/os'
 import * as Typecheck from '@typecheck'
+import { SidecarAssetDeclarations } from '../sidecars/SidecarAssets'
 
-import { rewriteModuleSpecifiers } from './Imports'
+import { isScriptSource, rewriteModuleSpecifiers } from './Imports'
 import { collectLibrarySidecars } from './SidecarPipeline'
 
 /** LibrarySidecars supplies portable source bytes and program-owned foreign view imports. */
@@ -15,10 +17,11 @@ export type LibrarySidecars = {
 export async function captureLibrarySidecars(
   program: Typecheck.LinkedProgram,
   projectRoot: string,
-  packageNames: ReadonlyMap<string, string>,
+  packageNames: ReadonlySet<string>,
 ): Promise<LibrarySidecars> {
   const groups = await collectLibrarySidecars(program, projectRoot)
   const files = new Map<string, Uint8Array>()
+  files.set('ts/tao-assets.d.ts', Text.encodeUtf8(SidecarAssetDeclarations))
   const targets = new Map<string, string>()
   for (const [index, group] of groups.entries()) {
     const directory = `ts/sidecars/${index + 1}`
@@ -41,19 +44,18 @@ export async function captureLibrarySidecars(
       const source = Path.resolve(Path.dirname(modulePath), authoredPath)
       const key = Typecheck.createModuleMemberKey(modulePath, source)
       const target = targets.get(key) ?? Errors.ThrowShouldNeverHappen(`Missing library sidecar: ${authoredPath}.`)
-      return relativeImport(outputPath, target)
+      return Compile.resolveModuleSpecifier(outputPath, target)
     },
   }
 }
 
-const EmptyPackageNames: ReadonlyMap<string, string> = new Map()
+const EmptyPackageNames: ReadonlySet<string> = new Set()
 
-const ScriptExtensionRegx = /\.[cm]?jsx?$/
-function prepareSidecarBytes(path: string, bytes: Uint8Array, packageNames: ReadonlyMap<string, string>): Uint8Array {
+function prepareSidecarBytes(path: string, bytes: Uint8Array, packageNames: ReadonlySet<string>): Uint8Array {
   if (Regxs.TaoSourceExtensionRegx.test(path)) {
     Errors.ThrowUserInput(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
   }
-  if (!Regxs.TypeScriptModuleExtensionRegx.test(path) && !ScriptExtensionRegx.test(path)) {
+  if (!isScriptSource(path)) {
     return bytes
   }
   const source = Text.decodeUtf8(bytes)
@@ -61,27 +63,18 @@ function prepareSidecarBytes(path: string, bytes: Uint8Array, packageNames: Read
   return Text.encodeUtf8(rewritten)
 }
 
-function resolveModuleSpecifier(path: string, specifier: string, packageNames: ReadonlyMap<string, string>): string {
+function resolveModuleSpecifier(path: string, specifier: string, packageNames: ReadonlySet<string>): string {
   if (Path.isAbsolute(specifier) || specifier.startsWith('file:')) {
     Errors.ThrowUserInput(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
   }
   if (specifier === '@tao/runtime-api') {
     return '@tao/runtime/runtime-api'
   }
-  const packageName = specifier.split('/')[0]!
-  if (!packageNames.has(packageName)) {
+  if (!packageNames.has(specifier)) {
     return specifier
   }
   if (Path.posix.normalize(specifier) !== specifier) {
     Errors.ThrowUserInput(`Invalid published Tao package subpath: ${specifier}.`)
   }
-  return relativeImport(path, `ts/${specifier}.ts`)
-}
-
-function relativeImport(from: string, to: string): string {
-  const relative = Path.toPortablePath(Path.relative(Path.dirname(from), to)).replace(
-    Regxs.TypeScriptSourceExtensionRegx,
-    '',
-  )
-  return Path.toRelativeModuleSpecifier(relative)
+  return Compile.resolveModuleSpecifier(path, `ts/${specifier}.ts`)
 }

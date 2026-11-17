@@ -61,6 +61,7 @@ Tests.test(
     const alias = root + '-alias'
     await Try(async () => {
       await createDependencyWrapper(root)
+      await usePublishedPackageInSidecar(root)
       const options = await createProjectDependencyOptions(root)
       await prepareDependencies(root, await options.readRequirements(root), options)
       await FS.symlink(root, alias, 'dir')
@@ -75,7 +76,8 @@ Tests.test(
       Tests.expect(manifest).not.toContain('"./Widget"')
       const view = await FS.readFile(Path.join(output, 'ts/dependencies/Widgets/@ui/Widget.views.tsx'), 'utf8')
       Tests.expect(view).toContain('Prepared dependency output')
-      await installRelocatedLibrary(root, output, '@tao-dev/ts-lib-example')
+      const library = await installRelocatedLibrary(root, output, '@tao-dev/ts-lib-example')
+      await Exec.captureStdout('tsc', ['--project', Path.join(library, 'ts/tsconfig.json')])
       await verifyInstalledConsumer(root)
     }, {
       async finally() {
@@ -92,7 +94,6 @@ Tests.test('library compilation requires a prepared external dependency without 
   const root = await createStandaloneLibraryFixture()
   await Try(async () => {
     await createDependencyWrapper(root)
-    await usePublishedPackageInSidecar(root)
     const lock = Path.join(root, '.tao/store/dependencies.lock.json')
     Tests.expect(await FS.exists(lock)).toBe(false)
     await Tests.rejects(
@@ -146,14 +147,33 @@ async function createDependencyWrapper(root: string): Promise<void> {
 }
 
 async function usePublishedPackageInSidecar(root: string): Promise<void> {
-  const path = Path.join(root, 'src/ts/ForeignGreeting.tsx')
+  const directory = Path.join(root, 'src/tao')
+  const path = Path.join(directory, 'PortableGreeting.tsx')
+  const declaration = Path.join(directory, 'LanguageFeatures.tao')
+  const source = await FS.readFile(declaration, 'utf8')
+  await FS.writeFile(declaration, source.replace('../ts/ForeignGreeting.tsx', './PortableGreeting.tsx'))
+  await FS.writeFile(
+    Path.join(directory, 'GreetingProps.ts'),
+    "export type GreetingProps = import('@cards/external').Fields & { Value: string; Logo?: typeof import('./logo.png').default }",
+  )
+  const external = Path.join(root, 'src/ts/node_modules/@cards/external')
+  await FS.mkdir(external)
+  await FS.writeJson(Path.join(external, 'package.json'), { name: '@cards/external', types: './Types.d.ts' })
+  await FS.writeFile(Path.join(external, 'Types.d.ts'), 'export type Fields = { Optional?: string }')
+  await FS.writeFile(Path.join(directory, 'prefix.mjs'), "export { default } from './prefix-value.mjs'")
+  await FS.writeFile(Path.join(directory, 'prefix.d.mts'), 'declare const Prefix: string; export default Prefix')
+  await FS.writeFile(Path.join(directory, 'prefix-value.mjs'), "export default 'Foreign view: '")
+  await FS.writeFile(Path.join(directory, 'logo.png'), new Uint8Array([137, 80, 78, 71]))
   await FS.writeFile(
     path,
     S`
       import { Caption } from '@cards'
+      import Prefix from './prefix.mjs'
+      type Props = import('./GreetingProps').GreetingProps
+      const CaptionAlias = Caption
 
-      export function ForeignGreeting({ Value }: { Value: string }) {
-        return <Caption Value={'Foreign view: ' + Value} />
+      export function ForeignGreeting({ Value }: Props) {
+        return <CaptionAlias Value={Prefix + Value} />
       }
     `,
   )

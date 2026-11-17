@@ -43,9 +43,21 @@ Source7.bindDeclarations(_scope7);
 Source4.initializeFileCaption(_scope4);
 Source4.initializeEscapedCaption(_scope4);
 
-export const Published_Greeting_cdb4ee2aea69 = TR.LibraryView<TR.LibraryViewProps & { "First": string; "Second": string }>(_scope0["Greeting"], ["First", "Second"]);
-export const Published_Panel_cdb4ee2aea69 = TR.LibraryView<TR.LibraryViewProps>(_scope0["Panel"], []);
-export const Published_LanguageFeatures_cdb4ee2aea69 = TR.LibraryView<TR.LibraryViewProps & { "Name": string }>(_scope4["LanguageFeatures"], ["Name"]);
-export const Published_ValueSnapshots_cdb4ee2aea69 = TR.LibraryView<TR.LibraryViewProps>(_scope6["ValueSnapshots"], []);
-export const Published_Caption_74c02d3abcd9 = TR.LibraryView<TR.LibraryViewProps & { "Value": string }>(_scope1["Caption"], ["Value"]);
-export const Published_DetailedCard_7eaeef3b4616 = TR.LibraryView<TR.LibraryViewProps & { "Value": string }>(_scope3["DetailedCard"], ["Value"]);
+export function Published_Greeting_cdb4ee2aea69(props: TR.LibraryViewProps & { "First": string; "Second": string }) {
+   return TR.LibraryView(_scope0["Greeting"], ["First", "Second"], props);
+}
+export function Published_Panel_cdb4ee2aea69(props: TR.LibraryViewProps) {
+   return TR.LibraryView(_scope0["Panel"], [], props);
+}
+export function Published_LanguageFeatures_cdb4ee2aea69(props: TR.LibraryViewProps & { "Name": string }) {
+   return TR.LibraryView(_scope4["LanguageFeatures"], ["Name"], props);
+}
+export function Published_ValueSnapshots_cdb4ee2aea69(props: TR.LibraryViewProps) {
+   return TR.LibraryView(_scope6["ValueSnapshots"], [], props);
+}
+export function Published_Caption_74c02d3abcd9(props: TR.LibraryViewProps & { "Value": string }) {
+   return TR.LibraryView(_scope1["Caption"], ["Value"], props);
+}
+export function Published_DetailedCard_7eaeef3b4616(props: TR.LibraryViewProps & { "Value": string }) {
+   return TR.LibraryView(_scope3["DetailedCard"], ["Value"], props);
+}

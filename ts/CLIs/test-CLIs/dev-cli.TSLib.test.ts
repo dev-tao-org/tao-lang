@@ -87,6 +87,7 @@ Tests.test('unified compile rejects unknown and ambiguous targets and still comp
   await Tests.expect(Workspace.resolveCompileTarget(root)).rejects.toThrow('found 2 matching targets')
   await Tests.expect(Workspace.resolveCompileTarget(root, 'Missing')).rejects.toThrow('found 0 matching targets')
   Tests.expect((await Workspace.resolveCompileTarget(root, 'Two')).target).toBe('Two')
+  await FS.writeJson(Path.join(root, 'package.json'), { private: true, tao: { run: false } })
   const standalone = Path.join(root, 'exported')
   await Exec.captureStdout(Repo.resolvePath('tao'), ['compile', entry, '--ts-lib', 'Two', '--out', standalone], {
     cwd: root,
