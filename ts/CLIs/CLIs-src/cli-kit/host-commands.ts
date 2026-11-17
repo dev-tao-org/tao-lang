@@ -40,7 +40,6 @@ const developerCommands = new Set([
   'setup',
   'dependency-add',
   'agent-config',
-  'my-branch',
   'fmt',
   'fix',
   'check',

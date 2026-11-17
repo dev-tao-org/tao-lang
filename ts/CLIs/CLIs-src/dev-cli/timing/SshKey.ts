@@ -40,7 +40,7 @@ async function enrollKey(host: string, identity: string): Promise<void> {
 }
 
 async function copyKeyToHost(host: string, identity: string): Promise<void> {
-  UserInput.require(!!Terminal.isInteractive(), 'Run just ssh-key-setup HOST in Terminal to enroll the key.')
+  UserInput.require(!!Terminal.isInteractive(), 'Run just setup-ssh-key HOST in Terminal to enroll the key.')
   await prepareKey(host, identity)
   await CLIKit.runInteractiveCommand('/usr/bin/ssh-add', ['--apple-use-keychain', identity])
   IO.print(`Installing the public key on ${host}. SSH may ask for the remote login password once.`)

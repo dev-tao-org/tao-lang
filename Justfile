@@ -36,56 +36,20 @@ doctor *ARGS:
 
 # Configure optional automatic development environments for this repository and its worktrees
 [group('Setup')]
-shell-setup:
+setup-shell:
     ./dev shell-setup --configure
 
-# Install the official Tailscale macOS app; sign in and approve native prompts afterward
+# Set up private timing networking for the controller or runner
 [group('Setup')]
 [positional-arguments]
-tailscale-install *ARGS:
-    ./dev tailscale-install "$@"
-
-# Install/start CLI-only private networking and sign in on this controller Mac
-[group('Setup')]
-[positional-arguments]
-timing-setup-controller *ARGS:
-    ./dev timing-setup-controller "$@"
-
-# Install/start CLI-only private networking and sign in on the timing Mac
-[group('Setup')]
-[positional-arguments]
-timing-setup-runner *ARGS:
-    ./dev timing-setup-runner "$@"
-
-# Authenticate an existing SSH login and return here without opening a remote shell
-[group('Performance')]
-[positional-arguments]
-timing-connect HOST *ARGS:
-    ./dev timing-connect "$@"
+setup-timing ROLE *ARGS:
+    shift; exec ./dev {{ quote("timing-setup-" + ROLE) }} "$@"
 
 # Set up a dedicated SSH key for a selected machine
 [group('Setup')]
 [positional-arguments]
-ssh-key-setup HOST *ARGS:
+setup-ssh-key HOST *ARGS:
     ./dev ssh-key-setup "$@"
-
-# Initialize shared ~/.tao-dev timing storage without installing network software
-[group('Performance')]
-[positional-arguments]
-timing-home *ARGS:
-    ./dev timing-home "$@"
-
-# Close the saved reusable SSH connection to the timing Mac
-[group('Performance')]
-[positional-arguments]
-timing-disconnect HOST *ARGS:
-    ./dev timing-disconnect "$@"
-
-# Connect, measure, print and close a private one-shot timing session
-[group('Performance')]
-[positional-arguments]
-timing-session HOST CHECKOUT *ARGS:
-    ./dev timing-session "$@"
 
 # Measure on the dedicated timing runner. Use --local for a diagnostic on this Mac.
 [group('Performance')]
@@ -93,29 +57,11 @@ timing-session HOST CHECKOUT *ARGS:
 timing *ARGS:
     ./dev timing "$@"
 
-# Repeat measurements in an immutable runner checkout; source is not synchronized
-[group('Performance')]
-[positional-arguments]
-timing-run HOST CHECKOUT *ARGS:
-    ./dev timing-run "$@"
-
-# Compare preview timings across prepared baseline and candidate revisions
-[group('Performance')]
-[positional-arguments]
-timing-compare HOST BASELINE CANDIDATE *ARGS:
-    ./dev timing-compare "$@"
-
 # Follow the timing laptop over SSH; pass --local to follow this machine
 [group('Performance')]
 [positional-arguments]
 timing-watch *ARGS:
     ./dev timing-watch "$@"
-
-# Print a retained timing report without launching measurements
-[group('Performance')]
-[positional-arguments]
-timing-report HOST CHECKOUT *ARGS:
-    ./dev timing-report "$@"
 
 # Remove dependencies owned by the new TypeScript workspace
 [group('Setup')]
@@ -163,14 +109,6 @@ package-graph:
 verify *ARGS:
     ./dev verify "$@"
 
-# Dev branch management
-#######################
-
-# Switch to your existing personal dev/* branch
-[group('Dev Branch Management')]
-my-branch name='':
-    ./dev my-branch {{ quote(name) }}
-
 # Dev environment services
 ##########################
 
@@ -178,12 +116,6 @@ my-branch name='':
 [group('Dev')]
 dev:
     ./dev
-
-# Measure preview refresh on the timing runner. Use --local for a local diagnostic.
-[group('Performance')]
-[positional-arguments]
-performance *ARGS:
-    ./dev timing "$@"
 
 # Build both Tao extensions and install them into Cursor and VS Code
 [group('Dev')]

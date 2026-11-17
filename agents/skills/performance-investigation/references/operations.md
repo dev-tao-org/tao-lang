@@ -43,8 +43,8 @@ the runner refuses dirty implementation inputs. No dependency/tool versions are 
 
 ## Existing SSH infrastructure
 
-For local Wi-Fi, initialize storage with `just timing-home` on both Macs and use the runner's
-existing Remote Login account. `just timing-connect HOST` authenticates a reusable socket under
+For local Wi-Fi, initialize storage with `./dev timing-home` on both Macs and use the runner's
+existing Remote Login account. `./dev timing-connect HOST` authenticates a reusable socket under
 `~/.tao-dev/ssh`; its path can be supplied to `ssh --control-path` below. Optional private networking
 is described in the [remote workflow](../../../../Docs/Dev%20Env/Performance/Remote%20timing%20workflow.md).
 Network installation does not itself establish an authenticated SSH connection.
@@ -58,9 +58,8 @@ PERF copy tao-bench /absolute/controller/snapshot.json /Users/ro/.tao-dev/timing
 PERF copy tao-bench /Users/ro/.tao-dev/timing/transfers/job.log /absolute/controller/job.log --download
 ```
 
-`hosts` lists literal aliases from the current user's top-level SSH config and the available
-`tailscale status --json` result. It does not scan arbitrary network addresses, expand SSH Include
-files or connect to candidates. Missing Tailscale is reported alongside usable SSH aliases.
+`hosts` lists literal aliases from the current user's top-level SSH config. It does not expand
+SSH Include files or connect to candidates.
 Use the actual configured address if an alias comes from an Include file. Discovery does not
 establish that a peer is a prepared timing host.
 
@@ -94,11 +93,8 @@ submodule clone, fetch the transferred bundle's `HEAD` into that owned clone ins
 over it, then check out the pin and retry setup. Do not publish archive data, replace pins, relax
 Git's file-transport policy globally or alter the controller's submodule to make setup pass.
 
-For cafe-to-home use, ordinary SSH can run over the existing Tailscale connection and MagicDNS
-name. The normal macOS Tailscale app needs a logged-in user session; keeping the screen locked is
-compatible with that. Configure the host to remain awake on power before leaving it. Remote access
-after logout/reboot needs separate preparation; a job cannot wake an unreachable computer.
-USB-C helps only when the ports/cable establish a Thunderbolt network interface.
+For access away from home, use the runner's configured private address or DNS name. Configure
+the host to remain awake on power. Verify reachability before leaving it unattended.
 
 ## Measure, detach and collect
 

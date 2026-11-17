@@ -12,7 +12,7 @@ Use a checkout containing these commands on each Mac, prepared with `./agent uns
 Initialize development storage on both Macs:
 
 ```sh
-just timing-home
+./dev timing-home
 ```
 
 This creates `~/.tao-dev/timing/{checkouts,reports,transfers}`, `~/.tao-dev/locks` and
@@ -25,7 +25,7 @@ with ordinary SSH/Keychain. Host defaults can later live in `hosts.json`; no emp
 Import collected reports from an existing controller checkout once, retaining the original evidence:
 
 ```sh
-just timing-home --import-reports .artifacts/notes/performance-investigation/reports
+./dev timing-home --import-reports .artifacts/notes/performance-investigation/reports
 ```
 
 Imports refuse conflicting bytes instead of replacing evidence. `--dry-run` prints the plan without
@@ -36,10 +36,10 @@ runner helpers continue to coordinate with the current helper.
 With Remote Login enabled for the runner's existing macOS user, connect from the controller:
 
 ```sh
-just timing-connect ro@192.168.50.199
+./dev timing-connect ro@192.168.50.199
 ```
 
-For password-free repeat connections, run `just ssh-key-setup ro@192.168.50.199` in Terminal
+For password-free repeat connections, run `just setup-ssh-key ro@192.168.50.199` in Terminal
 on the controller. Choose a passphrase and unlock the key when macOS Keychain prompts. SSH may
 ask for the laptop's login password to install the public key. The recipe manages its own entry
 in `~/.ssh/config` and verifies a new login with the old socket and SSH agent disabled.
@@ -57,14 +57,14 @@ needed. Local Wi-Fi timing does not require this installation.
 On the timing Mac:
 
 ```sh
-just timing-setup-runner
+just setup-timing runner
 ```
 
 On the controlling Mac:
 
 ```sh
-just timing-setup-controller
-just timing-connect ro@tao-timing.netbird.cloud
+just setup-timing controller
+./dev timing-connect ro@tao-timing.netbird.cloud
 ```
 
 Both setup commands request ordinary administrator authorization, retain the pinned package against
@@ -85,13 +85,13 @@ It does not edit SSH configuration or create another key. Repeat it after the co
 Close that reusable connection explicitly:
 
 ```sh
-just timing-disconnect ro@192.168.50.199
+./dev timing-disconnect ro@192.168.50.199
 ```
 
 For one command that authenticates, measures, prints the report and closes its own connection:
 
 ```sh
-just timing-session ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
+./dev timing-session ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
 ```
 
 The one-shot session uses a unique private socket, leaving any reusable connection untouched.
@@ -109,7 +109,7 @@ instrumentation on both revisions. Record the original revisions and the instrum
 with the comparison. Compare only the workloads both can run with equivalent boundaries.
 
 ```sh
-just timing-compare ro@192.168.50.199 /absolute/runner/baseline /absolute/runner/candidate --tooling /absolute/runner/tooling
+./dev timing-compare ro@192.168.50.199 /absolute/runner/baseline /absolute/runner/candidate --tooling /absolute/runner/tooling
 ```
 
 The command uses the enrolled SSH key and prints the exact revisions. The tooling checkout
@@ -144,7 +144,7 @@ Use the dedicated speed-testing machine in an isolated, prepared checkout under 
 lock for all formal speed tests. Run `just timing <runner-checkout> --host <runner>` or set
 `TAO_TIMING_HOST` and `TAO_TIMING_CHECKOUT` to use `just timing` without arguments. The shortcut
 uses five independent sessions of 24 edits and measures the named runner checkout. Prepare the
-exact revision there before starting. `just performance` uses the same route.
+exact revision there before starting.
 
 Use `just timing --local` for one diagnostic preview run in the current local checkout.
 An interrupted or failed run retains evidence separately
@@ -165,7 +165,7 @@ Jobs share one append-only log in the timing home. The start line includes the o
 From the controlling Mac, after preparing or relocating the immutable checkpoint:
 
 ```sh
-just timing-run ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
+./dev timing-run ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
 ```
 
 This runs five independent sessions of 24 edits, retaining 16 warm edits per session. Reports remain
@@ -192,7 +192,7 @@ explicit workloads. `--dry-run` prints paths and workload without connecting.
 Print a completed report without measuring again:
 
 ```sh
-just timing-report ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
+./dev timing-report ro@192.168.50.199 /Users/ro/.tao-dev/timing/checkouts/20261029-1602/current
 ```
 
 This selects the most recently modified job directory. `--job /absolute/job/directory` selects
@@ -203,7 +203,7 @@ that already supports the performance skill's `summarize` operation.
 
 Use the snapshot/receive/SSH/transfer operations in the linked skill reference to prepare new source
 or compare historical checkpoints. Do not present repeated sessions of one checkpoint as a branch
-comparison. The older optional `just tailscale-install` command remains available for explicit use.
+comparison.
 
 ## Measurement conditions
 

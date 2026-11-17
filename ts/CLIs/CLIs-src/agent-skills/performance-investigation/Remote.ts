@@ -1,9 +1,8 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
-import { Json, UserInput } from '@shared'
+import { UserInput } from '@shared'
 import { NullCharacter, Regxs, S, Try } from '@shared'
 import { FS, Path } from '@shared/os'
-import Exec from '@shared/os/exec'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
 export type RemoteExecution = { directory: string; log?: string; controlPath?: string; terminal?: boolean }
@@ -47,18 +46,15 @@ export async function copyRemote(
   await CLIKit.runNonInteractiveCommand('scp', ['-B', ...connection, '--', ...paths])
 }
 
-type DiscoveredHosts = { sshAliases: string[]; sshConfig: string; tailscale: unknown }
-/** discoverHosts lists known SSH aliases and Tailscale peers without connecting to candidates. */
+type DiscoveredHosts = { sshAliases: string[]; sshConfig: string }
+/** discoverHosts lists configured SSH aliases without connecting to candidates. */
 export async function discoverHosts(): Promise<DiscoveredHosts> {
   const config = Path.home('.ssh/config')
   const text = await Try.WithDefault('', () => FS.readFile(config, 'utf8'))
   const aliases = [...text.matchAll(Regxs.SshConfigHostLineRegx)]
     .flatMap(match => match[1].split(Regxs.SshConfigAliasesWhitespaceRegx))
     .filter(alias => Regxs.SshAliasRegx.test(alias))
-  const tailscale = await Try(() => Exec.captureStdout('tailscale', 'status --json'), {
-    catch: error => Json.Print({ Error: String(error) }),
-  })
-  return { sshAliases: [...new Set(aliases)], sshConfig: config, tailscale: Json.Parse(tailscale) as unknown }
+  return { sshAliases: [...new Set(aliases)], sshConfig: config }
 }
 
 /** requireHost rejects SSH options and shell expressions where a host is expected. */

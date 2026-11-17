@@ -65,15 +65,6 @@ export const AgePublicKeyCommentRegx = /^#\s*public key:\s*(age1\S+)\s*$/m
 /** AgeSecretKeyLineRegx recognizes an age secret key line. */
 export const AgeSecretKeyLineRegx = /^AGE-SECRET-KEY-1\S+$/m
 
-/** BranchSlugWhitespaceRegx collapses whitespace while forming a branch slug. */
-export const BranchSlugWhitespaceRegx = /\s+/u
-
-/** BranchSlugInvalidCharacterRegx replaces invalid branch slug characters. */
-export const BranchSlugInvalidCharacterRegx = /[^a-z0-9._-]+/gu
-
-/** BranchSlugEdgeDashesRegx removes dashes from the ends of a branch slug. */
-export const BranchSlugEdgeDashesRegx = /^-+|-+$/gu
-
 /** CliGlobTokenRegx detects glob syntax in forwarded CLI arguments. */
 export const CliGlobTokenRegx = /[*?\[{]/
 
