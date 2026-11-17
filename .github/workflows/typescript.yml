@@ -2,6 +2,10 @@ name: TypeScript workspace
 
 on:
   workflow_call:
+    inputs:
+      shards:
+        type: number
+        default: 3
   workflow_dispatch:
 
 permissions:
@@ -13,7 +17,11 @@ concurrency:
 
 jobs:
   verify:
-    name: TypeScript setup, check and test
+    name: Portable ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: ${{ fromJSON('[null,["check","web",1],["check","web",1,2],["check","web",1,2,3],["check","web",1,2,3,4],["check","web",1,2,3,4,5],["check","web",1,2,3,4,5,6],["check","web",1,2,3,4,5,6,7],["check","web",1,2,3,4,5,6,7,8]]')[inputs.shards || 3] }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -57,16 +65,23 @@ jobs:
       - name: Install workspace dependencies
         run: ./dev setup
       - name: Check workspace
+        if: matrix.lane == 'check'
         run: ./agent check
-      - name: Test workspace
-        # Browser/Metro and compiler integration tests share this runner's CPU and memory.
-        run: ./agent test --serial --yes
+      - name: Test web journeys
+        if: matrix.lane == 'web'
+        run: ./agent test --suite web --serial --yes
+      - name: Test TypeScript shard
+        if: matrix.lane != 'check' && matrix.lane != 'web'
+        env:
+          SHARD: ${{ matrix.lane }}
+          JOB_TOTAL: ${{ strategy.job-total }}
+        run: ./agent test --suite typescript --shard "$SHARD/$((JOB_TOTAL - 2))" --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Upload logs and test timings
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: typescript-logs
+          name: portable-logs-${{ matrix.lane }}
           path: .artifacts/logs/
           if-no-files-found: ignore

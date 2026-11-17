@@ -6,6 +6,7 @@ import { Cancellation } from '@shared/web'
 import type * as Workspace from '@workspace'
 import { prepareParser } from '../../cli-checks/parser-build'
 import { prepareRuntime } from '../../cli-checks/runtime-build'
+import { selectHostedNativeFiles, type TestShard } from './HostedTestShards'
 import { verifyNativeLibrary } from './NativeLibraryTests'
 import { createNativeTestTarget, type NativeTestPlatform } from './NativeTestDevice'
 import { withNativeTestHost } from './NativeTestHost'
@@ -18,14 +19,10 @@ export async function runNativeTaoTests(
   binary: string,
   target: string,
   yes?: boolean,
+  shard?: TestShard,
 ): Promise<void> {
   await Exec.requireHostProcessAccess('Run ./agent unsandboxed test for native journey host access.')
-  const directory = Path.resolve(target)
-  const onlyConsumer = directory === Repo.resolvePath('Apps/TS Lib App')
-  const files = onlyConsumer ? [] : await findTaoTestFiles(directory)
-  if (files.length === 0 && !onlyConsumer) {
-    Errors.ThrowUserInput(`No Tao test suites found in ${target}.`)
-  }
+  const { files, consumer } = await selectNativeRun(Path.resolve(target), platform, shard)
   await prepareParser()
   await prepareRuntime()
   const controller = Cancellation.createController()
@@ -34,14 +31,33 @@ export async function runNativeTaoTests(
     await TestWorkers.prepareTaoTestProjects(files, yes, controller.signal)
     await withNativeTestHost(platform, binary, async (driver, clearAppData) => {
       const testTarget = createNativeTestTarget(platform, driver, clearAppData)
-      if (!onlyConsumer) {
+      if (files.length > 0) {
         await verifyAuthoredJourneys(testTarget, platform, files, controller.signal)
       }
-      if (onlyConsumer || directory === Repo.getWorkspaceRoot()) {
+      if (consumer) {
         await verifyNativeLibrary(testTarget, platform)
       }
     })
   }, { finally: stop })
+}
+
+type OptionalTestShard = TestShard | undefined
+
+async function selectNativeRun(directory: string, platform: NativeTestPlatform, shard: OptionalTestShard) {
+  const consumerPath = Repo.resolvePath('Apps/TS Lib App')
+  if (directory === consumerPath) {
+    return { files: [], consumer: true }
+  }
+  const files = await findTaoTestFiles(directory)
+  if (files.length === 0) {
+    Errors.ThrowUserInput(`No Tao test suites found in ${directory}.`)
+  }
+  if (shard === undefined) {
+    return { files, consumer: directory === Repo.getWorkspaceRoot() }
+  }
+  const selected = await selectHostedNativeFiles([...files, consumerPath], platform, shard)
+  IO.print(`Native ${platform} shard ${shard.index}/${shard.count}: ${selected.length} test unit(s).`)
+  return { files: selected.filter(file => file !== consumerPath), consumer: selected.includes(consumerPath) }
 }
 
 async function verifyAuthoredJourneys(

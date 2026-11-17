@@ -1,0 +1,10 @@
+{
+  "Apps/Dev/Kitchen Sink/Kitchen Sink.tao": 36976,
+  "Apps/Tests/Language/ImmutableValues.test.tao": 20409,
+  "Apps/Tests/Language/PrivateViews.test.tao": 10161,
+  "Apps/Tests/Language/Scopes.test.tao": 8554,
+  "Apps/Tests/Modules and Dependencies/Imports.test.tao": 10369,
+  "Apps/Tests/UI Interactions/Disabled Controls.test.tao": 15384,
+  "Apps/Tests/UI Interactions/Forms.test.tao": 20411,
+  "Apps/TS Lib App": 26000
+}

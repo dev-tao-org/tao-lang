@@ -1,7 +1,7 @@
 import { IO } from '@cli-kit'
 import * as CLIKit from '@cli-kit'
 
-import { Errors, NewlineCharacter, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Try } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import { type TestFileTiming, withTestTimings } from '../../cli-checks/slow-tests'
 import * as TestBalance from './TestBalance'
@@ -52,6 +52,9 @@ export async function runTypeScriptTests(
   if (failures.length > 0) {
     Errors.ThrowUserInput(`TypeScript shards failed:${NewlineCharacter}${failures.join(NewlineCharacter)}`)
   }
+  if (plan.typescript.requireCompleteFiles) {
+    requireCompleteShard(args, results.flatMap(result => typeof result === 'string' ? [] : result))
+  }
   if (cachePath && files) {
     await rememberShardTimings(cachePath, files, results.flatMap(result => typeof result === 'string' ? [] : result))
   }
@@ -65,7 +68,7 @@ async function selectShards(args: readonly string[], workers: number, taoWorkers
   }
   const sources = await FS.listSourceFiles(Repo.resolvePath('ts'))
   const root = Repo.getWorkspaceRoot()
-  const files = sources.filter(path => path.endsWith('.test.ts')).map(path => Path.relative(root, path))
+  const files = sources.filter(path => Regxs.TestSourceSuffix.test(path)).map(path => Path.relative(root, path))
   if (files.length === 0) {
     Errors.ThrowHostEnvironment('No TypeScript test files found.')
   }
@@ -104,3 +107,12 @@ async function runShard(
 }
 
 type OptionalSlowSeconds = number | undefined
+
+function requireCompleteShard(files: readonly string[], reports: readonly TestFileTiming[]): void {
+  const expected = new Set(files.map(file => Repo.resolvePath(file)))
+  const actual = reports.map(({ file }) => Repo.resolvePath('ts', file))
+  const everyFileReported = actual.every(file => expected.delete(file))
+  if (!everyFileReported || expected.size !== 0) {
+    Errors.ThrowUserInput('TypeScript shard report does not match the planned test files.')
+  }
+}

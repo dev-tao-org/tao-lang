@@ -2,11 +2,18 @@ import { Errors } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import * as Check from '../../cli-checks/check'
 import { parseSlowTestSeconds } from '../../cli-checks/slow-tests'
+import { parseTestShard, selectHostedTypeScriptFiles } from '../testing/HostedTestShards'
 import { runTaoTests } from '../testing/TaoTests'
 import { planTestExecution, type TestExecutionOptions } from '../testing/TestPlan'
 import { registerCommand } from './_command-runner'
 
-type TestCommandOptions = TestExecutionOptions & { slow?: string; platform?: string; expoGo?: string }
+type TestCommandOptions = TestExecutionOptions & {
+  slow?: string
+  platform?: string
+  expoGo?: string
+  suite?: string
+  shard?: string
+}
 /** testCommand runs TypeScript and Tao app tests, retaining scoped selections. */
 export default registerCommand({
   name: 'test',
@@ -23,6 +30,12 @@ export default registerCommand({
     flags: '--expo-go <path>',
     description: 'Use this SDK-matched Expo Go simulator app or emulator APK for native tests.',
   }, {
+    flags: '--suite <suite>',
+    description: 'Select the full typescript or web suite.',
+  }, {
+    flags: '--shard <index/count>',
+    description: 'Run one CI partition of the TypeScript or native suite.',
+  }, {
     flags: '--yes',
     description: 'Authorize required app dependency setup.',
   }, {
@@ -33,9 +46,19 @@ export default registerCommand({
     description: 'Run concurrently with an optional total worker cap (defaults: 5 TypeScript, 1 Tao).',
   }],
   async action(target?: string, options: TestCommandOptions = {}) {
+    if (options.shard !== undefined && target !== undefined) {
+      Errors.ThrowUserInput('--shard cannot be combined with a test target.')
+    }
+    if (options.suite !== undefined) {
+      await runSelectedSuite(target, options)
+      return
+    }
     if (options.platform !== undefined) {
       await runNativeTests(target, options)
       return
+    }
+    if (options.shard !== undefined) {
+      Errors.ThrowUserInput('--shard requires --suite typescript or --platform.')
     }
     const slowSeconds = parseSlowTestSeconds(options.slow)
     const execution = { serial: options.serial, parallel: options.parallel, yes: options.yes }
@@ -67,7 +90,33 @@ async function runNativeTests(target: OptionalTestTarget, options: TestCommandOp
   const path = Repo.resolvePath(target ?? '.')
   Check.assertNewWorkspacePath(path)
   const { runNativeTaoTests } = await import('../testing/NativeTaoTests')
-  await runNativeTaoTests(platform, Repo.resolvePath(options.expoGo), path, options.yes)
+  const shard = options.shard === undefined ? undefined : parseTestShard(options.shard)
+  await runNativeTaoTests(platform, Repo.resolvePath(options.expoGo), path, options.yes, shard)
+}
+
+async function runSelectedSuite(target: OptionalTestTarget, options: TestCommandOptions): Promise<void> {
+  if (target !== undefined || options.platform !== undefined || options.expoGo !== undefined) {
+    Errors.ThrowUserInput('--suite selects a full portable suite.')
+  }
+  const execution = { serial: options.serial, parallel: options.parallel, yes: options.yes }
+  if (options.suite === 'web' && options.shard === undefined) {
+    await runTaoTests(Repo.resolvePath('Apps'), execution)
+    return
+  }
+  if (options.suite !== 'typescript') {
+    Errors.ThrowUserInput('Select typescript or web. Use --shard only with the TypeScript suite.')
+  }
+  await Check.assertNewWorkspaceTree()
+  const slowSeconds = parseSlowTestSeconds(options.slow)
+  if (options.shard === undefined) {
+    await Check.workspaceTests([Repo.resolvePath('ts')], slowSeconds, execution)
+    return
+  }
+  if (options.parallel !== undefined) {
+    Errors.ThrowUserInput('Each hosted shard has its own runner. Use --serial with --shard.')
+  }
+  const files = await selectHostedTypeScriptFiles(parseTestShard(options.shard))
+  await Check.workspaceTests(files, slowSeconds, { ...execution, serial: true, requireCompleteTypeScriptFiles: true })
 }
 
 type OptionalTestTarget = string | undefined

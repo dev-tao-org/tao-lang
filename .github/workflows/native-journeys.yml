@@ -2,6 +2,12 @@ name: Native Tao journeys
 
 on:
   workflow_call:
+    inputs:
+      platform:
+        type: string
+      shards:
+        type: number
+        default: 1
   workflow_dispatch:
 
 permissions:
@@ -9,25 +15,20 @@ permissions:
 
 jobs:
   journeys:
-    name: Tao journeys (${{ matrix.platform }})
-    runs-on: ${{ matrix.runner }}
+    name: Tao journeys (${{ matrix.platform }}, ${{ matrix.shard }})
+    runs-on: ${{ matrix.platform == 'ios' && 'macos-26' || 'ubuntu-24.04' }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: ios
-            runner: macos-26
-            expo-extension: tar.gz
-            expo-digest: faff18034c9f3504ea4786f07350efab604610c61cfcabd0f2191fc4416a7614
-          - platform: android
-            runner: ubuntu-24.04
-            expo-extension: apk
-            expo-digest: 14c18828a3d04e43922245920bd941b978fd1c7a5aec88a0188032f0bb4972ce
+        platform: ${{ fromJSON(inputs.platform && format('["{0}"]', inputs.platform) || '["ios","android"]') }}
+        shard: ${{ fromJSON('[null,[1],[1,2],[1,2,3],[1,2,3,4],[1,2,3,4,5],[1,2,3,4,5,6],[1,2,3,4,5,6,7]]')[inputs.shards || 1] }}
     env:
       TERMINAL_OUTPUT: '1'
       TAO_SETUP_STORAGE: 'false'
       EXPO_GO_VERSION: 57.0.9
+      EXPO_GO_EXTENSION: ${{ matrix.platform == 'ios' && 'tar.gz' || 'apk' }}
+      EXPO_GO_DIGEST: ${{ matrix.platform == 'ios' && 'faff18034c9f3504ea4786f07350efab604610c61cfcabd0f2191fc4416a7614' || '14c18828a3d04e43922245920bd941b978fd1c7a5aec88a0188032f0bb4972ce' }}
     steps:
       - uses: actions/checkout@v4
       - name: Make room for the Android emulator data partition
@@ -114,16 +115,6 @@ jobs:
           fi
           "$ANDROID_HOME/emulator/emulator" -accel-check
           df -h "$PWD"
-          if [ "$RUNNER_ENVIRONMENT" = github-hosted ]; then
-            cores=$(nproc)
-            memory=3072
-            if [ "$cores" -ge 4 ]; then
-              cores=4
-              memory=4096
-            fi
-            printf 'Android emulator resources: %s cores, %s MiB RAM\n' "$cores" "$memory"
-            printf 'TAO_ANDROID_JOURNEY_CORES=%s\nTAO_ANDROID_JOURNEY_MEMORY=%s\n' "$cores" "$memory" >> "$GITHUB_ENV"
-          fi
           printf '%s\n' "$command_tools" "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
       - name: Identify the Xcode toolchain
         if: matrix.platform == 'ios'
@@ -146,22 +137,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .artifacts/cache/native-journeys/expo-go
-          key: tao-expo-go-v1-${{ matrix.platform }}-${{ matrix.expo-digest }}
+          key: tao-expo-go-v1-${{ matrix.platform }}-${{ env.EXPO_GO_DIGEST }}
       - name: Verify the runtime download
-        env:
-          EXTENSION: ${{ matrix.expo-extension }}
-          DIGEST: ${{ matrix.expo-digest }}
         run: |
           set -euo pipefail
           directory="$PWD/.artifacts/cache/native-journeys/expo-go"
           mkdir -p "$directory"
-          name="Expo-Go-$EXPO_GO_VERSION.$EXTENSION"
+          name="Expo-Go-$EXPO_GO_VERSION.$EXPO_GO_EXTENSION"
           archive="$directory/$name"
           if [ ! -f "$archive" ]; then
             curl --fail --location --retry 3 --output "$archive" "https://github.com/expo/expo-go-releases/releases/download/Expo-Go-$EXPO_GO_VERSION/$name"
           fi
-          printf '%s  %s\n' "$DIGEST" "$archive" | shasum -a 256 -c -
-          if [ "$EXTENSION" = tar.gz ]; then
+          printf '%s  %s\n' "$EXPO_GO_DIGEST" "$archive" | shasum -a 256 -c -
+          if [ "$EXPO_GO_EXTENSION" = tar.gz ]; then
             binary="$RUNNER_TEMP/Expo-Go.app"
             mkdir "$binary"
             tar -xzf "$archive" -C "$binary"
@@ -169,17 +157,19 @@ jobs:
             binary="$archive"
           fi
           printf 'EXPO_GO_BINARY=%s\n' "$binary" >> "$GITHUB_ENV"
-      - name: Run all authored journeys and the compiled library acceptance
+      - name: Run native test shard
         env:
           PLATFORM: ${{ matrix.platform }}
-        run: ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --yes
+          SHARD: ${{ matrix.shard }}
+          SHARD_COUNT: ${{ inputs.platform && strategy.job-total || 1 }}
+        run: ./agent test --platform "$PLATFORM" --expo-go "$EXPO_GO_BINARY" --shard "$SHARD/$SHARD_COUNT" --yes
       - name: Ensure validation kept tracked files unchanged
         run: git diff --exit-code
       - name: Keep native driver and test logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: native-journeys-${{ matrix.platform }}
+          name: native-journeys-${{ matrix.platform }}-${{ matrix.shard }}
           path: |
             .artifacts/logs/dev/*.log
             .artifacts/logs/agent/*.log

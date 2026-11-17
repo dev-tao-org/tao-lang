@@ -1,7 +1,12 @@
 import { Errors } from '@shared'
 
 /** TestExecutionOptions selects serial or bounded parallel test execution. */
-export type TestExecutionOptions = { serial?: boolean; parallel?: ParallelBudget; yes?: boolean }
+export type TestExecutionOptions = {
+  serial?: boolean
+  parallel?: ParallelBudget
+  yes?: boolean
+  requireCompleteTypeScriptFiles?: boolean
+}
 
 /** TestPlan describes the selected suites and worker budget for one test run. */
 export type TestPlan = {
@@ -23,7 +28,7 @@ export type TestSectionFailures = { typescript?: string; tao?: string }
 export type TestRunSignal = AbortSignal
 
 type ParallelBudget = string | boolean
-type OptionalTypeScriptPlan = { args: readonly string[]; workers: number } | undefined
+type OptionalTypeScriptPlan = { args: readonly string[]; workers: number; requireCompleteFiles?: boolean } | undefined
 type OptionalTaoPlan = { target: string; workers: number } | undefined
 type TestSection = 'typescript' | 'tao'
 type SelectedTestSection = { section: TestSection; run: () => Promise<void> }
@@ -53,9 +58,14 @@ export function planTestExecution(options: TestExecutionRequest): TestPlan {
   const [typescriptWorkers, taoWorkers] = serial || budget === 1
     ? [1, 1]
     : splitWorkerBudget(budget, sections, typescriptSelected, parallel === undefined || parallel === true)
+  const requiredFiles = options.requireCompleteTypeScriptFiles ? { requireCompleteFiles: true } : {}
   return {
     typescript: typescriptSelected
-      ? { args: options.typescriptArgs ?? [], workers: typescriptWorkers }
+      ? {
+        args: options.typescriptArgs ?? [],
+        workers: typescriptWorkers,
+        ...requiredFiles,
+      }
       : undefined,
     tao: taoSelected ? { target: options.taoTarget ?? '', workers: taoWorkers } : undefined,
     serial: serial || budget === 1,

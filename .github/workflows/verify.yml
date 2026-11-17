@@ -8,6 +8,19 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      typescript_shards:
+        description: TypeScript shard count
+        type: number
+        default: 3
+      ios_shards:
+        description: iOS shard count
+        type: number
+        default: 2
+      android_shards:
+        description: Android shard count
+        type: number
+        default: 3
 
 permissions:
   contents: read
@@ -19,9 +32,20 @@ concurrency:
 jobs:
   typescript:
     uses: ./.github/workflows/typescript.yml
+    with:
+      shards: ${{ inputs.typescript_shards || 3 }}
 
-  native-journeys:
+  ios:
     uses: ./.github/workflows/native-journeys.yml
+    with:
+      platform: ios
+      shards: ${{ inputs.ios_shards || 2 }}
+
+  android:
+    uses: ./.github/workflows/native-journeys.yml
+    with:
+      platform: android
+      shards: ${{ inputs.android_shards || 3 }}
 
   cla:
     name: Contributor agreement
@@ -96,7 +120,7 @@ jobs:
 
   verify:
     name: Verify
-    needs: [typescript, native-journeys]
+    needs: [typescript, ios, android]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 3
@@ -104,9 +128,10 @@ jobs:
       - name: Require web, iOS and Android verification to pass
         env:
           TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
-          NATIVE_RESULT: ${{ needs.native-journeys.result }}
+          IOS_RESULT: ${{ needs.ios.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
         run: |
-          if [ "$TYPESCRIPT_RESULT" != success ] || [ "$NATIVE_RESULT" != success ]; then
-            echo "Web and TypeScript: $TYPESCRIPT_RESULT. Native journeys: $NATIVE_RESULT."
+          if [ "$TYPESCRIPT_RESULT" != success ] || [ "$IOS_RESULT" != success ] || [ "$ANDROID_RESULT" != success ]; then
+            echo "Web and TypeScript: $TYPESCRIPT_RESULT. iOS: $IOS_RESULT. Android: $ANDROID_RESULT."
             exit 1
           fi

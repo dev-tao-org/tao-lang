@@ -1,5 +1,6 @@
 import { Regxs, Sort } from '@shared'
 import { Path } from '@shared/os'
+import { packTestShards } from './ShardPlan'
 
 type TestBatch = { files: string[]; durationMs: number }
 
@@ -13,17 +14,8 @@ export function planTypeScriptShards(
   estimates: TestDurationEstimates = new Map(),
 ): string[][] {
   const shardCount = Math.min(workers, files.length)
-  if (shardCount < 1) {
-    return []
-  }
-  const shards = Array.from({ length: shardCount }, (): TestBatch => ({ files: [], durationMs: 0 }))
-  const batches = groupTestFiles(files, estimates).sort((left, right) => right.durationMs - left.durationMs)
-  for (const batch of batches) {
-    const lightest = shards.reduce((best, shard) => shard.durationMs < best.durationMs ? shard : best)
-    lightest.files.push(...batch.files)
-    lightest.durationMs += batch.durationMs
-  }
-  return shards.filter(shard => shard.files.length > 0).map(shard => shard.files.sort(Sort.CompareStrings))
+  const batches = groupTestFiles(files, estimates)
+  return packTestShards(batches, Math.min(shardCount, batches.length))
 }
 
 const UnmeasuredTestMs = 36

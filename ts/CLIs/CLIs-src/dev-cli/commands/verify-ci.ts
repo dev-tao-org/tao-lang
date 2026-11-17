@@ -16,6 +16,10 @@ export default registerCommand({
     { flags: '--status', description: 'Show run status. With no run ID, find the latest dispatch for HEAD.' },
     { flags: '--wait', description: 'Watch the run until it completes and return its verdict.' },
     { flags: '--rate-limit', description: 'Show the GitHub API quota and reset time.' },
+    {
+      flags: '--shards <ts/ios/android>',
+      description: 'Dispatch with explicit TypeScript, iOS and Android shard counts.',
+    },
     { flags: '--compare <baseline>', description: 'Compare job and step times with a baseline run ID.' },
     { flags: '--logs', description: 'Print hosted job logs.' },
     { flags: '--failed-logs', description: 'Print hosted logs for failed steps.' },
@@ -37,6 +41,9 @@ export default registerCommand({
       Errors.ThrowUserInput('Choose one Verify operation.')
     }
     requireLogJobOption(options)
+    if (options.shards !== undefined && (runId !== undefined || modes.some(Boolean))) {
+      Errors.ThrowUserInput('--shards applies to a new Verify dispatch.')
+    }
     if (options.rateLimit) {
       if (runId !== undefined) {
         Errors.ThrowUserInput('Use --rate-limit without a run ID.')
@@ -59,7 +66,7 @@ export default registerCommand({
     if (modes.some(Boolean) && !options.status) {
       Errors.ThrowUserInput('Name the GitHub Actions run ID.')
     }
-    await useCurrentBranch(cwd, options.status)
+    await useCurrentBranch(cwd, options.status, options.shards)
   },
 })
 
@@ -72,6 +79,7 @@ type VerifyOptions = {
   failedLogs?: boolean
   job?: string
   artifact?: string
+  shards?: string
 }
 
 const IdentifierRegx = /^[1-9]\d*$/u
@@ -123,7 +131,7 @@ async function downloadArtifact(cwd: string, runId: string, name: string): Promi
   IO.print(directory)
 }
 
-async function useCurrentBranch(cwd: string, status?: boolean): Promise<void> {
+async function useCurrentBranch(cwd: string, status?: boolean, shardCounts?: string): Promise<void> {
   const { branch, commit } = await requirePushedFeature(cwd)
   if (status) {
     await runGitHub(cwd, [
@@ -145,7 +153,7 @@ async function useCurrentBranch(cwd: string, status?: boolean): Promise<void> {
     return
   }
   IO.print(`Dispatching Verify for ${branch} at ${commit}.`)
-  await runGitHub(cwd, ['workflow', 'run', 'verify.yml', '--ref', branch])
+  await runGitHub(cwd, ['workflow', 'run', 'verify.yml', '--ref', branch, ...dispatchShardInputs(shardCounts)])
 }
 
 async function requirePushedFeature(cwd: string) {
@@ -275,4 +283,17 @@ function printTimingRows(rows: TimingRows, baseline?: TimingRows): void {
 
 function formatSeconds(value?: number): string {
   return value === undefined ? '—' : `${value}s`
+}
+
+type OptionalShardCounts = string | undefined
+const DispatchShardsRegx = /^([1-8])\/([1-7])\/([1-7])$/u
+function dispatchShardInputs(counts: OptionalShardCounts): string[] {
+  if (counts === undefined) {
+    return []
+  }
+  const match = DispatchShardsRegx.exec(counts)
+  if (!match) {
+    Errors.ThrowUserInput('--shards requires TypeScript/iOS/Android counts (up to 8/7/7).')
+  }
+  return ['-f', 'typescript_shards=' + match[1], '-f', 'ios_shards=' + match[2], '-f', 'android_shards=' + match[3]]
 }
