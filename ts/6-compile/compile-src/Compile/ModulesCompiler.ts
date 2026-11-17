@@ -81,8 +81,8 @@ const compileSource = Timings.measured('compiler.emit-module', function(
   const main = compileMain(module, paths, context, declarations, components.length > 0, foreign.imports)
   const views = components
     ? S`
-      ${RuntimeEmitter.emitRuntimeImports()}
-      import type { Scope as ModuleScope, Imports as ModuleImports } from ${compileModuleImport(viewPath, mainPath)};
+      ${RuntimeEmitter.emitRuntimeImports(context.imports)}
+      ${compileViewTypeImports(context.imports, viewPath, mainPath)}
       ${foreign.imports}
 
       ${components}
@@ -90,6 +90,13 @@ const compileSource = Timings.measured('compiler.emit-module', function(
     : ''
   return { main, views }
 })
+
+function compileViewTypeImports(imports: RuntimeEmitter.ComponentImports, from: string, to: string): string {
+  const scope = imports.scope ? ['Scope as ModuleScope'] : []
+  const bindings = imports.bindings ? ['Imports as ModuleImports'] : []
+  const types = [...scope, ...bindings].join(', ')
+  return types ? `import type { ${types} } from ${compileModuleImport(from, to)};` : ''
+}
 
 function selectSourceProgram(
   program: Typecheck.LinkedProgram,
@@ -105,6 +112,7 @@ function createModuleCompilationContext(
 ): DeclarationCompiler.DeclarationContext {
   return {
     scope: '_Scope',
+    imports: { runtimeApi: false, scope: false, bindings: false },
     scopeType: 'ModuleScope',
     componentPrefix: '_Views.',
     moduleIdentity: Platform.hashText(module.path).slice(0, 12),

@@ -4,7 +4,7 @@ import type * as Typecheck from '@typecheck'
 
 import * as CodegenUtil from './codegen-util'
 import type { DeclarationCompilation } from './DeclarationCompiler'
-import { compileInjection } from './InjectionsCompiler'
+import { compileInjection, usesTaoRuntime } from './InjectionsCompiler'
 import * as RuntimeEmitter from './RuntimeEmitter'
 import * as ValuesCompiler from './ValuesCompiler'
 import { createViewReferences, shadowReferences } from './ViewReferences'
@@ -12,6 +12,7 @@ import { createViewReferences, shadowReferences } from './ViewReferences'
 /** ViewCompilationContext provides module-owned names and resolved foreign implementations. */
 export type ViewCompilationContext = {
   scope: string
+  imports: RuntimeEmitter.ComponentImports
   moduleIdentity: string
   textBindings: ReadonlySet<string>
   foreignComponent: OptionalForeignComponent
@@ -34,8 +35,12 @@ export function compileViewDeclaration(
   })
 }
 
-type RenderCompilation = { result: string; components: string }
-const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
+type RenderCompilation = { result: string; components: string; needsScope: boolean }
+const RenderCompilation = (result: string, components: string, needsScope: boolean): RenderCompilation => ({
+  result,
+  components,
+  needsScope,
+})
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
   if (!node.parameters.every(ValuesCompiler.isTextParameter)) {
@@ -78,13 +83,13 @@ function compileTaoView(
     .join(
       NewlineCharacter,
     )
-  const compiled = compileViewRenderStatement(render, bindings, names, references.scope)
-  const statements = CodegenUtil.joinCodeLines(
-    references.initialize(),
-    ...nested.map(child => child.initialization),
-    valuesCode,
-  )
-  const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, true)
+  const compiled = compileViewRenderStatement(render, bindings, names, references.scope, context.imports)
+  const projections = references.initialize()
+  const statements = CodegenUtil.joinCodeLines(projections, ...nested.map(child => child.initialization), valuesCode)
+  const needsScope = statements.length > 0 || compiled.needsScope
+  context.imports.bindings ||= projections.length > 0
+  context.imports.scope ||= needsScope
+  const component = RuntimeEmitter.emitViewComponent(names, statements, compiled.result, needsScope)
   const registration = RuntimeEmitter.emitViewDeclaration(
     node,
     context.scope,
@@ -138,16 +143,21 @@ function compileViewRenderStatement(
   bindings: ReadonlySet<string>,
   names: RuntimeEmitter.ComponentNames,
   scope: CodegenUtil.ScopeCode,
+  imports: RuntimeEmitter.ComponentImports,
 ): RenderCompilation {
   return Switch.kind(node, {
     RenderViewExpressionStatement: statement =>
       RenderCompilation(
         compileViewRenderExpression(statement.expression, scope),
         '',
+        true,
       ),
     RenderInjectStatement(statement) {
-      const injection = compileInjection(statement.injection, bindings, names, scope)
-      return RenderCompilation(injection.invocation, injection.hookDeclaration)
+      const authored = statement.injection
+      const injection = compileInjection(authored, bindings, names, scope)
+      const needsScope = authored.captures.some(capture => AST.IsKind(capture.value, 'Name'))
+      imports.runtimeApi ||= usesTaoRuntime(authored.code)
+      return RenderCompilation(injection.invocation, injection.hookDeclaration, needsScope)
     },
   })
 }

@@ -10,8 +10,9 @@ Open the generated `build` folder as a TypeScript project. It includes a project
 
 Live Metro publication consumes one complete memory revision. After acceptance, the disk inspection mirror replaces its real output directory with the completed build, restoring the previous directory if replacement fails. It does not publish a second Metro update. Source generation does not run a formatter on each edit; emitters produce the readable layout directly.
 
-`./agent verify` invokes the existing compile command for Kitchen Sink and Demo before checking
-and testing, using the ordinary named session `review-build` for both projects. Kitchen Sink writes
+`./agent verify` compiles Kitchen Sink and Demo in the ordinary named session `review-build`.
+It runs the pinned TypeScript compiler on each generated project's own `tsconfig.json` with
+unused bindings checked before continuing to workspace checks and tests. Kitchen Sink writes
 `Apps/Dev/.tao/cache/sessions/review-build/build/`. Demo writes
 `Apps/TS Lib App/.tao/cache/sessions/review-build/libraries/Demo/`, including generated sources under `source/`.
 Both projects use identical ignore rules allowing `review-build/build/` and `review-build/libraries/`,

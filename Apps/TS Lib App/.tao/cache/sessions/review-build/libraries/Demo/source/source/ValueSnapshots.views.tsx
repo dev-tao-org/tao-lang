@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
-import type { Scope as ModuleScope, Imports as ModuleImports } from "./ValueSnapshots";
+
 
 
 function useTaoInjectionValueSnapshots_c504edc83a50() {
@@ -39,7 +39,7 @@ function useTaoInjectionValueSnapshots_c504edc83a50() {
 }
 export function TaoView_ValueSnapshots_c504edc83a50(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as ModuleScope;
+
 
   return TR.finishViewRender(_Render, useTaoInjectionValueSnapshots_c504edc83a50());
 }

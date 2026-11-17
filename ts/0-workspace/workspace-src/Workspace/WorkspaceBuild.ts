@@ -151,7 +151,12 @@ async function copyBuildConfiguration(nextDirectory: string, runtime: Runtime.Ru
 }
 
 function serializePublishedBuildConfiguration(extendsPath: string): string {
-  return `${Json.Print({ extends: extendsPath, include: ['./**/*.ts', './**/*.tsx'] })}${NewlineCharacter}`
+  const configuration = {
+    extends: extendsPath,
+    compilerOptions: { noEmit: true, allowImportingTsExtensions: true },
+    include: ['./**/*.ts', './**/*.tsx'],
+  }
+  return Json.Print(configuration) + NewlineCharacter
 }
 
 async function writeSnapshotFiles(

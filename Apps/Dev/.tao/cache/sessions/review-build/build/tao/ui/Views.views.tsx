@@ -1,6 +1,6 @@
 import * as TR from '@runtime';
 import Tao from '@tao/runtime-api';
-import type { Scope as ModuleScope, Imports as ModuleImports } from "./Views";
+import type { Scope as ModuleScope } from "./Views";
 
 
 function useTaoInjectionText_ecee2c2314f4(Value: string) {
@@ -18,7 +18,7 @@ function useTaoInjectionCol_ecee2c2314f4(Children: TR.ViewComponentProps['childr
 }
 export function TaoView_Col_ecee2c2314f4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as ModuleScope;
+
 
   return TR.finishViewRender(_Render, useTaoInjectionCol_ecee2c2314f4(_Render.children));
 }
@@ -28,7 +28,7 @@ function useTaoInjectionRow_ecee2c2314f4(Children: TR.ViewComponentProps['childr
 }
 export function TaoView_Row_ecee2c2314f4(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as ModuleScope;
+
 
   return TR.finishViewRender(_Render, useTaoInjectionRow_ecee2c2314f4(_Render.children));
 }
