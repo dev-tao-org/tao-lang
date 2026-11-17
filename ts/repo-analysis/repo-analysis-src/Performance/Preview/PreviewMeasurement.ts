@@ -18,7 +18,7 @@ export type PreviewRunOptions = { editCount?: number; frameCount?: PreviewFrameC
 export type PreviewFrameCount = 1 | 2
 
 /** PreviewMeasurementProtocol identifies the comparable preview launch and edit workload. */
-export const PreviewMeasurementProtocol = 'preview-render-transitions-v3'
+export const PreviewMeasurementProtocol = 'preview-render-transitions-v4'
 
 /** PreviewCycleSize is the number of edits required for one complete render cycle. */
 export const PreviewCycleSize = Render.PreviewRenderSteps.length
@@ -80,8 +80,8 @@ export function createMeasurementFiles(source: string): MeasurementSource {
 }
 
 function importModules(indices: readonly number[]): string {
-  return indices.map(index => `use ./LoadViews${index} Load${index * Render.PreviewViewsPerFile}${NewlineCharacter}`)
-    .join('')
+  const names = indices.map(index => `Load${index * Render.PreviewViewsPerFile}`)
+  return names.length > 0 ? `use ${names.join(', ')}${NewlineCharacter}` : ''
 }
 
 /** assertMeasurementScenario proves each configured preview rendered the actual requested edit. */
@@ -146,7 +146,7 @@ function createViewModule(file: number, children: readonly number[]): string {
   const declarations = Array.from({ length: Render.PreviewViewsPerFile }, (_, index) => {
     const id = start + index
     const items = index === 0 ? importedChildren(file, children) : [`Text("Load ${id}")`]
-    return `public ${createViewDeclaration(id, items)}`
+    return `package ${createViewDeclaration(id, items)}`
   })
   return S`
     use tao@ui Col, Text

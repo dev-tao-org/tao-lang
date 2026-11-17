@@ -1,5 +1,5 @@
 import * as AST from '@ast-gen'
-import { Errors, Switch } from '@shared'
+import { Errors } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
 import { assertUniqueLocalBindings, collectReferencedNames } from '../LinkModuleValidation'
 import * as Modules from './Modules'
@@ -24,7 +24,7 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     assertUniqueLocalBindings(source)
     addExplicitBindings(source, modules, sourceBindings, sourceNames)
     addImplicitSiblingBindings(source, modules, sourceBindings, sourceNames, collectReferencedNames(source.document))
-    assertUniqueBindings(source, sourceBindings, sourceNames)
+    assertUniqueBindings(source, sourceBindings)
   }
 
   const linkedModules = sources.map(source => ({
@@ -120,62 +120,20 @@ function addExplicitBindings(
       Errors.ThrowUserInput(`Module ${source.path} repeats an import statement.`)
     }
     seenStatements.add(statementKey)
-    if (AST.IsUseStatement(statement) && !statement.all) {
-      if (resolved.targets.length === 0) {
-        const imported = statement.imports.map(item => item.target.value).join(', ')
-        Errors.ThrowUserInput(`Cannot resolve ${imported} imported by ${source.path}.`)
-      }
-      for (const imported of statement.imports) {
-        addNamedBinding(source, resolved.targets, modules, imported, bindings, ownNames, seenImports)
-      }
-      continue
+    if (resolved.targets.length === 0) {
+      const imported = statement.imports.map(item => item.target.value).join(', ')
+      Errors.ThrowUserInput(`Cannot resolve ${imported} imported by ${source.path}.`)
     }
-    for (const target of resolved.targets) {
-      const targetModule = modules.get(target.path)
-      if (!targetModule) {
-        Errors.ThrowUserInput(`Imported module is unavailable: ${target.path}`)
-      }
-      if (AST.IsUsePackageStatement(statement)) {
-        const namespace = resolvePackageNamespace(statement)
-        addPackageBindings(
-          source,
-          targetModule,
-          target.path,
-          target.relation,
-          namespace,
-          bindings,
-          ownNames,
-          seenImports,
-        )
-      } else if (statement.all) {
-        addWildcardBindings(source, targetModule, target.path, target.relation, bindings, ownNames, seenImports)
-      } else {
-        Errors.ThrowShouldNeverHappen('Named imports must be handled before whole-module imports.')
-      }
+    for (const imported of statement.imports) {
+      addNamedBinding(source, resolved.targets, modules, imported, bindings, ownNames, seenImports)
     }
   }
 }
 
-function resolvePackageNamespace(statement: AST.UsePackageStatement): string {
-  const namespace = statement.alias?.value ?? Modules.deriveNamespaceFromPath(statement.from.value)
-  if (!namespace) {
-    Errors.ThrowUserInput(`Cannot derive a namespace from package path ${statement.from.value}.`)
-  }
-  return namespace
-}
-
-function createImportStatementKey(statement: Modules.ImportStatement): string {
-  return Switch.kind(statement, {
-    UsePackageStatement(packageImport) {
-      // ex: from=@Foo, alias=Bar -> package:@Foo:Bar
-      return `package:${packageImport.from.value}:${packageImport.alias?.value ?? ''}`
-    },
-    UseStatement(namedImport) {
-      const names = namedImport.imports.map(createNamedImportKey).join(',')
-      // ex: use ./X Foo as Bar -> use:Foo:Bar:./X
-      return `use:${namedImport.all ? 'all' : names}:${namedImport.from?.value ?? ''}`
-    },
-  })
+function createImportStatementKey(statement: AST.UseStatement): string {
+  const names = statement.imports.map(createNamedImportKey).join(',')
+  // ex: use ./X Foo as Bar -> ./X:Foo:Bar
+  return `${statement.from?.value ?? ''}:${names}`
 }
 
 function createNamedImportKey(imported: AST.NamedImport): string {
@@ -221,63 +179,14 @@ function addNamedBinding(
   )
 }
 
-function addWildcardBindings(
-  importer: Modules.SourceModule,
-  targetModule: Modules.SourceModule,
-  targetPath: string,
-  relation: Modules.SourceModule['imports'][number]['targets'][number]['relation'],
-  bindings: Modules.ModuleBinding[],
-  ownNames: ReadonlySet<string>,
-  seenImports: Set<string>,
-): void {
-  for (const declaration of AST.GetValueDeclarations(targetModule.document)) {
-    if (declaration.visibility !== 'public') {
-      continue
-    }
-    addBinding(
-      importer,
-      Modules.ModuleBinding(declaration.name.value, targetPath, declaration.name.value),
-      bindings,
-      ownNames,
-      seenImports,
-      `all:${relation}`,
-    )
-  }
-}
-
-function addPackageBindings(
-  importer: Modules.SourceModule,
-  targetModule: Modules.SourceModule,
-  targetPath: string,
-  relation: Modules.SourceModule['imports'][number]['targets'][number]['relation'],
-  namespace: string,
-  bindings: Modules.ModuleBinding[],
-  ownNames: ReadonlySet<string>,
-  seenImports: Set<string>,
-): void {
-  for (const declaration of AST.GetValueDeclarations(targetModule.document)) {
-    if (isVisible(declaration, relation)) {
-      addBinding(
-        importer,
-        Modules.ModuleBinding(`${namespace}.${declaration.name.value}`, targetPath, declaration.name.value),
-        bindings,
-        ownNames,
-        seenImports,
-        `package:${namespace}`,
-      )
-    }
-  }
-}
-
 function addBinding(
   importer: Modules.SourceModule,
   binding: Modules.ModuleBinding,
   bindings: Modules.ModuleBinding[],
   ownNames: ReadonlySet<string>,
   seenImports: Set<string>,
-  kind = 'named',
 ): void {
-  const identity = `${kind}:${binding.name}:${binding.source}:${binding.target}`
+  const identity = `${binding.name}:${binding.source}:${binding.target}`
   if (seenImports.has(identity)) {
     Errors.ThrowUserInput(`Module ${importer.path} imports ${binding.name} more than once.`)
   }
@@ -291,7 +200,6 @@ function addBinding(
 function assertUniqueBindings(
   source: Modules.SourceModule,
   sourceBindings: readonly Modules.ModuleBinding[],
-  ownNames: ReadonlySet<string>,
 ): void {
   const names = new Set<string>()
   for (const binding of sourceBindings) {
@@ -299,12 +207,6 @@ function assertUniqueBindings(
       Errors.ThrowUserInput(`Module ${source.path} has more than one binding named ${binding.name}.`)
     }
     names.add(binding.name)
-  }
-  for (const binding of sourceBindings) {
-    const namespace = binding.name.split('.')[0]!
-    if (binding.name.includes('.') && (names.has(namespace) || ownNames.has(namespace))) {
-      Errors.ThrowUserInput(`Module ${source.path} has a value and namespace both named ${namespace}.`)
-    }
   }
 }
 
@@ -316,18 +218,7 @@ function isVisible(
     return true
   }
   const visibility = AST.GetDeclarationVisibility(declaration)
-  return visibleRelations[visibility].includes(relation)
-}
-
-const visibleRelations: Record<
-  AST.Visibility,
-  readonly Modules.SourceModule['imports'][number]['targets'][number]['relation'][]
-> = {
-  file: [],
-  folder: ['same-directory'],
-  package: ['same-directory', 'same-package'],
-  project: ['same-directory', 'same-package', 'same-project'],
-  public: ['same-directory', 'same-package', 'same-project', 'public'],
+  return visibility === 'package' || (visibility === 'folder' && relation === 'same-directory')
 }
 
 function declaresValue(source: Modules.SourceModule, name: string): boolean {

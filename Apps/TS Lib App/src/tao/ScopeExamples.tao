@@ -9,8 +9,3 @@ package
 view PackageScope {
   render Text("Package-scoped view")
 }
-
-project
-view ProjectScope {
-  render Text("Project-scoped view")
-}

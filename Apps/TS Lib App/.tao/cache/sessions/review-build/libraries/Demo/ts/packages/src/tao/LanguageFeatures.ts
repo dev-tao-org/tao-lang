@@ -3,7 +3,8 @@ import * as _Views from "./LanguageFeatures.views";
 import { ForeignGreeting as _taoForeignView0 } from "../../../sidecars/1/src/ts/ForeignGreeting";
 import type { Scope as ImportedScope0 } from "../../../dependencies/tao/@ui/Views";
 import type { Scope as ImportedScope1 } from "./@cards/Card";
-import type { Scope as ImportedScope2 } from "./ScopeExamples";
+import type { Scope as ImportedScope2 } from "./@cards/details/DetailedCard";
+import type { Scope as ImportedScope3 } from "./ScopeExamples";
 
 export type Scope = {
   readonly "FileCaption": string;
@@ -16,9 +17,9 @@ export type Scope = {
   readonly "AliasText": ImportedScope0["Text"];
   readonly "Caption": ImportedScope1["Caption"];
   readonly "PackageCaption": ImportedScope1["Caption"];
-  readonly "FolderScope": ImportedScope2["FolderScope"];
-  readonly "PackageScope": ImportedScope2["PackageScope"];
-  readonly "ProjectScope": ImportedScope2["ProjectScope"];
+  readonly "DetailedCard": ImportedScope2["DetailedCard"];
+  readonly "FolderScope": ImportedScope3["FolderScope"];
+  readonly "PackageScope": ImportedScope3["PackageScope"];
 };
 
 export type Imports = {
@@ -28,9 +29,9 @@ export type Imports = {
   readonly "AliasText": Pick<ImportedScope0, "Text">;
   readonly "Caption": Pick<ImportedScope1, "Caption">;
   readonly "PackageCaption": Pick<ImportedScope1, "Caption">;
-  readonly "FolderScope": Pick<ImportedScope2, "FolderScope">;
-  readonly "PackageScope": Pick<ImportedScope2, "PackageScope">;
-  readonly "ProjectScope": Pick<ImportedScope2, "ProjectScope">;
+  readonly "DetailedCard": Pick<ImportedScope2, "DetailedCard">;
+  readonly "FolderScope": Pick<ImportedScope3, "FolderScope">;
+  readonly "PackageScope": Pick<ImportedScope3, "PackageScope">;
 };
 
 export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.Scope>>): void {
@@ -40,9 +41,9 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
   TR.AliasBinding(_Scope, "AliasText", () => _Modules["ts/dependencies/tao/@ui/Views.ts"]!["Text"]);
   TR.AliasBinding(_Scope, "Caption", () => _Modules["ts/packages/src/tao/@cards/Card.ts"]!["Caption"]);
   TR.AliasBinding(_Scope, "PackageCaption", () => _Modules["ts/packages/src/tao/@cards/Card.ts"]!["Caption"]);
+  TR.AliasBinding(_Scope, "DetailedCard", () => _Modules["ts/packages/src/tao/@cards/details/DetailedCard.ts"]!["DetailedCard"]);
   TR.AliasBinding(_Scope, "FolderScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["FolderScope"]);
   TR.AliasBinding(_Scope, "PackageScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["PackageScope"]);
-  TR.AliasBinding(_Scope, "ProjectScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["ProjectScope"]);
 }
 
 export function bindDeclarations(_Scope: Scope): void {

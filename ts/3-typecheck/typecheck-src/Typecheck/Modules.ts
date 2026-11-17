@@ -1,8 +1,5 @@
 import type * as AST from '@ast-gen'
-import { NullCharacter, Regxs } from '@shared'
-
-/** ImportStatement identifies one authored module import form. */
-export type ImportStatement = AST.UseStatement | AST.UsePackageStatement
+import { NullCharacter } from '@shared'
 
 type ModuleMember = string | number
 /** createModuleMemberKey identifies a module-owned member by name, authored path or source offset. */
@@ -47,32 +44,10 @@ export type LinkedProgram = {
   definitions: readonly LinkedDefinition[]
 }
 
-/** deriveNamespaceFromPath returns the default namespace of a package import. */
-export function deriveNamespaceFromPath(path: string): string | undefined {
-  // ex: ../@Foo.tao/ -> [@Foo.tao]
-  const parts = path.split('/').filter(isNamedImportPathSegment)
-  // ex: [@Foo.tao] -> @Foo
-  const last = parts.at(-1)?.replace(Regxs.TaoSourceExtensionRegx, '')
-  // ex: @Foo -> Foo
-  const name = last?.startsWith('@') ? last.slice(1) : last
-  return isTaoIdentifier(name) ? name : undefined
-}
-
-function isNamedImportPathSegment(part: string): boolean {
-  return part !== '' && part !== '.' && part !== '..'
-}
-
-type TaoIdentifierInput = string | undefined
-
-function isTaoIdentifier(name: TaoIdentifierInput): name is string {
-  // ex: Foo -> true | ex: Foo-bar -> false
-  return name !== undefined && Regxs.TaoIdentifierRegx.test(name)
-}
-
 type ResolvedImport = {
-  statement: ImportStatement
+  statement: AST.UseStatement
   targets: readonly ImportTarget[]
 }
 
-type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'
+type ImportRelation = 'same-file' | 'same-directory' | 'package-api'
 type ImportTarget = { path: string; relation: ImportRelation }

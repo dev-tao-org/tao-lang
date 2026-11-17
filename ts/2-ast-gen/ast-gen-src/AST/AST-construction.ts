@@ -67,9 +67,6 @@ function constructGeneratedNode(cst: CST.SyntaxNode, kind: Generated.Node['kind'
 }
 
 function constructField(cst: CST.SyntaxNode, kind: Generated.Node['kind'], name: string, field: ChildField): unknown {
-  if (kind === 'UseStatement' && name === 'all') {
-    return cst.childForFieldName(name) !== null
-  }
   const children = cst.childrenForFieldName(name)
   const constructChild = (child: CST.SyntaxNode) => isScalarField(kind, name) ? child.text : constructNode(child)
   if (field.multiple) {
@@ -146,7 +143,6 @@ function constructCapture(cst: CST.SyntaxNode): Generated.Capture {
 
 function constructUseStatement(cst: CST.SyntaxNode): Generated.UseStatement {
   return makeNode(cst, 'UseStatement', {
-    all: cst.childForFieldName('all') !== null,
     from: constructOptionalField(cst, 'from', 'ImportPath'),
     imports: constructFieldList(cst, 'imports', 'NamedImport'),
   })

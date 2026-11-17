@@ -46,12 +46,12 @@ Tests.test('source names with category suffixes cannot shadow another input comp
 Tests.test('split initialization binds every module before globally ordered values', () => {
   const parser = Grammar.createParser()
   const entry = AST.transform(parser.parse(S`
-    use ./Other Value
+    use Value
     app Main { root Root }
     view Root { render inject \`\`\`ts return null \`\`\` }
     let Copy = Value
   `))!
-  const other = AST.transform(parser.parse('public let Value = "ready"'))!
+  const other = AST.transform(parser.parse('package let Value = "ready"'))!
   const statement = AST.GetImportStatements(entry)[0]!
   const program = Typecheck.linkModules('/app/Main.tao', [
     {

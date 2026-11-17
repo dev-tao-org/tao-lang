@@ -13,9 +13,6 @@ export const ModuleSourceKeyRegx = /^([A-Za-z0-9_-]+)@([A-Za-z_][\w.-]*)$/
 /** UppercaseInitialRegx matches a leading ASCII uppercase letter. */
 export const UppercaseInitialRegx = /^[A-Z]/
 
-/** TaoIdentifierRegx matches the lexical shape of a Tao identifier. */
-export const TaoIdentifierRegx = /^[_a-zA-Z][_a-zA-Z0-9]*$/
-
 /** JavaScriptIdentifierRegx validates an identifier used in generated JavaScript. */
 export const JavaScriptIdentifierRegx = /^[A-Za-z_$][\w$]*$/
 

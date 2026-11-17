@@ -48,7 +48,7 @@ async function createTransitiveLibrary(directory: string): Promise<void> {
       requires file:../widgets version local as Widgets
       use Widgets@ui Widget
       ts-library Demo { publish { Own, } }
-      public view Own { render Widget }
+      package view Own { render Widget }
     `,
   )
   await FS.writeFile(
@@ -61,14 +61,14 @@ async function createTransitiveLibrary(directory: string): Promise<void> {
     Path.join(widgets, '@ui/Widget.tao'),
     S`
       use Theme@ui Theme
-      public view Widget { render Theme }
+      package view Widget { render Theme }
     `,
   )
   await FS.writeFile(
     Path.join(theme, '@ui/Theme.tao'),
     S`
       use tao@ui Text
-      public view Theme { render Text("Old theme output") }
+      package view Theme { render Text("Old theme output") }
     `,
   )
 }

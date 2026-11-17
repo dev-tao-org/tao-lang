@@ -103,11 +103,10 @@ Tests.test('module statements and declaration visibility become semantic nodes',
   const source = Shared.S`
     use ./views/common Name, Other as Alias
     use Standalone
-    use tao@ui all
-    use package tao@ui as UI
+    use tao@ui/controls Button as Control
     file app Demo { root UI . Home }
     folder view Home(Value UI.Text) { render UI.Text(Value) }
-    public let Value is UI.Text = UI.Default
+    package let Value is UI.Text = UI.Default
   `
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)
@@ -115,43 +114,35 @@ Tests.test('module statements and declaration visibility become semantic nodes',
     'UseStatement',
     'UseStatement',
     'UseStatement',
-    'UsePackageStatement',
     'AppDeclaration',
     'ViewDeclaration',
     'LetDeclaration',
   ])
   Tests.expect(result?.root.block.statements[0]).toMatchObject({
     kind: 'UseStatement',
-    all: false,
     from: { value: './views/common' },
     imports: [{ target: { value: 'Name' } }, { target: { value: 'Other' }, alias: { value: 'Alias' } }],
   })
   Tests.expect(result?.root.block.statements[1]).toMatchObject({
     kind: 'UseStatement',
-    all: false,
     imports: [{ target: { value: 'Standalone' } }],
   })
-  assertPackageImport(result?.root.block.statements[2], result?.root.block.statements[3])
-  Tests.expect(result?.root.block.statements[4]).toMatchObject({
+  Tests.expect(result?.root.block.statements[2]).toMatchObject({
+    kind: 'UseStatement',
+    from: { value: 'tao@ui/controls' },
+    imports: [{ target: { value: 'Button' }, alias: { value: 'Control' } }],
+  })
+  Tests.expect(result?.root.block.statements[3]).toMatchObject({
     kind: 'AppDeclaration',
     visibility: 'file',
     block: { statements: [{ view: { value: 'UI.Home' } }] },
   })
-  Tests.expect(result?.root.block.statements[5]).toMatchObject({ kind: 'ViewDeclaration', visibility: 'folder' })
-  Tests.expect(result?.root.block.statements[6]).toMatchObject({ kind: 'LetDeclaration', visibility: 'public' })
+  Tests.expect(result?.root.block.statements[4]).toMatchObject({ kind: 'ViewDeclaration', visibility: 'folder' })
+  Tests.expect(result?.root.block.statements[5]).toMatchObject({ kind: 'LetDeclaration', visibility: 'package' })
   Tests.expect(result?.root.block.statements[0]).toMatchObject({
     range: { start: 0, end: source.indexOf(Shared.NewlineCharacter) },
   })
 })
-
-function assertPackageImport(all?: AST.Node, packageImport?: AST.Node): void {
-  Tests.expect(all).toMatchObject({ kind: 'UseStatement', all: true })
-  Tests.expect(packageImport).toMatchObject({
-    kind: 'UsePackageStatement',
-    from: { value: 'tao@ui' },
-    alias: { value: 'UI' },
-  })
-}
 
 Tests.test('requirements and foreign views retain authored fields and source ranges', () => {
   const source = Shared.S`
@@ -160,7 +151,7 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     requires npm:date-fns version 4.1.0
     requires bundled:tao as TaoSource
     use Widgets@ui/controls Button
-    public view FormattedDate(Value text) from ./FormattedDate.tsx
+    package view FormattedDate(Value text) from ./FormattedDate.tsx
   `
   const tree = Grammar.createParser().parse(source)
   const result = transform(tree)
@@ -191,6 +182,6 @@ Tests.test('requirements and foreign views retain authored fields and source ran
     'requires npm:date-fns version 4.1.0',
     'requires bundled:tao as TaoSource',
     'use Widgets@ui/controls Button',
-    'public view FormattedDate(Value text) from ./FormattedDate.tsx',
+    'package view FormattedDate(Value text) from ./FormattedDate.tsx',
   ])
 })

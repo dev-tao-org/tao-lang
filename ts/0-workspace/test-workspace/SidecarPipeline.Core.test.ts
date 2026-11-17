@@ -167,11 +167,11 @@ Tests.test('file dependencies can validate sidecars inside their own project and
     await FS.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
     await FS.writeFile(
       taoPath,
-      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
+      'package view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
     )
     await FS.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tao'),
-      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
+      'package view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
     )
     await FS.writeFile(
       Path.join(moduleRoot, 'FormattedDate.tsx'),
@@ -185,7 +185,7 @@ Tests.test('file dependencies can validate sidecars inside their own project and
       'export const formatDate = (value: string) => value' + NewlineCharacter,
     )
     const dependencyDocument = AST.transform(
-      Grammar.createParser().parse('public view FormattedDate(Value text) from ./FormattedDate.tsx'),
+      Grammar.createParser().parse('package view FormattedDate(Value text) from ./FormattedDate.tsx'),
     )!
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
     const prepared = await prepareSidecarPipeline({
@@ -207,7 +207,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     await FS.mkdirs(Path.join(dependencyRoot, '.tao'), moduleRoot)
     await FS.writeFile(
       taoPath,
-      'public view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
+      'package view FormattedDate(Value text) from ./FormattedDate.tsx' + NewlineCharacter,
     )
     const consumerHelper = Path.join(fixture.moduleRoot, 'consumer-helper.ts')
     await FS.writeFile(consumerHelper, 'export const value = true' + NewlineCharacter)
@@ -224,7 +224,7 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
       ),
     )
     const dependencyDocument = AST.transform(
-      Grammar.createParser().parse('public view FormattedDate(Value text) from ./FormattedDate.tsx'),
+      Grammar.createParser().parse('package view FormattedDate(Value text) from ./FormattedDate.tsx'),
     )!
     fixture.program.modules.push({ path: taoPath, document: dependencyDocument, bindings: [], imports: [] })
     await Tests.rejects(

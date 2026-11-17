@@ -122,7 +122,7 @@ async function createDependencyWrapper(root: string): Promise<void> {
     Path.join(widgets, '@ui/Widget.tao'),
     S`
       use tao@ui Text
-      public view Widget { render Text("Prepared dependency output") }
+      package view Widget { render Text("Prepared dependency output") }
     `,
   )
   await FS.writeFile(

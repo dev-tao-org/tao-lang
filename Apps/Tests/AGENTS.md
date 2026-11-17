@@ -24,7 +24,7 @@ includes all active correctness apps.
 
 - **Language**: `Language/Language.tao` composes `Scopes.tao`, `PrivateViews.tao` and `ImmutableValues.tao`; each feature has a matching `.test.tao` journey. Nested declarations stay inside their owning feature file.
 - **UI Interactions**: `UI Interactions/UI Interactions.tao` selects the form in `Forms.tao`; `Forms.test.tao` covers control interaction and fresh state for each case.
-- **Modules and Dependencies**: `Modules and Dependencies/Modules and Dependencies.tao` selects `Imports.tao`; `Imports.test.tao` covers the visible result. `Nearby.tao`, `Public/Caption.tao`, `@cards/Card.tao`, `@cards/Captions.tao` and `@cards/Data/Caption.tao` intentionally exercise sibling, wildcard and package boundaries.
+- **Modules and Dependencies**: `Modules and Dependencies/Modules and Dependencies.tao` selects `Imports.tao`; `Imports.test.tao` covers sibling visibility, relative folder imports and named package imports including a subfolder.
 
 ## Performance
 

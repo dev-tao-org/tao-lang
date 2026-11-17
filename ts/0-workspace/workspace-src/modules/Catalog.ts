@@ -59,6 +59,7 @@ export async function findNamedPackageDirectories(projectRoot: string, name: str
       if (entry.name === name) {
         if (await isSafeDirectory(path, projectRoot)) {
           found.push(path)
+          await visit(path)
         }
       } else if (!await FS.exists(Path.join(path, '.tao'))) {
         await visit(path)

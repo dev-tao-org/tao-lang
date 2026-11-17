@@ -21,16 +21,14 @@ Tests.test('import organization collects, sorts, merges and deduplicates without
     view Main { render Text("Hello") }
     use tao@ui Col, Text
     use tao@ui Text as Caption
-    use package tao@ui as UI
     use widgets@ui Widget
-    use ./Other all
+    use ./Other Item
   `
   const result = fixSource(source)
   Tests.expect(result).toBe(S`
     use tao@ui Col, Text, Text as Caption
-    use package tao@ui as UI
     use widgets@ui Widget
-    use ./Other all
+    use ./Other Item
 
     view Main {
       render Text("Hello")

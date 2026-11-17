@@ -1,6 +1,7 @@
 use tao@ui Col, Input, Text, Text as AliasText
 use @cards Caption, Caption as PackageCaption
-use FolderScope, PackageScope, ProjectScope
+use @cards/details DetailedCard
+use FolderScope, PackageScope
 
 file
 let FileCaption is text = "File-scoped text"
@@ -8,16 +9,16 @@ let FileCaption is text = "File-scoped text"
 file
 let EscapedCaption = "Escaped \"text\", backslash \\ and Unicode \u263A"
 
-public
+package
 view LanguageFeatures(Name text) {
   render Col {
     Text(FileCaption)
     FolderScope
     PackageScope
-    ProjectScope
     Caption("Package import")
     AliasText("Tao alias")
     PackageCaption("Aliased package import")
+    DetailedCard("Tao import from a package subfolder")
     Col {
       let FileCaption = "Nested lexical text"
       Text(FileCaption)

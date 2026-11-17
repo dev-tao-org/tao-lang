@@ -24,8 +24,6 @@
 (TypeScriptLibraryDeclaration name: (Identifier) @type)
 (PublishDeclaration "publish" @keyword)
 (PublishDeclaration (Identifier) @type)
-(All) @keyword
-(UsePackageStatement ["use" "package" "as"] @keyword)
 (NamedImport "as" @keyword)
 (RequiresDeclaration ["requires" "version" "as"] @keyword)
 (RequirementProvider) @type

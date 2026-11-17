@@ -18,7 +18,7 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
   const source = S`
     requires file:../helpers as dependency
     use tao@ui sdkValue, Text as textAlias
-    use package ./helpers as namespace
+    use ./helpers Helper as helperAlias
 
     app example { root Main }
     let local = sdkValue
@@ -36,7 +36,7 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
   Tests.expect(names).toEqual([
     'dependency',
     'textAlias',
-    'namespace',
+    'helperAlias',
     'example',
     'local',
     'viewer',
@@ -44,4 +44,16 @@ Tests.test('statement diagnostics identify every explicitly authored lowercase d
     'capture',
     'library',
   ])
+})
+
+Tests.test('removed wildcard imports and visibility modifiers cannot validate', () => {
+  const source = S`
+    use tao@ui all
+    public let Greeting = "Hello"
+    project view Main { render Text(Greeting) }
+  `
+  const document = AST.transform(Grammar.createParser().parse(source))!
+  const diagnostics = SourceValidation.collectStatementDiagnostics(document)
+  Tests.expect(diagnostics.map(diagnostic => Source.slice(source, diagnostic))).toEqual(['all', 'public', 'project'])
+  Tests.expect(diagnostics[0]!.message).toBe('Imports must name individual declarations.')
 })

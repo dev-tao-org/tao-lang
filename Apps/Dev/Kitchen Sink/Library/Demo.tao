@@ -4,7 +4,7 @@ ts-library KitchenSinkLibrary {
   publish { LibraryGreeting, }
 }
 
-public
+package
 view LibraryGreeting(First text, Second text) {
   render Col {
     Text(First)

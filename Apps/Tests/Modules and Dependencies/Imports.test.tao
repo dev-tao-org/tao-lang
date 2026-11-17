@@ -5,8 +5,9 @@ tests "Modules" {
     run ModulesAndDependencies
     expect text "Package-owned value"
     expect text "Folder-owned package value"
+    expect text "Named package subfolder"
     expect text "Folder sibling"
-    expect text "Public wildcard"
+    expect text "Relative folder import"
     expect text "Caller scope"
   }
 }

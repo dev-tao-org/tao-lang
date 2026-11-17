@@ -6,7 +6,6 @@ import type { Scope as ImportedScope0 } from "../../../dependencies/tao/@ui/View
 export type Scope = {
   readonly "FolderScope": TR.View;
   readonly "PackageScope": TR.View;
-  readonly "ProjectScope": TR.View;
   readonly "Text": ImportedScope0["Text"];
 };
 
@@ -21,5 +20,4 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 export function bindDeclarations(_Scope: Scope): void {
   TR.LetDeclaration(_Scope, "FolderScope", TR.ViewDeclaration("FolderScope", [], _Views.TaoView_FolderScope_56453330fc38, _Scope));
   TR.LetDeclaration(_Scope, "PackageScope", TR.ViewDeclaration("PackageScope", [], _Views.TaoView_PackageScope_56453330fc38, _Scope));
-  TR.LetDeclaration(_Scope, "ProjectScope", TR.ViewDeclaration("ProjectScope", [], _Views.TaoView_ProjectScope_56453330fc38, _Scope));
 }
