@@ -88,9 +88,9 @@ cross-platform acceptance, or new branch-wide review. The last independent paren
 publication-cleanup P2 remains open.
 
 The reconciliation worktree retains the original report, evidence inventory and unaccepted follow-up
-candidates in `.artifacts/notes/package-api-reconciliation/`. See the
+candidates in `.artifacts/notes/package-api-reconciliation/`. The
 [Immediate implementation queue](../Roadmap/Immediate%20Implementation%20Queue.md#cross-cutting-follow-ups)
-for accepted work still pending.
+tracks the reconciliation status and the separate design work on validation APIs.
 
 ## Retained local evidence
 
