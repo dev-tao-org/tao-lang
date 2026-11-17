@@ -49,6 +49,7 @@ function renderRoot(files: Readonly<Record<string, string>>): unknown {
     ViewDeclaration: Client.ViewDeclaration,
     beginViewRender: Client.beginViewRender,
     finishViewRender: Client.finishViewRender,
+    useReadValue: (value: unknown) => value,
     ViewRenderArguments: () => ({}),
     ViewRenderExpression: (view: unknown) => view,
     ModuleApplied() {},

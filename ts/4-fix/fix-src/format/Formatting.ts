@@ -66,6 +66,13 @@ export const Formatting = {
   QualifiedName(fm) {
     fm.noSpaceAround('.')
   },
+  InterpolatedText(fm) {
+    fm.noSpaceAroundProperty('parts')
+  },
+  TextInterpolation(fm) {
+    fm.oneSpaceAfter('{')
+    fm.oneSpaceBefore('}')
+  },
   ParameterList(fm) {
     fm.commaSpacedList()
   },

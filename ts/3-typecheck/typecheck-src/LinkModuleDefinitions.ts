@@ -105,18 +105,28 @@ function collectDefinitionDependencies(
   const value = AST.IsAppDeclaration(item.declaration)
     ? AST.GetAppRoot(item.declaration)
     : item.declaration.value
-  if (!AST.IsKind(value, 'Name')) {
-    return []
+  const dependencies: ModuleBinding[] = []
+  AST.VisitExpressionNames(value, name => {
+    dependencies.push(...resolveDefinitionDependencies(name, module, definitions, knownNames))
+  })
+  return dependencies
+}
+
+function resolveDefinitionDependencies(
+  name: AST.Name,
+  module: LinkedModule,
+  definitions: DependencyDefinitionsByModuleMemberKey,
+  knownNames: ReadonlySet<string>,
+): ModuleBinding[] {
+  if (definitions.has(createModuleMemberKey(module.path, name.value))) {
+    return [ModuleBinding(name.value, module.path, name.value)]
   }
-  if (definitions.has(createModuleMemberKey(module.path, value.value))) {
-    return [ModuleBinding(value.value, module.path, value.value)]
-  }
-  const imports = module.bindings.filter(binding => binding.name === value.value)
+  const imports = module.bindings.filter(binding => binding.name === name.value)
   if (imports.length > 0) {
     return imports
   }
-  if (!knownNames.has(value.value)) {
-    UserInput.fail(`Unknown let reference ${value.value} in ${item.source}.`)
+  if (!knownNames.has(name.value)) {
+    UserInput.fail(`Unknown let reference ${name.value} in ${module.path}.`)
   }
   return []
 }

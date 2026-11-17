@@ -15,7 +15,7 @@ export const syntaxFixture = S`
   folder app Demo{root Root}
   package view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  state Status is text=Title
+  state Status is text="Caption: {Title}{ " {Subtitle} " }"
   action Rename (Value text){set Status=Value}
   action Save(){do Rename (Caption)}
   render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message) UI.Button(Status){on press Save} UI.Button(Subtitle){on press->do Rename(Title)}}
@@ -54,7 +54,7 @@ export const formattedSyntaxFixture = S`
   package
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    state Status is text = Title
+    state Status is text = "Caption: { Title }{ " { Subtitle } " }"
     action Rename(Value text) {
       set Status = Value
     }
@@ -156,6 +156,9 @@ export const syntaxKinds = {
   RenderTag: true,
   ArgumentList: true,
   TextLiteral: true,
+  InterpolatedText: true,
+  TextInterpolation: true,
+  TextSegment: true,
   Comment: true,
   Identifier: true,
   QualifiedName: true,

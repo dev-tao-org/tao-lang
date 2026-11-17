@@ -53,19 +53,27 @@ export function useWritable<T>(initializer: () => T): WritableExpression<T> {
 
 /** useComputed memoizes a pure, recreatable candidate from stable inputs. */
 export function useComputed<T>(evaluate: () => T, stableInputs: readonly unknown[]): Expression<ValueSnapshot<T>> {
-  return React.useMemo(() => defaultEngine.createComputed(evaluate), stableInputs)
+  return React.useMemo(() => createComputed(evaluate), stableInputs)
+}
+
+/** createComputed creates a derived value on the same graph as hook-backed state. */
+export function createComputed<T>(evaluate: () => T): Expression<ValueSnapshot<T>> {
+  return defaultEngine.createComputed(evaluate)
 }
 
 /** useValue subscribes to a cached provider snapshot through React's commit-owned bridge. */
 export function useValue<T>(expression: ExpressionReader<T>): T {
-  const subscribe = React.useMemo(() => (notify: () => void) => {
-    const observation = expression.observe(() => notify())
-    return () => observation.unobserve()
-  }, [expression])
+  return useOptionalValue(expression, undefined) as T
+}
+
+type OptionalExpressionReader<T> = ExpressionReader<T> | undefined
+/** useOptionalValue delivers a snapshot and only subscribes when the candidate is reactive. */
+export function useOptionalValue<T>(expression: OptionalExpressionReader<T>, fallback: T): T {
+  const subscribe = React.useMemo(() => expression ? subscribeTo(expression) : subscribeToConstant, [expression])
   const snapshot = React.useMemo(() => {
-    const cached = expression as InternalExpression<T>
-    return cached.snapshot ?? (() => expression.jsValue())
-  }, [expression])
+    const cached = expression as OptionalInternalExpression<T>
+    return cached?.snapshot ?? (() => expression ? expression.jsValue() : fallback)
+  }, [expression, fallback])
   return React.useSyncExternalStore(subscribe, snapshot, snapshot)
 }
 
@@ -84,6 +92,19 @@ type ExpressionReader<T, Subscription = Pick<Observation, 'unobserve'>> = {
 const defaultEngine = createReactiveEngine()
 type Node<T> = { value: Preact.Signal<ReactiveValue>; evaluate(): T }
 type InternalExpression<T> = ExpressionReader<T, Observation> & { snapshot?: () => T }
+type OptionalInternalExpression<T> = InternalExpression<T> | undefined
+
+function subscribeToConstant(): () => void {
+  return () => undefined
+}
+
+function subscribeTo<T>(expression: ExpressionReader<T>): (notify: () => void) => () => void {
+  return notify => {
+    const observation = expression.observe(() => notify())
+    return () => observation.unobserve()
+  }
+}
+
 type EngineState = {
   strategy: NonNullable<ReactiveEngineOptions['strategy']>
   scheduleDelivery: (deliver: () => void) => void

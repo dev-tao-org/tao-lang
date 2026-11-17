@@ -32,12 +32,12 @@ view LanguageFeatures(Name text) {
     StateEditor(Name)
     #state-second
     StateEditor("Second initial state")
+    CaptionEquality
   }
 
   view CapturedCaption(Value text) {
-    render inject Caption Value ```ts
-      return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
-    ```
+    let Caption = "Aliased capture: { Value }"
+    render Text(Caption)
   }
 
   view StateEditor(Initial text) {
@@ -58,6 +58,28 @@ view LanguageFeatures(Name text) {
       }
     }
   }
+
+  view CaptionEquality {
+    state Start = "a"
+    state End = "bc"
+    let Caption = "{ Start }{ End }"
+    action Redistribute() {
+      set Start = "ab"
+      set End = "c"
+    }
+    render Col {
+      Text("First segment: { Start }")
+      ReactiveCaptionProbe(Caption)
+      Button("Redistribute caption") {
+        on press Redistribute
+      }
+      Button("Extend caption") {
+        on press -> set End = "cd"
+      }
+    }
+  }
 }
 
 view ForeignGreeting(Value text) from ../ts/ForeignGreeting.tsx
+
+view ReactiveCaptionProbe(Value text) from ../ts/ReactiveCaptionProbe.tsx

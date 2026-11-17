@@ -5,7 +5,7 @@ import type { Scope as ModuleScope, Imports as ModuleImports } from "./DetailedC
 
 export function TaoView_DetailedCard_26bac1d87d14(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": string };
+  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": TR.GeneratedValue<string> };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Text["Text"],

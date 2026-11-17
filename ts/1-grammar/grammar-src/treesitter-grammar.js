@@ -12,8 +12,8 @@ const RequirementVersionRegx = /[A-Za-z0-9._+-]+/
 const ImportPathRegx =
   /(@(?:[a-zA-Z0-9._\-]+)?(?:\/[a-zA-Z0-9._\-]+)*)|(\.\/[a-zA-Z0-9._\-@\/]*)|(\.\.(\/[a-zA-Z0-9._\-@]+)*\/?)|([a-zA-Z.][a-zA-Z0-9._\-]*\/[a-zA-Z0-9._\-@\/]*)|([a-zA-Z0-9._-]+@[a-zA-Z0-9._@/-]+\/?[a-zA-Z0-9._@/-]*)/
 const RenderTagRegx = /#[A-Za-z_][A-Za-z0-9_-]*/
-const TextLiteralCharacterRegx = /[^"\\\r\n\u0000-\u001f]/
-const TextLiteralEscapeRegx = /\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/
+const TextLiteralCharacterRegx = /[^"{\\\r\n\u0000-\u001f]/
+const TextLiteralEscapeRegx = /\\(?:["{\\/bfnrt]|u[0-9a-fA-F]{4})/
 const LineCommentRegx = /\/\/[^\n\r]*/
 const BlockCommentRegx = /\/\*[^*]*\*+([^/*][^*]*\*+)*\//
 const IdentifierRegx = /[A-Za-z_][A-Za-z0-9_]*/
@@ -65,7 +65,7 @@ export default grammar({
       )
     },
     _Expression($) {
-      return choice($.QualifiedName, $.TextLiteral)
+      return choice($.QualifiedName, $.TextLiteral, $.InterpolatedText)
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -295,6 +295,21 @@ export default grammar({
     },
     TextLiteral() {
       return token(seq('"', repeat(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)), '"'))
+    },
+    InterpolatedText($) {
+      return seq(
+        '"',
+        optional(field('parts', $.TextSegment)),
+        field('parts', $.TextInterpolation),
+        repeat(field('parts', choice($.TextSegment, $.TextInterpolation))),
+        token.immediate('"'),
+      )
+    },
+    TextSegment() {
+      return token.immediate(repeat1(choice(TextLiteralCharacterRegx, TextLiteralEscapeRegx)))
+    },
+    TextInterpolation($) {
+      return seq(token.immediate('{'), field('value', $._Expression), '}')
     },
 
     // Names

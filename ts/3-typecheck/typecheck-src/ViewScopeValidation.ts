@@ -10,6 +10,11 @@ export type ResolveModuleValue = (name: string) => ViewBinding | undefined
 /** assertValidViewScopes validates local declarations, text writes, action calls and event targets. */
 export function assertValidViewScopes(document: AST.Document, path: string, resolveModule: ResolveModuleValue): void {
   const scope = createScope(undefined, resolveModule)
+  for (const definition of AST.GetValueDeclarations(document)) {
+    if (AST.IsKind(definition, 'LetDeclaration') && AST.IsKind(definition.value, 'InterpolatedText')) {
+      assertTextParts(definition.value, scope, { view: definition.name.value, path })
+    }
+  }
   for (const view of AST.GetViewDeclarations(document)) {
     assertValidView(view, scope, path)
   }
@@ -73,7 +78,7 @@ function declareDeferredBindings(
 }
 
 function declareLet(node: AST.LetDeclaration, scope: Scope, owner: ViewOwner): void {
-  const value = resolveExpression(scope, node.value)
+  const value = resolveExpression(scope, node.value, owner)
   assertValue(value, owner, node.value)
   const binding = value?.kind === 'state' ? TextBinding : value ?? OtherBinding
   declare(scope, node.name, binding, owner)
@@ -99,6 +104,10 @@ function assertValidRender(node: AST.ViewRenderExpression, scope: Scope, owner: 
   for (const argument of node.arguments) {
     if (AST.IsKind(argument, 'Name')) {
       assertValue(resolveLocal(scope, argument.value), owner, argument)
+    } else if (AST.IsKind(argument, 'InterpolatedText')) {
+      assertTextParts(argument, scope, owner)
+    } else {
+      // Literal text does not reference lexical values.
     }
   }
   const statements = AST.GetViewRenderBlockStatements(node)
@@ -202,7 +211,7 @@ function assertTextType(type: AST.Name, owner: ViewOwner): void {
 }
 
 function assertTextValue(value: AST.Expression, scope: Scope, owner: ViewOwner): void {
-  const binding = resolveExpression(scope, value)
+  const binding = resolveExpression(scope, value, owner)
   if (binding?.kind !== 'text' && binding?.kind !== 'state') {
     reject(owner, value, 'Expected a text value.')
   }
@@ -216,8 +225,22 @@ function assertValue(binding: OptionalBinding, owner: ViewOwner, value: AST.Expr
   }
 }
 
-function resolveExpression(scope: Scope, value: AST.Expression): OptionalBinding {
-  return AST.IsKind(value, 'TextLiteral') ? TextBinding : resolve(scope, value.value)
+function resolveExpression(scope: Scope, value: AST.Expression, owner: ViewOwner): OptionalBinding {
+  if (AST.IsKind(value, 'Name')) {
+    return resolve(scope, value.value)
+  }
+  if (AST.IsKind(value, 'InterpolatedText')) {
+    assertTextParts(value, scope, owner)
+  }
+  return TextBinding
+}
+
+function assertTextParts(value: AST.InterpolatedText, scope: Scope, owner: ViewOwner): void {
+  for (const part of value.parts) {
+    if (AST.IsKind(part, 'TextInterpolation')) {
+      assertTextValue(part.value, scope, owner)
+    }
+  }
 }
 
 function createScope(parent: OptionalScope, resolveModule: ResolveModuleValue): Scope {

@@ -1,5 +1,6 @@
 import { Errors } from '@shared'
 import React from './Bridge_react/Bridge_react'
+import { useReadValues } from './Expressions'
 import { Name, Scope } from './Scope'
 import type { Scope as RuntimeScope } from './Scope'
 import { beginViewRender, finishViewRender, ViewDeclaration } from './View'
@@ -25,9 +26,9 @@ function ForeignViewBody(props: ViewComponentProps): React.ReactNode {
   if (!component) {
     Errors.ThrowShouldNeverHappen(`Foreign Tao view "${context.view.name}" has no component.`)
   }
-  const valueProps = Object.fromEntries(
-    context.view.parameters.map(parameter => [parameter, Name(context.scope, parameter)]),
-  )
+  const parameters = context.view.parameters
+  const values = useReadValues(parameters.map(parameter => Name(context.scope, parameter)))
+  const valueProps = Object.fromEntries(parameters.map((parameter, index) => [parameter, values[index]]))
   const testIDProps = context.testID === undefined ? {} : { testID: context.testID }
   const element = React.createElement(component as React.ComponentType<Record<string, unknown>>, {
     ...valueProps,

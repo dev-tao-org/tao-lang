@@ -25,7 +25,7 @@ function compileCapture(
   return Switch.kind(node.value, {
     Name(name) {
       const text = isTextExpression(name, reference => bindings.has(reference.value))
-      const value = RuntimeEmitter.emitName(name, scope) + (text ? ' as string' : '')
+      const value = RuntimeEmitter.emitObservedValue(name, scope) + (text ? ' as string' : '')
       return RuntimeEmitter.InjectionCapture(node, text ? 'text' : 'unknown', value)
     },
     ContextReference: reference => compileContextCapture(node, reference, names),

@@ -17,6 +17,7 @@ export async function verifyConsumer(page: Page): Promise<void> {
   await verifyLanguageFeatures(page)
   await verifyValueSnapshots(page)
   await verifyAuthoredState(page)
+  await verifyCaptionEquality(page)
   await first.getByText('Nested private Tao helper 0', { exact: true }).click()
   await first.getByText('Nested private Tao helper 1', { exact: true }).waitFor()
   await second.getByText('Nested private Tao helper 0', { exact: true }).waitFor()
@@ -51,6 +52,21 @@ async function verifyAuthoredState(page: Page): Promise<void> {
   await second.getByRole('button', { name: 'Save state' }).click()
   await second.getByText('Saved state', { exact: true }).waitFor()
   expect(await first.getByText('Grace', { exact: true }).isVisible()).toBe(true)
+}
+
+async function verifyCaptionEquality(page: Page): Promise<void> {
+  const caption = page.getByTestId('reactive-caption')
+  await caption.getByText('abc', { exact: true }).waitFor()
+  const renders = caption.getByTestId('reactive-caption-renders')
+  const originalRenderCount = Number(await renders.textContent())
+  expect(originalRenderCount).toBeGreaterThan(0)
+  await page.getByRole('button', { name: 'Redistribute caption' }).click()
+  await page.getByText('First segment: ab', { exact: true }).waitFor()
+  expect(await caption.getByText('abc', { exact: true }).isVisible()).toBe(true)
+  expect(Number(await renders.textContent())).toBe(originalRenderCount)
+  await page.getByRole('button', { name: 'Extend caption' }).click()
+  await caption.getByText('abcd', { exact: true }).waitFor()
+  expect(Number(await renders.textContent())).toBeGreaterThan(originalRenderCount)
 }
 
 async function verifyLanguageFeatures(page: Page): Promise<void> {

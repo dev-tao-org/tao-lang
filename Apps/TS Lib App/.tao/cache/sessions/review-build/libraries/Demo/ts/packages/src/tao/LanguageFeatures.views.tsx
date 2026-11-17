@@ -2,19 +2,21 @@ import * as TR from '@tao/runtime/generated';
 import Tao from '@tao/runtime/runtime-api';
 import type { Scope as ModuleScope, Imports as ModuleImports } from "./LanguageFeatures";
 import { ForeignGreeting as _taoForeignView0 } from "../../../sidecars/1/src/ts/ForeignGreeting";
+import { ReactiveCaptionProbe as _taoForeignView1 } from "../../../sidecars/1/src/ts/ReactiveCaptionProbe";
 
-function useTaoInjectionLanguageFeatures$CapturedCaption_f61fcef90f44(Caption: string) {
-  return <Tao.Text>{'Aliased capture: ' + Caption}</Tao.Text>
-}
 export function TaoView_LanguageFeatures$CapturedCaption_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor"> & { readonly "Name": string; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View }, "Value"> & { readonly "Value": string };
-
-  return TR.finishViewRender(_Render, useTaoInjectionLanguageFeatures$CapturedCaption_f61fcef90f44(_Scope["Value"] as string));
+  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View }, "Value" | "Caption"> & { readonly "Value": TR.GeneratedValue<string>; readonly "Caption": TR.GeneratedValue<string> };
+  const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
+  TR.LetDeclaration(_Scope, "Caption", TR.InterpolatedText(["Aliased capture: ", _Scope["Value"]]));
+  return TR.finishViewRender(_Render, TR.ViewRenderExpression(
+    _Imported_Text["Text"],
+    TR.ViewRenderArguments([_Scope["Caption"]], [])
+  ));
 }
 export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor"> & { readonly "Name": string; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View }, "Initial" | "Status" | "Save" | "Reset"> & { readonly "Initial": string; readonly "Status": string; readonly "Save": unknown; readonly "Reset": unknown };
+  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View }, "Initial" | "Status" | "Save" | "Reset"> & { readonly "Initial": TR.GeneratedValue<string>; readonly "Status": TR.GeneratedValue<string>; readonly "Save": unknown; readonly "Reset": unknown };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
@@ -49,9 +51,50 @@ export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.Vie
     ])
   ));
 }
+export function TaoView_LanguageFeatures$CaptionEquality_f61fcef90f44(_Props: TR.ViewComponentProps) {
+  const _Render = TR.beginViewRender(_Props);
+  const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View }, "Start" | "End" | "Caption" | "Redistribute"> & { readonly "Start": TR.GeneratedValue<string>; readonly "End": TR.GeneratedValue<string>; readonly "Caption": TR.GeneratedValue<string>; readonly "Redistribute": unknown };
+  const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
+  const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
+  const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
+  TR.useStateDeclaration(_Scope, "Start", () => "a");
+  TR.useStateDeclaration(_Scope, "End", () => "bc");
+  TR.LetDeclaration(_Scope, "Caption", TR.InterpolatedText([_Scope["Start"], _Scope["End"]]));
+  TR.useActionDeclaration(_Scope, "Redistribute", [], _Scope => {
+    TR.SetStatement(_Scope, "Start", "ab");
+    TR.SetStatement(_Scope, "End", "c");
+  });
+  return TR.finishViewRender(_Render, TR.ViewRenderExpression(
+    _Imported_Col["Col"],
+    TR.ViewRenderArguments([], [
+      TR.ViewRenderExpression(
+        _Imported_Text["Text"],
+        TR.ViewRenderArguments([TR.InterpolatedText(["First segment: ", _Scope["Start"]])], [])
+      ),
+      TR.ViewRenderExpression(
+        _Scope["ReactiveCaptionProbe"],
+        TR.ViewRenderArguments([_Scope["Caption"]], [])
+      ),
+      TR.ViewRenderExpression(
+        _Imported_Button["Button"],
+        TR.ViewPressArguments(["Redistribute caption"], TR.ViewPressBlock(_Scope, (_Scope, _Children, _BindPress) => {
+          TR.PressBinding(_BindPress, _Scope["Redistribute"]);
+        }))
+      ),
+      TR.ViewRenderExpression(
+        _Imported_Button["Button"],
+        TR.ViewPressArguments(["Extend caption"], TR.ViewPressBlock(_Scope, (_Scope, _Children, _BindPress) => {
+          TR.PressBinding(_BindPress, TR.InlineAction(_Scope, _Scope => {
+            TR.SetStatement(_Scope, "End", "cd");
+          }));
+        }))
+      )
+    ])
+  ));
+}
 export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor"> & { readonly "Name": string; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View };
+  const _Scope = _Render.scope as Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_FolderScope = TR.ScopeAliases<ModuleImports["FolderScope"]>(_Scope, { ["FolderScope"]: "FolderScope" });
   const _Imported_PackageScope = TR.ScopeAliases<ModuleImports["PackageScope"]>(_Scope, { ["PackageScope"]: "PackageScope" });
@@ -63,6 +106,7 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
   const _Imported_Input = TR.ScopeAliases<ModuleImports["Input"]>(_Scope, { ["Input"]: "Input" });
   TR.LetDeclaration(_Scope, "CapturedCaption", TR.ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_f61fcef90f44, _Scope));
   TR.LetDeclaration(_Scope, "StateEditor", TR.ViewDeclaration("StateEditor", ["Initial"], TaoView_LanguageFeatures$StateEditor_f61fcef90f44, _Scope));
+  TR.LetDeclaration(_Scope, "CaptionEquality", TR.ViewDeclaration("CaptionEquality", [], TaoView_LanguageFeatures$CaptionEquality_f61fcef90f44, _Scope));
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Col["Col"],
     TR.ViewRenderArguments([], [
@@ -127,6 +171,10 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
       TR.ViewRenderExpression(
         _Scope["StateEditor"],
         TR.ViewRenderArguments(["Second initial state"], [], "state-second")
+      ),
+      TR.ViewRenderExpression(
+        _Scope["CaptionEquality"],
+        TR.ViewRenderArguments([], [])
       )
     ])
   ));

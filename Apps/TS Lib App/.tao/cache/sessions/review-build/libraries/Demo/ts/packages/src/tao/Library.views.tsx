@@ -16,13 +16,13 @@ function useTaoInjectionGreeting$PrivateGreeting_1d5cb05c2553() {
 }
 export function TaoView_Greeting$PrivateGreeting_1d5cb05c2553(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "PrivateGreeting"> & { readonly "First": string; readonly "Second": string; readonly "PrivateGreeting": TR.View };
+  const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "PrivateGreeting"> & { readonly "First": TR.GeneratedValue<string>; readonly "Second": TR.GeneratedValue<string>; readonly "PrivateGreeting": TR.View };
 
   return TR.finishViewRender(_Render, useTaoInjectionGreeting$PrivateGreeting_1d5cb05c2553());
 }
 export function TaoView_Greeting_1d5cb05c2553(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "PrivateGreeting"> & { readonly "First": string; readonly "Second": string; readonly "PrivateGreeting": TR.View };
+  const _Scope = _Render.scope as Omit<ModuleScope, "First" | "Second" | "PrivateGreeting"> & { readonly "First": TR.GeneratedValue<string>; readonly "Second": TR.GeneratedValue<string>; readonly "PrivateGreeting": TR.View };
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   TR.LetDeclaration(_Scope, "PrivateGreeting", TR.ViewDeclaration("PrivateGreeting", [], TaoView_Greeting$PrivateGreeting_1d5cb05c2553, _Scope));

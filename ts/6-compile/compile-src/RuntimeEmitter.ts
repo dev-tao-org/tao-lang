@@ -55,6 +55,16 @@ export function emitLetDeclaration(node: AST.LetDeclaration, scope: string, valu
   return emitNamedDeclaration(node, scope, value)
 }
 
+/** emitInterpolatedText creates a reactive interpolation from compiled text parts. */
+export function emitInterpolatedText(parts: string): string {
+  return `TR.InterpolatedText(${parts})`
+}
+
+/** emitObservedValue reads a lexical value for an injected render hook. */
+export function emitObservedValue(name: AST.Name, scope: CodegenUtil.ScopeCode): string {
+  return `TR.useReadValue(${emitName(name, scope)})`
+}
+
 /** emitLocalAlias makes a view-local name follow its lexical source. */
 export function emitLocalAlias(node: AST.LetDeclaration, scope: string, reference: AST.Name): string {
   return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${

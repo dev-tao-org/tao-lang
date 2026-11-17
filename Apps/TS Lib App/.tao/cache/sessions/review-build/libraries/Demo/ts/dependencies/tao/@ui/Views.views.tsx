@@ -8,9 +8,9 @@ function useTaoInjectionText_482201fbc4bd(Value: string) {
 }
 export function TaoView_Text_482201fbc4bd(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": string };
+  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": TR.GeneratedValue<string> };
 
-  return TR.finishViewRender(_Render, useTaoInjectionText_482201fbc4bd(_Scope["Value"] as string));
+  return TR.finishViewRender(_Render, useTaoInjectionText_482201fbc4bd(TR.useReadValue(_Scope["Value"]) as string));
 }
 
 function useTaoInjectionCol_482201fbc4bd(Children: TR.ViewComponentProps['children']) {
@@ -38,9 +38,9 @@ function useTaoInjectionInput_482201fbc4bd(Value: string) {
 }
 export function TaoView_Input_482201fbc4bd(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": string };
+  const _Scope = _Render.scope as Omit<ModuleScope, "Value"> & { readonly "Value": TR.GeneratedValue<string> };
 
-  return TR.finishViewRender(_Render, useTaoInjectionInput_482201fbc4bd(_Scope["Value"] as string));
+  return TR.finishViewRender(_Render, useTaoInjectionInput_482201fbc4bd(TR.useReadValue(_Scope["Value"]) as string));
 }
 
 function useTaoInjectionButton_482201fbc4bd(Label: string, Press: TR.ViewComponentProps['press']) {
@@ -52,7 +52,7 @@ function useTaoInjectionButton_482201fbc4bd(Label: string, Press: TR.ViewCompone
 }
 export function TaoView_Button_482201fbc4bd(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as Omit<ModuleScope, "Label"> & { readonly "Label": string };
+  const _Scope = _Render.scope as Omit<ModuleScope, "Label"> & { readonly "Label": TR.GeneratedValue<string> };
 
-  return TR.finishViewRender(_Render, useTaoInjectionButton_482201fbc4bd(_Scope["Label"] as string, _Render.press));
+  return TR.finishViewRender(_Render, useTaoInjectionButton_482201fbc4bd(TR.useReadValue(_Scope["Label"]) as string, _Render.press));
 }

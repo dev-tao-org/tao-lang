@@ -229,7 +229,7 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
     const value = field.multiple && !override ? `readonly (${type})[]` : type
     return `  ${emitSemanticStringLiteral(semanticField)}: ${value}${optional}`
   })
-  if (['ImportPath', 'RenderTag', 'TextLiteral', 'ContextReference'].includes(kind)) {
+  if (['ImportPath', 'RenderTag', 'TextLiteral', 'TextSegment', 'ContextReference'].includes(kind)) {
     generatedFields.push('  value: string')
   }
   return S`

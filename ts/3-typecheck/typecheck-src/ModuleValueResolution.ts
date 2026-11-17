@@ -30,7 +30,7 @@ function resolveModuleValue(module: LinkedModule, name: string, resolve: Resolve
   }
   if (declaration?.kind === 'LetDeclaration') {
     const value = declaration.value
-    return AST.IsKind(value, 'TextLiteral') ? TextBinding : resolve(module.path, value.value)
+    return AST.IsKind(value, 'Name') ? resolve(module.path, value.value) : TextBinding
   }
   const binding = module.bindings.find(binding => binding.name === name)
   return binding ? resolve(binding.source, binding.target) : undefined

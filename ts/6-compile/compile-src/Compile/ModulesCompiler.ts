@@ -208,7 +208,7 @@ function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationComp
     return 'TR.View'
   }
   if (context.textBindings.has(node.name.value)) {
-    return 'string'
+    return 'TR.GeneratedValue<string>'
   }
   return 'unknown'
 }

@@ -138,17 +138,13 @@ function visitLet(node: AST.ViewValueDeclaration, scope: Scope): void {
   if (node.type) {
     reference(scope, node.type)
   }
-  if (AST.IsKind(node.value, 'Name')) {
-    reference(scope, node.value)
-  }
+  AST.VisitExpressionNames(node.value, name => reference(scope, name))
 }
 
 function visitRender(node: AST.ViewRenderExpression, scope: Scope): void {
   reference(scope, node.target)
   for (const argument of node.arguments) {
-    if (AST.IsKind(argument, 'Name')) {
-      reference(scope, argument)
-    }
+    AST.VisitExpressionNames(argument, name => reference(scope, name))
   }
   const statements = AST.GetViewRenderBlockStatements(node)
   if (statements.length > 0) {

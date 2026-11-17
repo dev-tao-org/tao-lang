@@ -1,14 +1,24 @@
 # Reactive Expressions WIP
 
-In the agreed expression model, expressions depend on their input values and propagate changes only when their resulting values change.
+Expressions depend on the values they read and pass changes on only when their result changes.
 
 ```tao
-let Total = Price * Quantity
+use tao@ui Button
+
+view SaveButton {
+  state Status = "Ready"
+  let Caption = "Save: { Status }"
+  render Button(Caption) {
+    on press -> set Status = "Saved"
+  }
+}
 ```
 
-#### Expression inputs
+#### `"Save: { Status }"`
 
-`Total` depends on `Price` and `Quantity`. A changed input causes the dependent expression to re-evaluate. If the resulting value is unchanged, that evaluation does not trigger downstream dependents.
+Place a text expression inside braces to insert its value into surrounding text. Leave spaces inside the braces. Use `\{` for a literal opening brace. Interpolation works in text arguments and in `let` values; within an action it reads the values current when the action runs.
+
+Here `Caption` depends on `Status`. When the status changes, the button reads the updated caption. If inputs change and the assembled text is equal, views that read only the caption receive no update.
 
 #### Conditional dependencies
 
@@ -32,4 +42,4 @@ Actions execute explicitly in response to events through `do`. Changes to their 
 
 #### Availability
 
-This records agreed behavior; it does not establish implementation or verification status.
+Text interpolation and derived text values are available in Tao apps and compiled TypeScript libraries. The broader expression model, including conditional reads, pure function calls and collection values, is agreed future behavior.

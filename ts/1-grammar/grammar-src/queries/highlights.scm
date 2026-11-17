@@ -43,4 +43,5 @@
 (Visibility) @keyword
 (QualifiedName) @type
 (TextLiteral) @string
+(TextSegment) @string
 (Comment) @comment

@@ -79,9 +79,7 @@ function addLetReferences(definition: AST.LetDeclaration, names: Set<string>): v
   if (definition.type) {
     names.add(definition.type.value)
   }
-  if (AST.IsKind(definition.value, 'Name')) {
-    names.add(definition.value.value)
-  }
+  AST.VisitExpressionNames(definition.value, name => names.add(name.value))
 }
 
 function addScopedLetReferences(
@@ -92,9 +90,7 @@ function addScopedLetReferences(
   if (definition.type) {
     addReference(definition.type.value, names, localNames)
   }
-  if (AST.IsKind(definition.value, 'Name')) {
-    addReference(definition.value.value, names, localNames)
-  }
+  AST.VisitExpressionNames(definition.value, name => addReference(name.value, names, localNames))
 }
 
 function addScopedRenderReferences(
@@ -105,9 +101,7 @@ function addScopedRenderReferences(
   const localNames = new Set(parentNames)
   addReference(render.target.value, names, localNames)
   for (const argument of render.arguments) {
-    if (AST.IsKind(argument, 'Name')) {
-      addReference(argument.value, names, localNames)
-    }
+    AST.VisitExpressionNames(argument, name => addReference(name.value, names, localNames))
   }
   for (const child of AST.GetViewRenderBlockStatements(render)) {
     Switch.kind(child, {

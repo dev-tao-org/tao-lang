@@ -26,11 +26,14 @@ type ChildField = { multiple: boolean; required: boolean; types: readonly string
 type FieldLayout = Readonly<Record<string, ChildField>>
 type CustomConstructor = (cst: CST.SyntaxNode) => Generated.Node
 
+const EscapedBrace = '\\{'
+
 const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   SourceFile: constructFile,
   Identifier: constructName,
   QualifiedName: constructName,
   TextLiteral: constructTextLiteral,
+  TextSegment: constructTextSegment,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
   ImportPath: constructImportPath,
@@ -131,7 +134,8 @@ function constructDoStatement(cst: CST.SyntaxNode): Generated.DoStatement {
 
 function constructArguments(cst: CST.SyntaxNode): Generated.Expression[] {
   const argumentsNode = cst.childForFieldName('argumentList')
-  return constructChildren(argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? [], ['Name', 'TextLiteral'])
+  const children = argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? []
+  return constructChildren(children, ['Name', 'TextLiteral', 'InterpolatedText'])
 }
 
 function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatement {
@@ -178,7 +182,16 @@ function constructName(cst: CST.SyntaxNode): Generated.Name {
 }
 
 function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
-  return makeNode(cst, 'TextLiteral', { value: Json.Parse(cst.text) as string })
+  return makeNode(cst, 'TextLiteral', { value: decodeText(cst.text.slice(1, -1)) })
+}
+
+function constructTextSegment(cst: CST.SyntaxNode): Generated.TextSegment {
+  return makeNode(cst, 'TextSegment', { value: decodeText(cst.text) })
+}
+
+function decodeText(source: string): string {
+  const json = source.replaceAll(Shared.Regxs.TaoTextEscapeRegx, escape => escape === EscapedBrace ? '{' : escape)
+  return Json.Parse('"' + json + '"') as string
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {

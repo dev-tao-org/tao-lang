@@ -77,9 +77,10 @@ view Heading {
 
 package
 view SaveButton {
-  state Caption = "Save"
+  state Status = "Ready"
+  let Caption = "Save: { Status }"
   action Save() {
-    set Caption = "Saved"
+    set Status = "Saved"
   }
   render Button(Caption) {
     on press Save
@@ -95,12 +96,14 @@ tests "Kitchen Sink" {
     expect text "Kitchen Sink"
     expect text "Private nested view"
     expect text "Named package subfolder"
+    expect text "Imported from a sibling module \{sample}"
     expect text "Sidecar: Validated TypeScript sidecar"
     expect text "Nested lexical scope"
+    expect text "Save: Ready"
     type "Edited text" into #editable
     press #save
     expect {
-      text "Saved"
+      text "Save: Saved"
     }
     expect #editable input value "Edited text"
   }

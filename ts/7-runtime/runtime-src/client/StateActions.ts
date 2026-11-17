@@ -1,6 +1,7 @@
 import { UserInput } from '@shared'
 import React from './Bridge_react/Bridge_react'
-import { batch, useValue, useWritable } from './ReactiveEngine'
+import { bindExpression, readText } from './Expressions'
+import { batch, useWritable } from './ReactiveEngine'
 import { defineScopeBinding, hasScopeBinding, LetDeclaration, Scope, ViewRenderBlock } from './Scope'
 
 /** PressHandler invokes a parameterless action for one press. */
@@ -11,11 +12,11 @@ export type PressRenderBlock = { children: readonly React.ReactNode[]; press?: P
 
 /** useStateDeclaration retains writable text in this view instance and exposes its current value lexically. */
 export function useStateDeclaration(scope: Scope, name: string, initialize: () => unknown): void {
-  const source = useWritable(() => requireText(initialize()))
-  useValue(source)
+  const source = useWritable(() => readText(initialize()))
+  const expression = bindExpression(source)
   defineScopeBinding(scope, name, {
-    get: () => source.jsValue(),
-    set: write => source.update(requireText(write)),
+    get: () => expression,
+    set: write => source.update(readText(write)),
     enumerable: true,
   })
 }
@@ -79,7 +80,7 @@ type ActionBody = (scope: Scope) => void
 function bindActionArguments(parent: Scope, parameters: readonly string[], values: ActionArguments): Scope {
   const scope = Scope(parent)
   for (const [index, name] of parameters.entries()) {
-    LetDeclaration(scope, name, requireText(values[index]))
+    LetDeclaration(scope, name, readText(values[index]))
   }
   return scope
 }
@@ -87,9 +88,4 @@ function bindActionArguments(parent: Scope, parameters: readonly string[], value
 function requireAction(candidate: unknown): Action {
   UserInput.require(typeof candidate === 'function', 'Expected a Tao action.')
   return candidate as Action
-}
-
-function requireText(value: unknown): string {
-  UserInput.require(typeof value === 'string', 'Expected a text value.')
-  return value
 }

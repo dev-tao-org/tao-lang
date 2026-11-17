@@ -15,3 +15,6 @@ export const NewlineCharacterGlobalRegx = /\n/g
 
 /** WhitespaceOnlyRegx matches text containing only whitespace. */
 export const WhitespaceOnlyRegx = /^\s*$/
+
+/** TaoTextEscapeRegx matches an escape within a quoted Tao text fragment. */
+export const TaoTextEscapeRegx = /\\(?:["{\\/bfnrt]|u[0-9a-fA-F]{4})/g

@@ -305,7 +305,7 @@ function createScopeType(
 ): string {
   const values = [...node.parameters, ...declarations.definitions].map(value => ({
     name: value.name.value,
-    type: bindings.has(value.name.value) ? 'string' : 'unknown',
+    type: bindings.has(value.name.value) ? 'TR.GeneratedValue<string>' : 'unknown',
   }))
   const views = declarations.children.map(child => ({ name: child.name.value, type: 'TR.View' }))
   const actions = declarations.actions.map(action => ({ name: action.name.value, type: 'unknown' }))

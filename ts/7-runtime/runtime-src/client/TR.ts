@@ -1,4 +1,5 @@
 export { AppDeclaration } from './App'
+export { type GeneratedValue, InterpolatedText, useReadValue } from './Expressions'
 export { ForeignView } from './ForeignView'
 export type { ForeignViewComponent } from './ForeignView'
 export { LibraryView, type LibraryViewProps } from './LibraryView'

@@ -48,6 +48,21 @@ export function GetNestedViewDeclarations(statements: readonly AST.Statement[]):
   return statements.filter(IsViewDeclaration)
 }
 
+/** VisitExpressionNames visits the value references within an expression in source order. */
+export function VisitExpressionNames(value: AST.Expression, visit: (name: AST.Name) => void): void {
+  if (AST.IsKind(value, 'Name')) {
+    visit(value)
+    return
+  }
+  if (AST.IsKind(value, 'InterpolatedText')) {
+    for (const part of value.parts) {
+      if (AST.IsKind(part, 'TextInterpolation')) {
+        VisitExpressionNames(part.value, visit)
+      }
+    }
+  }
+}
+
 /** GetViewRenderExpressions lists nested view renders in one render block, in authored order. */
 export function GetViewRenderExpressions(statements: readonly AST.Statement[]): readonly AST.ViewRenderExpression[] {
   return statements.filter(IsViewRenderExpression)

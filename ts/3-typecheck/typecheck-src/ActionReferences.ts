@@ -7,11 +7,11 @@ export function visitActionReferences(body: AST.InlineActionBody, visit: VisitNa
   for (const statement of statements) {
     if (AST.IsKind(statement, 'SetStatement')) {
       visit(statement.target)
-      visitValue(statement.value, visit)
+      AST.VisitExpressionNames(statement.value, visit)
     } else if (AST.IsKind(statement, 'DoStatement')) {
       visit(statement.target)
       for (const value of statement.arguments) {
-        visitValue(value, visit)
+        AST.VisitExpressionNames(value, visit)
       }
     } else {
       // Statements belonging outside actions introduce no references here.
@@ -28,9 +28,3 @@ export function visitPressReferences(handler: AST.PressHandler, visit: VisitName
 }
 
 type VisitName = (name: AST.Name) => void
-
-function visitValue(value: AST.Expression, visit: VisitName): void {
-  if (AST.IsKind(value, 'Name')) {
-    visit(value)
-  }
-}

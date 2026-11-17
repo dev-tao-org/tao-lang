@@ -73,6 +73,14 @@ export class NodeFormat<Kind extends CST.NodeType> extends NodeContext<Kind> {
     this.propertySpaces(properties, 0)
   }
 
+  noSpaceAroundProperty(property: CST.Field<Kind>): void {
+    for (const node of this.node.childrenForFieldName(property)) {
+      const range = this.range(node)
+      spaceAt(this.plan, range.first, 0)
+      spaceAt(this.plan, range.last + 1, 0)
+    }
+  }
+
   private propertySpaces(properties: readonly CST.Field<Kind>[], count: number): void {
     for (const name of properties) {
       const node = this.property(name)
