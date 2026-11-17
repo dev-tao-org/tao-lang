@@ -55,7 +55,8 @@ TypeScript, and return `undefined` on success. They run synchronously in every b
 `UserInputError`. Malformed calls throw a fixed `UnexpectedBehaviorError` without inspecting
 or attaching the arguments.
 
-Use `Errors.ThrowX` for unconditional failures and the existing structured error boundary
+Use `UserInput.fail(message, details?, { cause }?)` for unconditional caller-correctable failures;
+it preserves diagnostic details and causes. Use `Errors.ThrowX` for other error categories and the existing structured error boundary
 for collected diagnostics. Use schema decoding to validate and type unknown data. Put a check
 before the operation it protects. Argument evaluation and earlier effects happen before it runs.
 
