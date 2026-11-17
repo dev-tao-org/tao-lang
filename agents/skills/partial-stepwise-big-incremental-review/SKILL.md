@@ -12,7 +12,8 @@ description: >-
 
 ## Guide the review
 
-- Propose all groups in order with [recommended auto-approvals](references/operations.md#recommend-auto-approval).
+- Apply the [standing auto-approval policy](references/operations.md#auto-approval) before
+  proposing the remaining groups. List what was auto-approved and why.
   Requests to start or continue authorize the first or next display. Ask when the Developer
   wants a proposal only or the order needs a decision. Keep related changes in small feature
   groups. Normally separate Projects, Dependencies and Sidecars.
@@ -31,7 +32,7 @@ description: >-
 - At review start, freeze the original change inventory, baseline and source snapshot in the session
   notes. Record its file/hunk totals and review units: one per original diff hunk, plus one per binary
   or zero-hunk change. Keep this denominator fixed throughout the review.
-- Track completed original units from approvals, including automatic test acceptance below. Map
+- Track completed original units from approvals, including auto-approvals. Map
   renames, splits and replacements to original changes without double counting. Partial approvals earn only
   the corresponding original units. Added fixes, tests and refactors are additional completed work,
   not additional review units; they must not enlarge the denominator or reduce earned progress.
@@ -82,8 +83,8 @@ description: >-
   Developer explicitly asks to bypass the queue.
 - Commit validated requested corrections, including subagent work, in coherent chunks under this
   workflow's standing developer authorization; preserve unrelated edits and index selections.
-  Keep corrections pending human acceptance on the approved-content branch; commits, staging and
-  tests never grant it. Verify proportionately: focused checks may cover checkpoints, with full
+  Apply the same acceptance policy to corrections. Commits, staging and tests do not grant
+  acceptance. Verify proportionately: focused checks may cover checkpoints, with full
   verification before readiness to land. Omit detailed test ledgers and application reruns for
   acceptance-only transfers.
 
