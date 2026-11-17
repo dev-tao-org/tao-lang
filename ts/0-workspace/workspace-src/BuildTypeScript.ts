@@ -1,6 +1,6 @@
 import type * as Runtime from '@runtime'
-import { Json } from '@shared'
-import { Errors, NewlineCharacter, Try } from '@shared'
+import * as Expo from '@runtime/expo'
+import { Errors, Try } from '@shared'
 import { FS, Path } from '@shared/os'
 
 /** prepareBuildTypeScript gives generated build sources the runtime's aliases and pinned dependencies.
@@ -10,22 +10,11 @@ export async function prepareBuildTypeScript(
   runtime: Runtime.RuntimeApplication,
 ): Promise<void> {
   await FS.mkdir(buildDirectory)
-  const runtimeConfig = Path.relative(buildDirectory, Path.join(runtime.directory, 'tsconfig.json'))
-    .replaceAll('\\', '/')
-  const configuration = {
-    extends: Path.toRelativeModuleSpecifier(runtimeConfig),
-    include: ['./**/*.ts', './**/*.tsx'],
-  }
   await FS.writeIfChanged(
     Path.join(buildDirectory, 'tsconfig.json'),
-    serializeBuildTypeScriptConfiguration(configuration),
+    Expo.serializeAppBuildTypeScriptConfig(runtime.directory),
   )
   await linkBuildDependencies(buildDirectory, runtime.directory)
-}
-
-type BuildTypeScriptConfiguration = { extends: string; include: string[] }
-function serializeBuildTypeScriptConfiguration(configuration: BuildTypeScriptConfiguration): string {
-  return `${Json.Print(configuration)}${NewlineCharacter}`
 }
 
 async function linkBuildDependencies(buildDirectory: string, runtimeDirectory: string): Promise<void> {

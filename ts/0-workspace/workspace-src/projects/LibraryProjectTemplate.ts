@@ -102,8 +102,13 @@ function serializeLibraryProjectManifest(): string {
 
 function serializeLibraryProjectTypeScript(): string {
   return Json.Print({
-    extends: 'expo/tsconfig.base',
     compilerOptions: {
+      allowJs: true,
+      esModuleInterop: true,
+      lib: ['DOM', 'ESNext'],
+      moduleDetection: 'force',
+      customConditions: ['react-native'],
+      resolveJsonModule: true,
       strict: true,
       noEmit: true,
       jsx: 'react-jsx',

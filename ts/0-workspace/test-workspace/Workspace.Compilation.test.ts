@@ -162,10 +162,11 @@ async function verifyGeneratedBuildConfiguration(
   const configPath = Path.join(buildDirectory, 'tsconfig.json')
   const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
   Tests.expect(config.error).toBeUndefined()
-  Tests.expect(Path.resolve(buildDirectory, config.config.extends)).toBe(Path.join(runtime.directory, 'tsconfig.json'))
+  Tests.expect(config.config.extends).toBeUndefined()
+  Tests.expect(config.config.compilerOptions.module).toBe('ESNext')
   const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, buildDirectory)
   Tests.expect(parsed.fileNames).toContain(Path.join(buildDirectory, 'source/Widget.ts'))
-  Tests.expect(parsed.errors.some(error => error.code === 5083)).toBe(false)
+  Tests.expect(parsed.errors).toEqual([])
   Tests.expect(FS.realpathSync(Path.join(buildDirectory, 'node_modules'))).toBe(
     FS.realpathSync(Path.join(runtime.directory, 'node_modules')),
   )
@@ -181,7 +182,7 @@ async function verifyGeneratedBuildConfiguration(
     physicalBuildDirectory,
   )
   Tests.expect(physicalParsed.fileNames).toContain(Path.join(physicalBuildDirectory, 'source/Widget.ts'))
-  Tests.expect(physicalParsed.errors.some(error => error.code === 5083)).toBe(false)
+  Tests.expect(physicalParsed.errors).toEqual([])
   Tests.expect(FS.realpathSync(Path.join(physicalBuildDirectory, 'node_modules'))).toBe(
     FS.realpathSync(Path.join(runtime.directory, 'node_modules')),
   )

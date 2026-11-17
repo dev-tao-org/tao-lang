@@ -19,6 +19,8 @@ Tests.test('generated build files resolve runtime aliases and JSX packages in th
     const configPath = Path.join(build, 'tsconfig.json')
     const config = TypeScript.readConfigFile(configPath, TypeScript.sys.readFile)
     Tests.expect(config.error).toBeUndefined()
+    Tests.expect(config.config.extends).toBeUndefined()
+    Tests.expect(config.config.compilerOptions.module).toBe('ESNext')
     const parsed = TypeScript.parseJsonConfigFileContent(config.config, TypeScript.sys, build)
     Tests.expect(parsed.errors).toEqual([])
     Tests.expect(parsed.fileNames).toContain(source)

@@ -5,6 +5,10 @@ type TryOptions<Recovery = never, Final = void> = {
   catch?: (thrown: unknown) => Recovery
   finally?: (thrown: unknown, error: OptionalTaoError) => Final
 }
+
+// Defer distribution so only the callbacks infer recovery and finalization types.
+type CallbackInferred<Value> = [Value][Value extends unknown ? 0 : never]
+
 /** Try normalizes failures, allows recovery, and finalizes once with the original callback failure.
  *  Synchronous stages return synchronously; promise-like stages are awaited. Finalizer failures override
  *  pending results or failures, just like native finally, and are normalized before propagation.
@@ -12,7 +16,7 @@ type TryOptions<Recovery = never, Final = void> = {
 export function Try<Value, Recovery = never, Final = void>(
   action: () => Value,
   options: TryOptions<Recovery, Final> = {},
-): TryResult<Value, NoInfer<Recovery>, NoInfer<Final>> {
+): TryResult<Value, CallbackInferred<Recovery>, CallbackInferred<Final>> {
   const completed = continueWith(capture(action), original => {
     const handled = !original.ok && options.catch
       ? capture(() => options.catch!(original.thrown))

@@ -1,8 +1,6 @@
 import type * as Runtime from '@runtime'
-import type * as Expo from '@runtime/expo'
-import { Json } from '@shared'
-
-import { Errors, NewlineCharacter, Objects, Timings, Try } from '@shared'
+import * as Expo from '@runtime/expo'
+import { Errors, Objects, Timings, Try } from '@shared'
 import { FS, Path, Platform } from '@shared/os'
 import { publishDirectory } from '../PublishDirectory'
 
@@ -143,25 +141,11 @@ const writeBuild = Timings.measured(
 )
 
 async function copyBuildConfiguration(nextDirectory: string, runtime: Runtime.RuntimeApplication): Promise<void> {
-  const configuration = serializePublishedBuildConfiguration(Path.join(runtime.directory, 'tsconfig.json'))
+  const configuration = Expo.serializeAppBuildTypeScriptConfig(runtime.directory)
   await FS.writeIfChanged(Path.join(nextDirectory, 'tsconfig.json'), configuration)
   const targetLink = Path.join(nextDirectory, 'node_modules')
   const dependencyTarget = Path.join(runtime.directory, 'node_modules')
   await FS.symlink(dependencyTarget, targetLink, 'dir')
-}
-
-function serializePublishedBuildConfiguration(extendsPath: string): string {
-  const configuration = {
-    extends: extendsPath,
-    compilerOptions: {
-      noEmit: true,
-      allowImportingTsExtensions: true,
-      noUnusedLocals: false,
-      noUnusedParameters: false,
-    },
-    include: ['./**/*.ts', './**/*.tsx'],
-  }
-  return Json.Print(configuration) + NewlineCharacter
 }
 
 async function writeSnapshotFiles(

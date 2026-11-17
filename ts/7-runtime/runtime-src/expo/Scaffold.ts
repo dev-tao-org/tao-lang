@@ -5,6 +5,7 @@ import { metroConfiguration } from '../bridges/Bridge_expo/Bridge_expo-config'
 import type { RuntimePackageVersions } from '../Runtime'
 import { writeGeneratedHost } from './GeneratedHost'
 import * as RuntimeDependencyPolicy from './RuntimeDependencyPolicy'
+import { serializeExpoTypeScriptConfig } from './TypeScriptConfig'
 
 /** writeExpoApplication writes a minimal Expo app and readable Tao runtime sources. */
 export async function writeExpoApplication(
@@ -60,28 +61,6 @@ function resolveSingletonPackages(options: ExpoScaffoldOptions): readonly string
 
 function serializeExpoAppManifest(): string {
   return Json.Print({ expo: { name: 'Tao Preview', slug: 'tao-preview', platforms: ['web'] } })
-}
-
-function serializeExpoTypeScriptConfig(): string {
-  return Json.Print(expoTypeScriptConfig)
-}
-
-const expoTypeScriptConfig = {
-  extends: 'expo/tsconfig.base',
-  compilerOptions: {
-    baseUrl: '.',
-    strict: true,
-    jsxImportSource: '@runtime/client/Bridge_react',
-    preserveSymlinks: true,
-    paths: {
-      '@tao/runtime/generated': ['src/_gen_runtime/runtime/TR.ts'],
-      '@tao/runtime/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
-      '@runtime/client/*': ['src/_gen_runtime/runtime/*'],
-      '@tao/runtime-api': ['src/_gen_runtime/runtime/TaoRuntimeAPI.ts'],
-      '@shared': ['src/_gen_runtime/shared/shared.ts'],
-      '@shared/os/preview': ['src/_gen_runtime/shared/os/preview/PreviewPlatform.ts'],
-    },
-  },
 }
 
 const expoEntry = S`
