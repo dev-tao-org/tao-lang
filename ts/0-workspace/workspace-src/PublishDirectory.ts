@@ -19,6 +19,6 @@ export async function publishDirectory(next: string, output: string): Promise<vo
   })
   if (exists) {
     // Installation is already committed. Session cleanup can remove a displaced tree later.
-    await Try.WithDefault(undefined, () => FS.rm(previous, { recursive: true, force: true }))
+    await Try.IgnoreError(() => FS.rm(previous, { recursive: true, force: true }))
   }
 }

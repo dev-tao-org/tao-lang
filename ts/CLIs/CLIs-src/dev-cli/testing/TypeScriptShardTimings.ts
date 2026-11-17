@@ -44,7 +44,7 @@ export async function rememberShardTimings(
   if (!sample) {
     return
   }
-  await Try.WithDefault(undefined, async () => {
+  await Try.IgnoreError(async () => {
     await FS.mkdir(Path.dirname(cachePath))
     const lock = await FileLock.tryAcquire(cachePath + '.lock')
     if (lock) {
