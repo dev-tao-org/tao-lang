@@ -5,11 +5,14 @@ import { Errors, Switch, Time, Try } from '@shared'
 import { Artifacts, Platform, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { measureReactiveHeapRetention, type ReactiveHeapSample } from './reactivity-heap'
+import { measureReactiveSnapshots, type ReactiveSnapshotMeasurements } from './reactivity-snapshots'
+import { type ReactivitySummary, summarizeReactivity } from './ReactivitySummary'
 
 /** reactivityPerformance compares Tao provider work and notification policies without claiming preview speed. */
 export async function reactivityPerformance() {
   const samples = collectSamples()
-  const summary = summarize(samples)
+  const snapshots = measureReactiveSnapshots()
+  const summary = [...summarize(samples), ...snapshots.summary]
   const heapCandidates = candidates.filter(candidate => !candidate.deferred)
   const heapRetention = measureReactiveHeapRetention(heapCandidates)
   const path = Artifacts.resolvePath('logs/performance', `reactivity-${Platform.randomUUID()}.json`)
@@ -33,6 +36,7 @@ export async function reactivityPerformance() {
     summary,
     samples,
     heapRetention,
+    snapshots,
   }
   await Artifacts.write(path, serializeReactivityPerformanceReport(report))
   return { path, summary, heapRetention }
@@ -44,9 +48,10 @@ type ReactivityPerformanceReport = {
   modified: boolean
   system: Platform.SystemInformation
   definitions: ReactivityPerformanceDefinitions
-  summary: ReactivityPerformanceSummary[]
+  summary: ReactivitySummary[]
   samples: Sample[]
   heapRetention: ReactiveHeapSample[]
+  snapshots: ReactiveSnapshotMeasurements
 }
 
 type ReactivityPerformanceDefinitions = {
@@ -80,16 +85,6 @@ type Sample = {
   notifications: number
   expressions: number
   observations: number
-}
-
-type ReactivityPerformanceSummary = {
-  candidate: string
-  scenario: Scenario
-  samples: number
-  medianMs: number
-  p95Ms: number
-  evaluations: number[]
-  notifications: number[]
 }
 
 const operations = 1000
@@ -235,16 +230,7 @@ function summarize(samples: readonly Sample[]) {
   return candidates.flatMap(candidate =>
     scenarios.map(scenario => {
       const selected = samples.filter(sample => sample.candidate === candidate.name && sample.scenario === scenario)
-      const durations = selected.map(sample => sample.durationMs).toSorted((left, right) => left - right)
-      return {
-        candidate: candidate.name,
-        scenario,
-        samples: selected.length,
-        medianMs: durations[Math.floor(durations.length / 2)]!,
-        p95Ms: durations[Math.ceil(durations.length * 0.95) - 1]!,
-        evaluations: selected.map(sample => sample.evaluations),
-        notifications: selected.map(sample => sample.notifications),
-      }
+      return summarizeReactivity(candidate.name, scenario, selected)
     })
   )
 }
