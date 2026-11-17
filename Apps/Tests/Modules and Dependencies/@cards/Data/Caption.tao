@@ -1,1 +1,7 @@
+use tao@ui Text
+
 package let PackageCaption = "Package-owned value"
+
+package view PackageDetail {
+  render Text("Named package subfolder")
+}

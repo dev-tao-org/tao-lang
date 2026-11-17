@@ -8,11 +8,11 @@ The [TypeScript Libraries specification](../Specification/TypeScript%20Libraries
 
 Importing a library facade automatically initializes one shared scope per loaded library. Top-level state is singular, as for an app. View-local state belongs to each mount. Generated libraries use the independently installed `@tao/runtime` peer. Shutdown and development reload details remain open.
 
-Generated library configuration maps published packages by project-local identities such as `@editor`. Captured sidecars use these identities and resolve to the generated facade. A general resolver for authored sidecars and the remaining Tao import and visibility migration is tracked separately. Declaration kinds without a TypeScript representation need an explicit bridge design.
+Generated library configuration maps published packages by project-local identities such as `@editor`. Captured sidecars use these identities and resolve to the generated facade. A general resolver for authored sidecars remains separate. Declaration kinds without a TypeScript representation need an explicit bridge design.
 
 Tao source project distribution uses project-source plus local package identity, without an authored npm publication name. Generated TypeScript artifacts are a separate distribution boundary: an installed artifact's package name prefixes its exported Tao package subpaths. Metadata ownership for packaging that artifact remains open; do not conflate it with naming the Tao source package.
 
-Individually published declarations use named root exports. A selected local package exposes its public views through artifact-qualified subpaths, such as `<library-path>/@editor` and `<library-path>/@editor/tools`. Each export has one canonical address. Package manifest ownership and local addressing are recorded in [Tao Language Design Decisions](Tao%20Language%20Design%20Decisions.md). Local development linking across separate projects is deferred until after MVP.
+Individually published declarations use named root exports. A selected local package exposes its package-visible views through artifact-qualified subpaths, such as `<library-path>/@editor` and `<library-path>/@editor/tools`. Each export has one canonical address. Package manifest ownership and local addressing are recorded in [Tao Language Design Decisions](Tao%20Language%20Design%20Decisions.md). Local development linking across separate projects is deferred until after MVP.
 
 ## Original PoC contract
 

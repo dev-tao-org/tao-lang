@@ -1,6 +1,5 @@
 import * as AST from '@ast-gen'
 import { Range, Source, Switch, Timings } from '@shared'
-import { deriveNamespaceFromPath } from './Modules'
 
 /** UsageWarning identifies an unused local binding without proposing its removal. */
 export type UsageWarning = {
@@ -16,7 +15,7 @@ export const unusedWarnings = Timings.createTopLevelTimer(function(timings, docu
 })
 
 type UsageWarningCode = 'unused-import' | 'unused-declaration'
-type BindingKind = 'local' | 'import' | 'namespace'
+type BindingKind = 'local' | 'import'
 type Binding = { name: AST.Name; kind: BindingKind; report: boolean; used: boolean }
 type Scope = { parent?: Scope; bindings: Map<string, Binding[]>; all: Binding[] }
 
@@ -34,18 +33,11 @@ const analyzeUsage = Timings.measured('usage.analyze', function(document: AST.Do
 
 function declareModuleBinding(node: AST.Declaration, scope: Scope): void {
   if (AST.IsValueDeclaration(node)) {
-    const reportUnused = AST.GetDeclarationVisibility(node) === 'file'
+    const reportUnused = !AST.IsAppDeclaration(node) && AST.GetDeclarationVisibility(node) === 'file'
     declare(scope, node.name, 'local', reportUnused)
   } else if (AST.IsUseStatement(node)) {
     for (const item of node.imports) {
       declare(scope, item.alias ?? item.target, 'import')
-    }
-  } else if (AST.IsUsePackageStatement(node)) {
-    // ex: use package @Foo as Bar -> Bar
-    const value = node.alias?.value ?? deriveNamespaceFromPath(node.from.value)
-    if (value) {
-      const namespaceName: AST.Name = node.alias ?? { ...node.from, kind: 'Name', value }
-      declare(scope, namespaceName, 'namespace')
     }
   } else {
     // Requirements and test suites do not declare module-level values.
@@ -72,7 +64,6 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
       }
     },
     UseStatement: Switch.nothing,
-    UsePackageStatement: Switch.nothing,
     RequiresDeclaration: Switch.nothing,
     TypeScriptLibraryDeclaration(library) {
       const publication = AST.FindLibraryPublication(library)
@@ -170,9 +161,7 @@ function declare(scope: Scope, name: AST.Name, kind: Binding['kind'] = 'local', 
 }
 
 function reference(scope: Scope, name: AST.Name): void {
-  const head = name.value.split('.')[0]!
-  const namespace = scope.bindings.get(head)?.filter(binding => binding.kind === 'namespace')
-  const bindings = scope.bindings.get(name.value) ?? (namespace?.length ? namespace : undefined)
+  const bindings = scope.bindings.get(name.value)
   if (bindings) {
     for (const binding of bindings) {
       binding.used = true

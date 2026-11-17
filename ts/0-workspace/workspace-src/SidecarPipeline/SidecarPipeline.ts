@@ -189,7 +189,7 @@ async function collectSidecarView(
   if (realModulePath === undefined) {
     Errors.ThrowUserInput(`Tao module is outside its project boundary: ${modulePath}`)
   }
-  const moduleRoot = Paths.findNamedPackageRoot(realModulePath, projectRoot) ?? projectRoot
+  const moduleRoot = Paths.findNamedPackageRoot(Path.dirname(realModulePath), projectRoot) ?? projectRoot
   const resolvedAuthoredPath = resolveAuthoredForeignPath(modulePath, authoredPath.value)
   watchAttemptedPath(resolvedAuthoredPath, moduleRoot, watchFiles)
   const sidecarPath = await resolveSafeModuleFile(resolvedAuthoredPath, moduleRoot, projectRoot)
@@ -272,7 +272,7 @@ async function resolveSafeModuleFile(path: string, moduleRoot: string, projectDi
     Errors.ThrowUserInput(`Foreign view sidecar escapes its module boundary: ${absolute}`)
   }
   const expectedPackage = moduleRoot === projectDirectory ? undefined : moduleRoot
-  if (Paths.findNamedPackageRoot(realPath, projectDirectory) !== expectedPackage) {
+  if (Paths.findNamedPackageRoot(Path.dirname(realPath), projectDirectory) !== expectedPackage) {
     Errors.ThrowUserInput(`Foreign view sidecar crosses a nested module boundary: ${absolute}`)
   }
   await rejectNestedProjectPath(absolute, moduleRoot, projectDirectory)

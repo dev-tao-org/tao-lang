@@ -91,7 +91,7 @@ Tests.test('formatting protects unfinished declarations while formatting complet
   Tests.expect(result.text).toBe('view Ready {\n  render Text("Hi")\n}\n\nview Editing(')
   Tests.expect(result.skipped.length).toBeGreaterThan(0)
   Tests.expect(formatSource(result.text)).toBe(result.text)
-  const invalid = 'public view Root {'
+  const invalid = 'package view Root {'
   Tests.expect(format({ source: invalid, tree: parser.parse(invalid) }))
     .toEqual({ status: 'invalid', text: invalid, edits: [], skipped: [Range(0, invalid.length)] })
 })
@@ -123,7 +123,7 @@ const assertFormatted = Timings.createTopLevelTimer(function(timings, source: st
 
 const sourceFixture = S`
   // Greetings
-  public view Main( Title text,Subtitle text ) { render #root Col { #hello Text( Title )
+  package view Main( Title text,Subtitle text ) { render #root Col { #hello Text( Title )
 
 
   Text( "a 😀 b" ) Text(Subtitle) } }
@@ -136,7 +136,7 @@ const sourceFixture = S`
 
 const expectedFixture = S`
   // Greetings
-  public
+  package
   view Main(Title text, Subtitle text) {
     render #root Col {
       #hello

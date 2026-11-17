@@ -1,0 +1,7 @@
+use tao@ui Text
+
+package view SharedCaption {
+  render Text("Relative folder import")
+}
+
+file let PrivateCaption = "Hidden"

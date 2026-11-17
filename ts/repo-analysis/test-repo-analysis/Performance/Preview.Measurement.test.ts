@@ -55,11 +55,10 @@ Tests.test('the performance project has 240 unique views in six groups of four m
     await Tests.readFixture('ts/repo-analysis/performance-fixtures/Performance/Performance.tao'),
   )
   Tests.expect(fixture.extraFiles).toHaveLength(24)
-  Tests.expect(fixture.entry).toContain('use ./LoadViews0 Load0')
-  Tests.expect(fixture.entry).toContain('use ./LoadViews20 Load200')
+  Tests.expect(fixture.entry).toContain('use Load0, Load40, Load80, Load120, Load160, Load200')
   Tests.expect(fixture.entry).toContain('Text("Hello World")')
-  Tests.expect(fixture.extraFiles[0]!.source).toContain('use ./LoadViews3 Load30')
-  Tests.expect(fixture.extraFiles[20]!.source).toContain('use ./LoadViews23 Load230')
+  Tests.expect(fixture.extraFiles[0]!.source).toContain('use Load10, Load20, Load30')
+  Tests.expect(fixture.extraFiles[20]!.source).toContain('use Load210, Load220, Load230')
   Tests.expect(fixture.extraFiles[1]!.source).toContain('Text("Imported leaf 1")')
   const allSources = fixture.extraFiles.map(file => file.source).join(NewlineCharacter)
   const declarations = allSources.match(LoadViewDeclarationRegx) ?? []

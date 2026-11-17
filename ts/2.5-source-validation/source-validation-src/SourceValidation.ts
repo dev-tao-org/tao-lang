@@ -68,7 +68,6 @@ const PlacementByKind: PlacementByStatementKind = {
   TextExpectation: { syntax: 'Text expectations', owners: ExpectOwners },
   TypeScriptLibraryDeclaration: { syntax: 'TypeScript library declarations', owners: FileOwners },
   TypeStatement: { syntax: 'Type statements', owners: TestOwners },
-  UsePackageStatement: { syntax: 'Package imports', owners: FileOwners },
   UseStatement: { syntax: 'Imports', owners: FileOwners },
   ViewDeclaration: { syntax: 'View declarations', owners: ['file', 'view'] },
   ViewRenderExpression: { syntax: 'Bare view invocations', owners: ['render'] },
@@ -159,20 +158,23 @@ function collectDeclarationNameDiagnostics(statement: AST.Statement, diagnostics
     }
     return
   }
-  if (AST.IsKind(statement, ['RequiresDeclaration', 'UsePackageStatement'])) {
+  if (AST.IsKind(statement, 'RequiresDeclaration')) {
     addNameDiagnostic(statement.alias, diagnostics)
     return
   }
   if (AST.IsKind(statement, 'UseStatement')) {
-    addAliasDiagnostics(statement.imports, diagnostics)
+    addImportNameDiagnostics(statement.imports, diagnostics)
   } else {
     // Other statements introduce no authored names of their own.
   }
 }
 
-function addAliasDiagnostics(aliases: readonly AST.NamedImport[], diagnostics: StatementDiagnostic[]): void {
-  for (const alias of aliases) {
-    addNameDiagnostic(alias.alias, diagnostics)
+function addImportNameDiagnostics(imports: readonly AST.NamedImport[], diagnostics: StatementDiagnostic[]): void {
+  for (const imported of imports) {
+    if (imported.target.value === 'all') {
+      diagnostics.push({ range: imported.target.range, message: 'Imports must name individual declarations.' })
+    }
+    addNameDiagnostic(imported.alias, diagnostics)
   }
 }
 

@@ -58,12 +58,8 @@ export const Formatting = {
   },
   UseStatement(fm) {
     fm.oneSpaceAfter('use')
-    fm.oneSpaceBeforeProperty('imports', 'all')
+    fm.oneSpaceBeforeProperty('imports')
     fm.commaSpacedList()
-  },
-  UsePackageStatement(fm) {
-    fm.oneSpaceAfter('use', 'package')
-    fm.oneSpaceAround('as')
   },
   RequiresDeclaration(fm) {
     fm.oneSpaceAfter('requires')

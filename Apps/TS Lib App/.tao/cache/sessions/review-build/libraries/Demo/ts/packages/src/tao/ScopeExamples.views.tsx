@@ -22,13 +22,3 @@ export function TaoView_PackageScope_56453330fc38(_Props: TR.ViewComponentProps)
     TR.ViewRenderArguments(["Package-scoped view"], [])
   ));
 }
-
-export function TaoView_ProjectScope_56453330fc38(_Props: TR.ViewComponentProps) {
-  const _Render = TR.beginViewRender(_Props);
-  const _Scope = _Render.scope as ModuleScope;
-  const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
-  return TR.finishViewRender(_Render, TR.ViewRenderExpression(
-    _Imported_Text["Text"],
-    TR.ViewRenderArguments(["Project-scoped view"], [])
-  ));
-}

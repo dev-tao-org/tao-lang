@@ -37,8 +37,8 @@ Tests.test(
         parseEntry(
           Path.join(root, 'Main.virtual.tao'),
           S`
-            use ./views all
-            use ./empty all
+            use ./views Card
+            use ./empty Missing
             ${app('Main')}
           `,
         ),
@@ -47,7 +47,7 @@ Tests.test(
       )
 
       Tests.expect(sources.map(source => source.path)).toEqual([Path.join(root, 'Main.virtual.tao'), target])
-      Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'same-project' }])
+      Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: target, relation: 'package-api' }])
       Tests.expect(sources[0]!.imports[1]!.targets).toEqual([])
       Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.load')
       Tests.expect(timings.samples.map(sample => sample.name)).toContain('modules.discover')
@@ -81,24 +81,35 @@ Tests.test('loads a project through a symlink using canonical source roots', asy
   })
 })
 
-Tests.test('resolves a named package recursively and reports its import ownership', async () => {
+Tests.test('package imports retain the addressed folder and bare imports do not search subfolders', async () => {
   const root = await createProject()
   await Try(async () => {
     const packageRoot = Path.join(root, '@parts')
     const card = Path.join(packageRoot, 'nested', 'Card.tao')
-    const nestedProjectCard = Path.join(root, 'child', '.tao', '@parts', 'Nested.tao')
-    await FS.mkdirs(Path.dirname(card), Path.dirname(nestedProjectCard))
-    await FS.writeFile(card, view('Card'))
+    const nestedProjectCard = Path.join(root, 'child', '@parts', 'Nested.tao')
+    await FS.mkdirs(Path.dirname(card), Path.dirname(nestedProjectCard), Path.join(root, 'child/.tao'))
+    const badge = Path.join(packageRoot, 'Badge.tao')
+    await FS.writeFile(card, `package ${view('Card')}`)
+    await FS.writeFile(badge, 'use Card')
     await FS.writeFile(nestedProjectCard, view('Nested'))
-    const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use @parts all${NewlineCharacter}${app('Main')}`),
-      { directory: root },
-      Grammar.createParser(),
-    )
+    const parser = Grammar.createParser()
+    const entry = parseEntry(Path.join(root, 'Main.tao'), 'use @parts/nested Card')
+    const sources = await loadModules(entry, { directory: root }, parser)
+    Tests.expect(sources.map(source => source.path)).toEqual([entry.path, card])
+    Tests.expect(Typecheck.linkModules(entry.path, sources).modules[0]?.bindings[0]?.source).toBe(card)
 
-    Tests.expect(sources.map(source => source.path)).toContain(card)
-    Tests.expect(sources.map(source => source.path)).not.toContain(nestedProjectCard)
-    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: card, relation: 'same-project' }])
+    const flattened = parseEntry(entry.path, 'use @parts Card')
+    const packageSources = await loadModules(flattened, { directory: root }, parser)
+    Tests.expect(packageSources.map(source => source.path)).toEqual([entry.path, badge])
+    Tests.expect(() => Typecheck.linkModules(entry.path, packageSources)).toThrow('it does not exist')
+
+    const bare = parseEntry(badge, 'use Card')
+    const bareSources = await loadModules(bare, { directory: root }, parser)
+    Tests.expect(() => Typecheck.linkModules(bare.path, bareSources)).toThrow('Cannot resolve Card')
+
+    await FS.writeFile(Path.join(Path.dirname(card), 'Second.tao'), `package ${view('Card')}`)
+    const ambiguous = await loadModules(entry, { directory: root }, parser)
+    Tests.expect(() => Typecheck.linkModules(entry.path, ambiguous)).toThrow('is ambiguous')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
 })
 
@@ -107,7 +118,7 @@ Tests.test('a markerless aliased source root retains its configured directory bo
   const alias = root + '-alias'
   await Try(async () => {
     await FS.rm(Path.join(root, '.tao'), { recursive: true, force: true })
-    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    await writeSources(Path.join(root, 'Outside/Card.tao'), view('Outside'))
     const source = `use ../Outside Outside${NewlineCharacter}${app('Main')}`
     await writeSources(Path.join(root, 'nested/Main.tao'), source)
     await FS.symlink(root, alias, 'dir')
@@ -118,7 +129,7 @@ Tests.test('a markerless aliased source root retains its configured directory bo
     )
     Tests.expect(sources.map(module => module.path)).toEqual([
       Path.join(root, 'nested/Main.tao'),
-      Path.join(root, 'Outside.tao'),
+      Path.join(root, 'Outside/Card.tao'),
     ])
   }, {
     async finally() {
@@ -136,7 +147,7 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
     await FS.mkdirs(Path.join(standardRoot, '.tao'), Path.dirname(standardPath))
     await FS.writeFile(standardPath, view('Actual'))
     const sources = await loadModules(
-      parseEntry(Path.join(root, 'Main.tao'), `use tao@ui all${NewlineCharacter}${app('Main')}`),
+      parseEntry(Path.join(root, 'Main.tao'), `use tao@ui Actual${NewlineCharacter}${app('Main')}`),
       {
         directory: root,
         resolveProject: async (_importer, alias) => alias === 'tao' ? { root: standardRoot } : undefined,
@@ -145,7 +156,7 @@ Tests.test('loads standard library modules from an ordinary aliased Tao project'
     )
 
     Tests.expect(sources.map(source => source.path)).toContain(standardPath)
-    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: standardPath, relation: 'public' }])
+    Tests.expect(sources[0]!.imports[0]!.targets).toEqual([{ path: standardPath, relation: 'package-api' }])
     Tests.expect(AST.GetDeclarations(sources[1]!.document)[0]!.kind).toBe('ViewDeclaration')
     Tests.expect((AST.GetDeclarations(sources[1]!.document)[0] as AST.ViewDeclaration).name.value).toBe('Actual')
   }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
@@ -156,7 +167,7 @@ Tests.test('an absent virtual entry under a markerless alias retains its configu
   const alias = root + '-alias'
   await Try(async () => {
     await FS.rm(Path.join(root, '.tao'), { recursive: true, force: true })
-    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    await writeSources(Path.join(root, 'Outside/Card.tao'), view('Outside'))
     await FS.mkdir(Path.join(root, 'nested'))
     await FS.symlink(root, alias, 'dir')
     const entry = Path.join(alias, 'nested/New.tao')
@@ -164,7 +175,7 @@ Tests.test('an absent virtual entry under a markerless alias retains its configu
     const sources = await loadModules(parseEntry(entry, source), { directory: alias }, Grammar.createParser())
     Tests.expect(sources.map(module => module.path)).toEqual([
       Path.join(root, 'nested/New.tao'),
-      Path.join(root, 'Outside.tao'),
+      Path.join(root, 'Outside/Card.tao'),
     ])
     Tests.expect(await FS.exists(entry)).toBe(false)
   }, {
@@ -181,7 +192,7 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
     await writeSources(Path.join(root, '@tao', 'Card.tao'), view('Card'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(root, 'Main.tao'), `use ./@tao all${NewlineCharacter}${app('Main')}`),
+        parseEntry(Path.join(root, 'Main.tao'), `use ./@tao Card${NewlineCharacter}${app('Main')}`),
         { directory: root },
         Grammar.createParser(),
       ),
@@ -193,7 +204,7 @@ Tests.test('a local @tao folder follows ordinary named-module boundaries', async
 Tests.test('relative imports cannot leave a named module for the unnamed project module', async () => {
   const root = await createProject()
   await Try(async () => {
-    await writeSources(Path.join(root, 'Outside.tao'), view('Outside'))
+    await writeSources(Path.join(root, 'Outside/Card.tao'), view('Outside'))
     const entry = Path.join(root, '@cards', 'Card.tao')
     const source = `use ../Outside Outside${NewlineCharacter}${view('Card')}`
     await writeSources(entry, source)
@@ -216,7 +227,7 @@ Tests.test('rejects symlinked source files that resolve outside the owning proje
     await FS.mkdir(Path.join(projectRoot, '.tao'))
     await Tests.rejects(
       loadModules(
-        parseEntry(Path.join(projectRoot, 'Main.tao'), `use ./Linked.tao all${NewlineCharacter}${app('Main')}`),
+        parseEntry(Path.join(projectRoot, 'Main.tao'), `use ./Linked.tao Outside${NewlineCharacter}${app('Main')}`),
         { directory: projectRoot },
         Grammar.createParser(),
       ),
@@ -235,8 +246,8 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
     await writeSources(
       standardView,
       S`
-        public view Text { render Text("Text") }
-        public view Col { render Col {} }
+        package view Text { render Text("Text") }
+        package view Col { render Col {} }
       `,
     )
     const source = await FS.readFile(entryPath, 'utf8')
@@ -254,7 +265,7 @@ Tests.test('loads the real module journey without adopting an unrelated workspac
       'Imports.test.tao',
       'Modules and Dependencies.tao',
       'Nearby.tao',
-      'Public/Caption.tao',
+      'Captions/Caption.tao',
       '@cards/Captions.tao',
       '@cards/Card.tao',
       '@cards/Data/Caption.tao',

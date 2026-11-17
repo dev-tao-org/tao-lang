@@ -9,7 +9,7 @@ import { FS, Path } from '@shared/os'
 import { listDirectSourceFiles } from './Catalog'
 import * as Paths from './Paths'
 import { loadRequirementModules } from './Requirements'
-import { importTargets, type ModuleResolutionContext, resolveBareTargets } from './Resolver'
+import { importTargets, type ModuleResolutionContext, type ModuleTarget } from './Resolver'
 
 /** ModuleLoadOptions supplies the project fallback and external project resolver. */
 export type ModuleLoadOptions = {
@@ -221,10 +221,10 @@ async function discoverImports(
   discovery: Discovery,
 ): Promise<void> {
   for (const statement of AST.GetImportStatements(source.document)) {
-    const specifier = AST.IsUsePackageStatement(statement) ? statement.from.value : statement.from?.value
+    const specifier = statement.from?.value
     const context = createModuleResolutionContext(state, projectRoot)
     const targets = specifier === undefined
-      ? await resolveBareTargets(source.path, physical, context)
+      ? resolveBareTargets(source.path, discovery.siblings)
       : await importTargets(specifier, source.path, physical, context)
     discovery.imports.push({
       statement,
@@ -241,6 +241,10 @@ async function discoverImports(
       }
     }
   }
+}
+
+function resolveBareTargets(importer: string, siblings: readonly string[]): ModuleTarget[] {
+  return siblings.filter(path => path !== importer).map(path => ({ path, relation: 'same-directory' }))
 }
 
 async function resolvePhysicalSourcePath(

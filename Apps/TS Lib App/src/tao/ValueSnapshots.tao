@@ -1,4 +1,4 @@
-public view ValueSnapshots {
+package view ValueSnapshots {
   render inject ```ts
     const mode = Tao.useWritable(() => 'initial')
     const value = Tao.useComputed(() => {

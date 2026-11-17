@@ -20,7 +20,6 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
     ViewDeclaration: view => compileViewDeclaration(view, createViewCompilationContext(view, context)),
     TestsDeclaration: omitRuntimeDeclaration,
     UseStatement: omitRuntimeDeclaration,
-    UsePackageStatement: omitRuntimeDeclaration,
     RequiresDeclaration: omitRuntimeDeclaration,
     TypeScriptLibraryDeclaration: omitRuntimeDeclaration,
     PublishDeclaration: omitRuntimeDeclaration,

@@ -10,7 +10,6 @@ Tests.test('field construction preserves import order and absence while checking
   const use = AST.UseStatement(statement)
   Tests.expect(use.imports.map(node => node.target.value)).toEqual(['First', 'Second'])
   Tests.expect(use.from?.value).toBe('./views/common')
-  Tests.expect(use.all).toBe(false)
   const firstImport = CST.RequiredField(statement, 'imports')
   Tests.expect(AST.Name(CST.RequiredField(firstImport, 'target')).value).toBe('First')
   Tests.expect(() => AST.Construct(statement, 'AppDeclaration')).toThrow('Unexpected UseStatement')

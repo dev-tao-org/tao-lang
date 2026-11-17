@@ -11,7 +11,7 @@ ts-library Demo {
    publish { Greeting, @cards, }
 }
 
-public
+package
 view Greeting(First text, Second text) {
    render Text(First)
 }
@@ -19,7 +19,7 @@ view Greeting(First text, Second text) {
 
 #### `publish { Greeting, @cards, }`
 
-A `ts-library` declares one `publish` block. Separate its entries with commas. A trailing comma is optional. An individual public view becomes a named root export. A local `@cards` package exposes its public declarations from the corresponding `@cards` subpath. Publication currently supports only views with text parameters and rejects unsupported public declarations rather than silently omitting them. A view in `@cards/details` is exported from `@cards/details`. Private helpers and dependencies remain internal.
+A `ts-library` declares one `publish` block. Separate its entries with commas; a trailing comma is optional. An individual `package` view becomes a named root export. Selecting a local `@cards` package publishes its `package` declarations at their corresponding subpaths. For example, a view in `@cards/details` is exported from `@cards/details`. Publication supports views with text parameters; compilation fails if a selection includes a declaration it cannot export. Helpers with `file` or `folder` visibility and declarations owned by dependencies stay internal.
 
 #### Compiling the library
 

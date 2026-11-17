@@ -18,10 +18,10 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_FolderScope = TR.ScopeAliases<ModuleImports["FolderScope"]>(_Scope, { ["FolderScope"]: "FolderScope" });
   const _Imported_PackageScope = TR.ScopeAliases<ModuleImports["PackageScope"]>(_Scope, { ["PackageScope"]: "PackageScope" });
-  const _Imported_ProjectScope = TR.ScopeAliases<ModuleImports["ProjectScope"]>(_Scope, { ["ProjectScope"]: "ProjectScope" });
   const _Imported_Caption = TR.ScopeAliases<ModuleImports["Caption"]>(_Scope, { ["Caption"]: "Caption" });
   const _Imported_AliasText = TR.ScopeAliases<ModuleImports["AliasText"]>(_Scope, { ["Text"]: "AliasText" });
   const _Imported_PackageCaption = TR.ScopeAliases<ModuleImports["PackageCaption"]>(_Scope, { ["Caption"]: "PackageCaption" });
+  const _Imported_DetailedCard = TR.ScopeAliases<ModuleImports["DetailedCard"]>(_Scope, { ["DetailedCard"]: "DetailedCard" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   const _Imported_Input = TR.ScopeAliases<ModuleImports["Input"]>(_Scope, { ["Input"]: "Input" });
   TR.LetDeclaration(_Scope, "CapturedCaption", TR.ViewDeclaration("CapturedCaption", ["Value"], TaoView_LanguageFeatures$CapturedCaption_f61fcef90f44, _Scope));
@@ -41,10 +41,6 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
         TR.ViewRenderArguments([], [])
       ),
       TR.ViewRenderExpression(
-        _Imported_ProjectScope["ProjectScope"],
-        TR.ViewRenderArguments([], [])
-      ),
-      TR.ViewRenderExpression(
         _Imported_Caption["Caption"],
         TR.ViewRenderArguments(["Package import"], [])
       ),
@@ -55,6 +51,10 @@ export function TaoView_LanguageFeatures_f61fcef90f44(_Props: TR.ViewComponentPr
       TR.ViewRenderExpression(
         _Imported_PackageCaption["Caption"],
         TR.ViewRenderArguments(["Aliased package import"], [])
+      ),
+      TR.ViewRenderExpression(
+        _Imported_DetailedCard["DetailedCard"],
+        TR.ViewRenderArguments(["Tao import from a package subfolder"], [])
       ),
       TR.ViewRenderExpression(
         _Imported_Col["Col"],

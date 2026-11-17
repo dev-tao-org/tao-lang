@@ -20,7 +20,7 @@ Tests.test('recompilation reloads changed dependencies and recovers from invalid
     await writeFixture(directory, dependency)
     Tests.expect((await workspace.files.compileFile(entry)).status).toBe('published')
     Tests.expect(compiledContents(publications.at(-1))).toContain('"First value"')
-    await FS.writeFile(dependency, 'project view Card {')
+    await FS.writeFile(dependency, 'package view Card {')
     Tests.expect((await workspace.files.compileFile(entry)).status).toBe('failed')
     Tests.expect(publications).toHaveLength(1)
     await FS.writeFile(dependency, card('Repaired value'))
@@ -88,7 +88,7 @@ async function writeFixture(directory: string, dependency: string): Promise<void
 function card(value: string): string {
   return S`
     use tao@ui Text
-    project view Card { render Text(${Json.Print(value)}) }
+    package view Card { render Text(${Json.Print(value)}) }
   `
 }
 

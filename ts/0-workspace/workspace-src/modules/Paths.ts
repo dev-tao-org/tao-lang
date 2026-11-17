@@ -71,9 +71,8 @@ export function resolveCanonicalProjectRoot(path: string): string | undefined {
   })
 }
 
-/** findNamedPackageRoot finds the owning local @name package directory. */
-export function findNamedPackageRoot(path: string, projectRoot: string): string | undefined {
-  let directory = Path.dirname(path)
+/** findNamedPackageRoot finds the closest local @name package containing a directory. */
+export function findNamedPackageRoot(directory: string, projectRoot: string): string | undefined {
   while (within(projectRoot, directory)) {
     const name = Path.basename(directory)
     if (name.startsWith('@')) {
@@ -87,13 +86,9 @@ export function findNamedPackageRoot(path: string, projectRoot: string): string 
   return undefined
 }
 
-type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project'
+type ImportRelation = 'same-file' | 'same-directory' | 'package-api'
 /** getImportRelation records the nearest source ownership boundary crossed by an import. */
-export function getImportRelation(
-  importer: string,
-  target: string,
-  projectRoot: string,
-): ImportRelation {
+export function getImportRelation(importer: string, target: string): ImportRelation {
   const importerPath = Path.resolve(importer)
   const targetPath = Path.resolve(target)
   if (importerPath === targetPath) {
@@ -102,12 +97,7 @@ export function getImportRelation(
   if (Path.dirname(importerPath) === Path.dirname(targetPath)) {
     return 'same-directory'
   }
-  const importerPackage = findNamedPackageRoot(importerPath, projectRoot)
-  const targetPackage = findNamedPackageRoot(targetPath, projectRoot)
-  if (importerPackage && importerPackage === targetPackage) {
-    return 'same-package'
-  }
-  return 'same-project'
+  return 'package-api'
 }
 
 /** resolveCanonicalPath preserves an absent suffix below its canonical existing ancestor.

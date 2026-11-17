@@ -22,7 +22,6 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
       TestsDeclaration: tests => collectTestReferences(tests, names),
       // Imports and requirements introduce bindings but do not reference Tao values.
       UseStatement: Switch.nothing,
-      UsePackageStatement: Switch.nothing,
       RequiresDeclaration: Switch.nothing,
       TypeScriptLibraryDeclaration: Switch.nothing,
       PublishDeclaration: Switch.nothing,

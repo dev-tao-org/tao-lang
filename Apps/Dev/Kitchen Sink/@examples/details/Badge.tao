@@ -1,0 +1,5 @@
+use tao@ui Text
+
+package view PackageBadge {
+  render Text("Named package subfolder")
+}

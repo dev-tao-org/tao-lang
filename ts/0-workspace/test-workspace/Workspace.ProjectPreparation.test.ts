@@ -28,7 +28,7 @@ Tests.test('automatic preparation rejects reached aliases that resolve one repos
         await FS.mkdirs(Path.join(destination, '.tao'), Path.join(destination, '@ui'))
         await FS.writeFile(
           Path.join(destination, '@ui', 'Widget.tao'),
-          'public view Widget { render Text("ok") }' + NewlineCharacter,
+          'package view Widget { render Text("ok") }' + NewlineCharacter,
         )
       },
     },

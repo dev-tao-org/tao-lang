@@ -97,6 +97,6 @@ async function writeFixture(root: string, entry: string): Promise<void> {
 
 const widgetSource = S`
   use tao@ui Text
-  public view Widget { render Text("First") }
+  package view Widget { render Text("First") }
 `
-const metadataSource = 'public view Unrelated { render Unknown }'
+const metadataSource = 'package view Unrelated { render Unknown }'

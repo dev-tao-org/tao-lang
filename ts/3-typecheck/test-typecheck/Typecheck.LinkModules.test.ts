@@ -3,27 +3,21 @@ import { Range } from '@shared'
 import * as Tests from '@shared-tests'
 
 import { linkModules } from '../typecheck-src/Typecheck'
-import type { ImportStatement, SourceModule } from '../typecheck-src/Typecheck'
+import type { SourceModule } from '../typecheck-src/Typecheck'
 import * as Fixtures from './Typecheck.test-fixtures.LinkModules'
 
-Tests.test('named aliases, public wildcards and folder siblings become local bindings', () => {
-  const entry = Fixtures.createSource('app/main.tao', [useNamed('Open', 'Renamed'), useAll()], ['app/views.tao'])
+Tests.test('named aliases and folder siblings become local bindings', () => {
+  const statement = useNamed('Open', 'Renamed')
+  const entry = Fixtures.createSource('app/main.tao', [statement], ['app/views.tao'])
   const imported = Fixtures.createSource('app/views.tao', [
-    Fixtures.createLetDefinition('Open', 'shown', 'public'),
+    Fixtures.createLetDefinition('Open', 'shown', 'package'),
     Fixtures.createLetDefinition('Hidden', 'hidden'),
     Fixtures.createView('Sibling', 'folder'),
   ])
-  const wildcardSource = Fixtures.createSource('app/wildcards.tao', [
-    Fixtures.createLetDefinition('OpenAll', 'shown', 'public'),
-  ])
-  entry.imports = [
-    createResolvedImport(useNamed('Open', 'Renamed'), 'app/views.tao', 'same-directory'),
-    createResolvedImport(useAll(), 'app/wildcards.tao', 'same-directory'),
-  ]
-  const linked = linkModules(entry.path, [entry, imported, wildcardSource])
+  entry.imports = [createResolvedImport(statement, imported.path, 'same-directory')]
+  const linked = linkModules(entry.path, [entry, imported])
   Tests.expect(linked.modules[0]?.bindings).toEqual([
     { name: 'Renamed', source: 'app/views.tao', target: 'Open' },
-    { name: 'OpenAll', source: 'app/wildcards.tao', target: 'OpenAll' },
     { name: 'Sibling', source: 'app/views.tao', target: 'Sibling' },
   ])
 })
@@ -32,31 +26,11 @@ Tests.test('an explicit import takes precedence over an implicit sibling with th
   const statement = useNamed('Item')
   const entry = Fixtures.createSource('app/main.tao', [statement], ['app/sibling.tao'])
   const sibling = Fixtures.createSource('app/sibling.tao', [Fixtures.createView('Item', 'folder')])
-  const imported = Fixtures.createSource('app/explicit.tao', [Fixtures.createView('Item', 'public')])
-  entry.imports = [createResolvedImport(statement, imported.path, 'same-project')]
+  const imported = Fixtures.createSource('app/explicit.tao', [Fixtures.createView('Item', 'package')])
+  entry.imports = [createResolvedImport(statement, imported.path, 'package-api')]
   const linked = linkModules(entry.path, [entry, sibling, imported])
   Tests.expect(linked.modules[0]?.bindings).toEqual([
     { name: 'Item', source: imported.path, target: 'Item' },
-  ])
-})
-
-Tests.test('package imports bind visible exports under explicit or derived namespaces', () => {
-  const statement = usePackage('libs/widgets', 'UI')
-  const derived = usePackage('@scope/catalog')
-  const entry = Fixtures.createSource('app/main.tao', [statement, derived])
-  const pkg = Fixtures.createSource('libs/widgets/index.tao', [
-    Fixtures.createLetDefinition('Card', 'card', 'public'),
-    Fixtures.createView('InternalCard', 'project'),
-  ])
-  const catalog = Fixtures.createSource('libs/catalog/main.tao', [Fixtures.createView('Item', 'public')])
-  entry.imports = [
-    createResolvedImport(statement, pkg.path, 'same-package'),
-    createResolvedImport(derived, catalog.path, 'same-project'),
-  ]
-  Tests.expect(linkModules(entry.path, [entry, pkg, catalog]).modules[0]?.bindings).toEqual([
-    { name: 'UI.Card', source: pkg.path, target: 'Card' },
-    { name: 'UI.InternalCard', source: pkg.path, target: 'InternalCard' },
-    { name: 'catalog.Item', source: catalog.path, target: 'Item' },
   ])
 })
 
@@ -67,6 +41,11 @@ Tests.test('named imports report missing and invisible declarations', () => {
   entry.imports = [createResolvedImport(statement, target.path, 'same-directory')]
   Tests.expect(() => linkModules(entry.path, [entry, target])).toThrow(
     'Cannot import Secret from app/main.tao: it is not visible',
+  )
+  const missing = useNamed('Missing')
+  entry.imports = [createResolvedImport(missing, target.path, 'same-directory')]
+  Tests.expect(() => linkModules(entry.path, [entry, target])).toThrow(
+    'Cannot import Missing from app/main.tao: it does not exist',
   )
 })
 
@@ -79,7 +58,7 @@ Tests.test('duplicate local declarations, repeated imports and import collisions
 
   const statement = useNamed('Value')
   const entry = Fixtures.createSource('app/main.tao', [statement, statement])
-  const target = Fixtures.createSource('app/values.tao', [Fixtures.createLetDefinition('Value', 'value', 'public')])
+  const target = Fixtures.createSource('app/values.tao', [Fixtures.createLetDefinition('Value', 'value', 'package')])
   entry.imports = [
     createResolvedImport(statement, target.path, 'same-directory'),
     createResolvedImport(statement, target.path, 'same-directory'),
@@ -90,15 +69,13 @@ Tests.test('duplicate local declarations, repeated imports and import collisions
   collision.imports = [createResolvedImport(statement, target.path, 'same-directory')]
   Tests.expect(() => linkModules(collision.path, [collision, target])).toThrow('which it also declares')
 
-  const packageUse = usePackage('libs/ui', 'UI')
-  const namespaceCollision = Fixtures.createSource('app/main.tao', [
-    packageUse,
-    Fixtures.createLetDefinition('UI', 'value'),
-  ])
-  namespaceCollision.imports = [createResolvedImport(packageUse, 'libs/ui/index.tao', 'same-package')]
-  const packageExports = Fixtures.createSource('libs/ui/index.tao', [Fixtures.createView('Text', 'public')])
-  Tests.expect(() => linkModules(namespaceCollision.path, [namespaceCollision, packageExports]))
-    .toThrow('value and namespace both named UI')
+  const renamed = useNamed('Second', 'Value')
+  const second = Fixtures.createSource('app/second.tao', [Fixtures.createLetDefinition('Second', 'value', 'package')])
+  entry.imports = [
+    createResolvedImport(statement, target.path, 'same-directory'),
+    createResolvedImport(renamed, second.path, 'same-directory'),
+  ]
+  Tests.expect(() => linkModules(entry.path, [entry, target, second])).toThrow('more than one binding named Value')
 })
 
 Tests.test('duplicate view bindings fail in their own scope while child scopes may shadow', () => {
@@ -170,18 +147,18 @@ Tests.test('ambiguous sibling names fail only when the module references them', 
 Tests.test('cross-module lets are ordered by dependency and cycles are reported', () => {
   const importBase = useNamed('Base')
   const entry = Fixtures.createSource('app/main.tao', [importBase, createLetReference('Result', 'Base')])
-  const base = Fixtures.createSource('app/base.tao', [Fixtures.createLetDefinition('Base', 'ready', 'public')])
-  entry.imports = [createResolvedImport(importBase, base.path, 'same-project')]
+  const base = Fixtures.createSource('app/base.tao', [Fixtures.createLetDefinition('Base', 'ready', 'package')])
+  entry.imports = [createResolvedImport(importBase, base.path, 'package-api')]
   const linked = linkModules(entry.path, [entry, base])
   Tests.expect(linked.definitions.map(item => `${item.source}:${item.declaration.name.value}`))
     .toEqual(['app/base.tao:Base', 'app/main.tao:Result'])
 
   const importA = useNamed('A')
   const importB = useNamed('B')
-  const a = Fixtures.createSource('app/a.tao', [importB, createLetReference('A', 'B', 'public')])
-  const b = Fixtures.createSource('app/b.tao', [importA, createLetReference('B', 'A', 'public')])
-  a.imports = [createResolvedImport(importB, b.path, 'same-project')]
-  b.imports = [createResolvedImport(importA, a.path, 'same-project')]
+  const a = Fixtures.createSource('app/a.tao', [importB, createLetReference('A', 'B', 'package')])
+  const b = Fixtures.createSource('app/b.tao', [importA, createLetReference('B', 'A', 'package')])
+  a.imports = [createResolvedImport(importB, b.path, 'package-api')]
+  b.imports = [createResolvedImport(importA, a.path, 'package-api')]
   Tests.expect(() => linkModules(a.path, [a, b])).toThrow('Module-level let cycle')
 })
 
@@ -190,8 +167,8 @@ Tests.test('unknown module-level let references fail with their owning source', 
   Tests.expect(() => linkModules(module.path, [module])).toThrow('Unknown let reference Missing in app/main.tao')
   const statement = useNamed('Base')
   const qualified = Fixtures.createSource('app/main.tao', [statement, createLetReference('Result', 'Base.Missing')])
-  const imported = Fixtures.createSource('app/base.tao', [Fixtures.createLetDefinition('Base', 'ready', 'public')])
-  qualified.imports = [createResolvedImport(statement, imported.path, 'same-project')]
+  const imported = Fixtures.createSource('app/base.tao', [Fixtures.createLetDefinition('Base', 'ready', 'package')])
+  qualified.imports = [createResolvedImport(statement, imported.path, 'package-api')]
   Tests.expect(() => linkModules(qualified.path, [qualified, imported]))
     .toThrow('Unknown let reference Base.Missing in app/main.tao')
 })
@@ -219,7 +196,6 @@ function useNamed(target: string, alias?: string): AST.UseStatement {
   return {
     kind: 'UseStatement',
     range: Range(),
-    all: false,
     from: undefined,
     imports: [{
       kind: 'NamedImport',
@@ -230,22 +206,9 @@ function useNamed(target: string, alias?: string): AST.UseStatement {
   }
 }
 
-function useAll(): AST.UseStatement {
-  return { kind: 'UseStatement', range: Range(), all: true, imports: [], from: undefined }
-}
-
-function usePackage(path: string, alias?: string): AST.UsePackageStatement {
-  return {
-    kind: 'UsePackageStatement',
-    range: Range(),
-    from: { kind: 'ImportPath', range: Range(), value: path },
-    alias: alias ? Fixtures.createIdentifier(alias) : undefined,
-  }
-}
-
-type ImportRelation = 'same-file' | 'same-directory' | 'same-package' | 'same-project' | 'public'
+type ImportRelation = SourceModule['imports'][number]['targets'][number]['relation']
 function createResolvedImport(
-  statement: ImportStatement,
+  statement: AST.UseStatement,
   path: string,
   relation: ImportRelation,
 ): SourceModule['imports'][number] {
