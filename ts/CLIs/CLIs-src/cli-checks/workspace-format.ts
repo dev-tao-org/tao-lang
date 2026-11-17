@@ -3,6 +3,7 @@ import { Errors, NewlineCharacter, Regxs } from '@shared'
 import { FS, Path, Repo } from '@shared/os'
 import Exec from '@shared/os/exec'
 import { assertNewWorkspaceTree } from './check'
+import { assertParserOutputTrees } from './parser-build'
 
 type FormatMode = 'fmt' | 'check'
 type WorkspaceFormatOptions = { paths?: readonly string[]; excludedPaths?: readonly string[] }
@@ -54,7 +55,7 @@ async function formatRequestedTarget(mode: FormatMode, root: string, path: strin
   }
   if (absolute.endsWith('.tao')) {
     await assertNewWorkspaceTree(root)
-    Repo.assertNewWorkspacePath(Path.join(root, 'ts/1-grammar/_gen_parser'), root)
+    await assertParserOutputTrees(root)
     const { updateTaoSource } = await import('../dev-cli/source/TaoSource')
     await updateTaoSource(absolute, 'format')
   } else if (Path.basename(absolute) === JustfileName) {

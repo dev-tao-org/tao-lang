@@ -24,17 +24,22 @@ Tests.test.skipIf(Path.sep === '\\')('formatting an exact filename leaves unrela
   }, { finally: () => FS.rm(fixture, { recursive: true, force: true }) })
 })
 
-Tests.test.skipIf(Path.sep === '\\')('Tao formatting refuses an escaping parser package', async () => {
+Tests.test.skipIf(Path.sep === '\\')('Tao formatting refuses parser paths that escape the workspace', async () => {
   const fixture = await Artifacts.mkdtemp(Artifacts.resolvePath('tmp/workspace-format-'))
   const root = Path.join(fixture, 'repo')
   const outside = Path.join(fixture, 'grammar')
   const source = Path.join(root, 'Test.tao')
   await Try(async () => {
-    await FS.mkdir(Path.join(root, 'ts'))
     await FS.mkdir(outside)
-    await FS.symlink(outside, Path.join(root, 'ts/1-grammar'), 'dir')
+    await FS.mkdir(root)
     await FS.writeFile(source, '')
-    await Tests.expect(workspaceFormat('fmt', root, { paths: [source] })).rejects.toThrow('links must remain')
+    for (const path of ['ts/1-grammar', 'ts/2-ast-gen/_gen_AST', 'ts/1-grammar/_gen_parser/src']) {
+      const link = Path.join(root, path)
+      await FS.mkdir(Path.dirname(link))
+      await FS.symlink(outside, link, 'dir')
+      await Tests.expect(workspaceFormat('fmt', root, { paths: [source] })).rejects.toThrow('must remain')
+      await FS.rm(link)
+    }
   }, { finally: () => FS.rm(fixture, { recursive: true, force: true }) })
 })
 
