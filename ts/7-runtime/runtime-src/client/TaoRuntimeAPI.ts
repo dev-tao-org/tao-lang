@@ -54,7 +54,8 @@ function TextInput({ style, ...props }: TextInputProps): React.ReactElement {
         edited.current = value
       }
     },
-    'aria-disabled': disabled || undefined,
+    // Android's accessibility setter retains the old value when the whole state is removed.
+    'aria-disabled': disabled,
     'focusable': disabled ? false : undefined,
     'readOnly': disabled || undefined,
     'style': [textStyle, style, disabled && DisabledStyle],
