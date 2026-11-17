@@ -1,11 +1,22 @@
 import { IO } from '@cli-kit'
-import { NewlineCharacter, Time, Try } from '@shared'
+import { Errors, NewlineCharacter, Regxs, Time, Try } from '@shared'
 import { DevelopmentStorage, FS, Path } from '@shared/os'
 import type { PreviewReport } from './ReportContract'
 
 /** timingProgressPath locates the live timing transcript shared by the runner's checkouts. */
 export function timingProgressPath(): string {
   return DevelopmentStorage.resolveDirectory('timing', 'transfers', 'live-preview.log')
+}
+
+/** describeTimingLabel returns a single-line owner label for the shared transcript. */
+export function describeTimingLabel(label?: string): string {
+  if (label === undefined) {
+    return 'Developer'
+  }
+  if (!label.trim() || Regxs.RemotePathControlCharacterRegx.test(label)) {
+    Errors.ThrowUserInput('Use a nonempty, single-line timing label.')
+  }
+  return label.trim()
 }
 
 /** appendTimingProgress records the runner's current progress without affecting measurement validity. */

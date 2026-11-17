@@ -144,10 +144,13 @@ Studio app and its benchmark are still in the legacy implementation.
 
 ## Repeat an existing immutable benchmark
 
-Run `just timing-watch` in Terminal on the timing laptop from a checkout that supports it. Leave
-the window open to see each job, session and result as it arrives. Jobs share an append-only log in
-the timing home, so the same window follows subsequent runs from any updated tooling checkout.
-Press Ctrl+C to close the display.
+From the controlling Mac, run `just timing-watch` to follow the runner over SSH. Set
+`TAO_TIMING_HOST` to the runner's existing SSH alias or login, or supply it as
+`just timing-watch HOST`. The default runner is `ro@192.168.50.199`. On the runner itself, use
+`just timing-watch --local`. Press Ctrl+C to close the display.
+
+Jobs share one append-only log in the timing home. The start line includes the optional
+`--label` from `timing-run`, `timing-session`, or `timing-compare`.
 
 From the controlling Mac, after preparing or relocating the immutable checkpoint:
 
