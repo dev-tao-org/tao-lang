@@ -55,6 +55,7 @@ branch pushes through the guarded route are authorized; other publication needs 
   If the sandbox blocks Git metadata writes, use
   `./agent unsandboxed git switch -c <new-branch> <base>` with harness approval; never force a
   switch, replace an existing branch, or discard dirty work under this authorization.
+- A sandboxed Git metadata denial does not by itself require another Developer decision. For an already-authorized operation, prepare the pinned environment if needed, then invoke the supported `./agent unsandboxed git <operation>` route with the harness's command-scoped approval mechanism. The wrapper name alone does not grant host access. Ask the Developer only if that route receives an approval rejection, is unavailable, or requires authorization not already given; identify the actual failing boundary. Keep the chat restricted and do not add machine-local Git grants or broaden permissions to work around the denial.
 - Read `git worktree list` before any operation that moves a ref. A branch checked out elsewhere is not yours to move, and never write to another worktree's files, index, or branch.
 - In a linked worktree, `./agent` reuses the primary checkout's pinned devenv profile (run
   root `./enter-tao-dev-env.sh` (legacy: `./enter-tao-dev-env`) in that worktree when it reports no shared profile), and remove a
