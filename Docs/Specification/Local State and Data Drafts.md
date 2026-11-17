@@ -17,6 +17,8 @@ view SaveButton {
 
 Declare text state inside a view before `render`. Tao infers `text` from the initial value; `state Caption is text = "Save"` says the same thing explicitly. Each instance initializes its own state when mounted and retains it across renders, even when an input used to initialize it later changes.
 
+In the agreed future syntax, an explicit initializer conversion uses `state Name = Value as Type`. The result type is the state type for later writes, and an applicable converter runs when the initializer is evaluated. See [Type Conversions](Type%20Conversions.md).
+
 #### `set Caption = "Saved"`
 
 Use `set` inside an [action](Actions%20and%20Results.md) to replace the nearest visible state binding. Setting an equal text value does not notify dependent views of a change. Unmounting a view discards its local state.
@@ -68,6 +70,8 @@ state Draft = draft Note (persist "note-editor { Note.Id }")
 ```
 
 Automatic-key shorthand is deferred to a follow-up.
+
+The agreed future storage schema comes from the initializer's type, including when Tao infers it. For example, `state SidebarWidth = 280 (persist "sidebar-width")` has a `number` schema. Use `as` when the intended schema is wider than the initial value's type.
 
 #### Sign-out
 
