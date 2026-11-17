@@ -3,6 +3,7 @@ import { Errors, Json, Time, Try } from '@shared'
 import { Artifacts, FS, Platform } from '@shared/os'
 import { Http } from '@shared/web'
 import type * as Workspace from '@workspace'
+import { warmIosExpoBundle } from './NativeExpoBundle'
 import { type NativeWebDriver, waitForNativeObservation } from './NativeWebDriver'
 
 /** NativeTestPlatform identifies the native React Native platforms used for journeys. */
@@ -20,7 +21,7 @@ export function createNativeTestTarget(
     async openDevice() {
       let opening = false
       function takeOpeningTimeout() {
-        // The first UI observation includes the device's cold Metro bundle request.
+        // The first UI observation includes Expo Go's app loading time.
         const timeout = opening ? 90_000 : undefined
         opening = false
         return timeout
@@ -71,6 +72,9 @@ async function openExpoGo(
   const link = `exp://${address}:${port}`
   await driver.execute('mobile: terminateApp', applicationArguments(platform))
   await clearAppData?.()
+  if (platform === 'ios') {
+    await warmIosExpoBundle(`http://${address}:${port}`)
+  }
   const bundleId = expoGoApplicationId(platform)
   const argumentsForPlatform = platform === 'ios' ? { url: link, bundleId } : { url: link, package: bundleId }
   await driver.execute('mobile: deepLink', argumentsForPlatform)

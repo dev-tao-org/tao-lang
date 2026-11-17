@@ -304,6 +304,9 @@ function iosCapabilities(target: IosTestTarget, bundleId: string) {
     'appium:noReset': true,
     'appium:isHeadless': true,
     'appium:forceSimulatorSoftwareKeyboardPresence': true,
+    // Leave capacity for the simulator and Metro on hosted runners, while retaining XCTest diagnostics.
+    'appium:skipLogCapture': isGitHubHostedRunner(),
+    'appium:showXcodeLog': isGitHubHostedRunner(),
     'appium:newCommandTimeout': 120,
     'appium:wdaLocalPort': reservePort(),
   }
