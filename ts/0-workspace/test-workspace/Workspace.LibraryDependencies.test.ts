@@ -153,7 +153,7 @@ async function usePublishedPackageInSidecar(root: string): Promise<void> {
   const source = await FS.readFile(declaration, 'utf8')
   await FS.writeFile(declaration, source.replace('../ts/ForeignGreeting.tsx', './PortableGreeting.tsx'))
   await FS.writeFile(
-    Path.join(directory, 'GreetingProps.ts'),
+    Path.join(directory, 'GreetingProps.d.ts'),
     "export type GreetingProps = import('@cards/external').Fields & { Value: string; Logo?: typeof import('./logo.png').default }",
   )
   const external = Path.join(root, 'src/ts/node_modules/@cards/external')
@@ -189,6 +189,25 @@ async function verifyInstalledConsumer(root: string): Promise<void> {
   const manifest = await FS.readJson(manifestPath, { schema: ConsumerManifest })
   delete manifest.tao.compile
   await FS.writeJson(manifestPath, manifest)
+  await Exec.captureStdout('tsc', [
+    '--noEmit',
+    '--strict',
+    '--skipLibCheck',
+    '--jsx',
+    'react-jsx',
+    '--module',
+    'ESNext',
+    '--moduleResolution',
+    'Bundler',
+    '--target',
+    'ES2022',
+    '--allowSyntheticDefaultImports',
+    '--types',
+    'react',
+    '--preserveSymlinks',
+    'Consumer.tsx',
+    'test/TypeChecks.tsx',
+  ], { cwd })
   const addEnv = { TAO_TEST_SOURCE_REFRESH: '1', TAO_CLI: Repo.resolvePath('tao') }
   const result = await Exec.capture('bun', ['test', 'test'], { cwd, addEnv })
   Tests.expect(result.stderr).toContain('Tao library renders React props, children and mount-local state')

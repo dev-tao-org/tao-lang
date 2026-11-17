@@ -17,19 +17,21 @@ export type LibrarySidecars = {
 export async function captureLibrarySidecars(
   program: Typecheck.LinkedProgram,
   projectRoot: string,
-  packageNames: ReadonlySet<string>,
+  facadeSpecifiers: ReadonlySet<string>,
 ): Promise<LibrarySidecars> {
   const groups = await collectLibrarySidecars(program, projectRoot)
   const files = new Map<string, Uint8Array>()
-  files.set('ts/tao-assets.d.ts', Text.encodeUtf8(SidecarAssetDeclarations))
+  files.set(Compile.LibraryAssetTypesPath, Text.encodeUtf8(SidecarAssetDeclarations))
   const targets = new Map<string, string>()
   for (const [index, group] of groups.entries()) {
     const directory = `ts/sidecars/${index + 1}`
-    const localPackages = group.views[0]?.module.project?.root === projectRoot ? packageNames : EmptyPackageNames
+    const localSpecifiers = group.views[0]?.module.project?.root === projectRoot
+      ? facadeSpecifiers
+      : EmptyFacadeSpecifiers
     for (const [path, bytes] of group.files) {
       const relative = Path.toPortablePath(Path.relative(group.moduleRoot, path))
       const outputPath = `${directory}/${relative}`
-      files.set(outputPath, prepareSidecarBytes(outputPath, bytes, localPackages))
+      files.set(outputPath, prepareSidecarBytes(outputPath, bytes, localSpecifiers))
     }
     for (const view of group.views) {
       const authoredPath = Path.resolve(group.moduleRoot, view.relativeSidecarPath)
@@ -49,9 +51,9 @@ export async function captureLibrarySidecars(
   }
 }
 
-const EmptyPackageNames: ReadonlySet<string> = new Set()
+const EmptyFacadeSpecifiers: ReadonlySet<string> = new Set()
 
-function prepareSidecarBytes(path: string, bytes: Uint8Array, packageNames: ReadonlySet<string>): Uint8Array {
+function prepareSidecarBytes(path: string, bytes: Uint8Array, facadeSpecifiers: ReadonlySet<string>): Uint8Array {
   if (Regxs.TaoSourceExtensionRegx.test(path)) {
     Errors.ThrowUserInput(`A published TypeScript sidecar cannot include Tao source: ${path}.`)
   }
@@ -59,18 +61,21 @@ function prepareSidecarBytes(path: string, bytes: Uint8Array, packageNames: Read
     return bytes
   }
   const source = Text.decodeUtf8(bytes)
-  const rewritten = rewriteModuleSpecifiers(source, specifier => resolveModuleSpecifier(path, specifier, packageNames))
+  const rewritten = rewriteModuleSpecifiers(
+    source,
+    specifier => resolveModuleSpecifier(path, specifier, facadeSpecifiers),
+  )
   return Text.encodeUtf8(rewritten)
 }
 
-function resolveModuleSpecifier(path: string, specifier: string, packageNames: ReadonlySet<string>): string {
+function resolveModuleSpecifier(path: string, specifier: string, facadeSpecifiers: ReadonlySet<string>): string {
   if (Path.isAbsolute(specifier) || specifier.startsWith('file:')) {
     Errors.ThrowUserInput(`A published TypeScript sidecar requires portable imports: ${specifier} in ${path}.`)
   }
   if (specifier === '@tao/runtime-api') {
     return '@tao/runtime/runtime-api'
   }
-  if (!packageNames.has(specifier)) {
+  if (!facadeSpecifiers.has(specifier)) {
     return specifier
   }
   if (Path.posix.normalize(specifier) !== specifier) {

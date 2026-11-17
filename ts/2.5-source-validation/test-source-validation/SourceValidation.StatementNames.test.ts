@@ -10,6 +10,8 @@ Tests.test('a file-scope publication parses but fails statement placement valida
   const document = AST.transform(tree)!
   const diagnostics = SourceValidation.collectStatementDiagnostics(document)
   Tests.expect(diagnostics).toHaveLength(1)
+  Tests.expect(diagnostics[0]!.message).toBe('Publish declarations belong directly inside a ts-library.')
+  Tests.expect(Source.slice('publish { Main, }', diagnostics[0]!)).toBe('publish { Main, }')
 })
 
 Tests.test('statement diagnostics identify every explicitly authored lowercase declaration name', () => {

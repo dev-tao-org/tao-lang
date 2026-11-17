@@ -5,9 +5,11 @@ import { sidecarAssetExtensions } from '../sidecars/SidecarAssets'
 
 type ModuleSpecifierNode = TypeScript.Node | undefined
 
+const ScriptExtensions = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.mjs', '.cjs']
+
 /** resolveRelativeImport resolves a sidecar source or asset and records attempted paths for invalidation. */
 export async function resolveRelativeImport(path: string, watch: (candidate: string) => void): Promise<string> {
-  const suffixes = ['.tsx', '.ts', '.mts', '.cts', '.jsx', '.js', '.mjs', '.cjs', '.json', ...sidecarAssetExtensions]
+  const suffixes = [...ScriptExtensions, '.d.ts', '.d.mts', '.d.cts', '.json', ...sidecarAssetExtensions]
   const candidates = Path.extname(path) ? [path] : [
     ...suffixes.map(suffix => `${path}${suffix}`),
     ...suffixes.map(suffix => Path.join(path, `index${suffix}`)),
@@ -23,7 +25,7 @@ export async function resolveRelativeImport(path: string, watch: (candidate: str
 
 /** isScriptSource identifies TypeScript and JavaScript modules whose imports need capture. */
 export function isScriptSource(path: string): boolean {
-  return ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'].includes(Path.extname(path))
+  return ScriptExtensions.includes(Path.extname(path))
 }
 
 const ScriptDeclarationExtensions = new Map([
