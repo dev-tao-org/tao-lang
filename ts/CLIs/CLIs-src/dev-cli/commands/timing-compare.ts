@@ -6,6 +6,8 @@ import { readTimingRemote } from '../timing/TimingRemote'
 import { createTimingHelperArguments } from '../timing/TimingReport'
 import { registerCommand } from './_command-runner'
 
+type TimingCompareOptions = { tooling?: string; pairs: string; label?: string }
+
 /** timingCompareCommand benchmarks two prepared revisions on the same runner with one SSH invocation. */
 export default registerCommand({
   name: 'timing-compare',
@@ -22,14 +24,26 @@ export default registerCommand({
   options: [
     { flags: '--tooling <path>', description: 'Prepared tooling checkout on the runner; defaults to the candidate.' },
     { flags: '--pairs <count>', description: 'Independent pairs per round, at least five.', defaultValue: '5' },
+    { flags: '--label <name>', description: 'Agent or chat name to print in the runner’s live log.' },
   ],
-  async action(host: string, baseline: string, candidate: string, options: { tooling?: string; pairs: string }) {
+  async action(
+    host: string,
+    baseline: string,
+    candidate: string,
+    options: TimingCompareOptions,
+  ) {
     const BranchComparison = await import('../../agent-skills/performance-investigation/BranchComparison')
     const directory = options.tooling ?? candidate
     requireHost(host)
     requireAbsoluteCheckouts([baseline, candidate, directory])
     BranchComparison.requireBranchPairCount(Number(options.pairs))
-    const args = createTimingHelperArguments('compare', [baseline, candidate, '--pairs', options.pairs])
+    const args = createTimingHelperArguments('compare', [
+      baseline,
+      candidate,
+      '--pairs',
+      options.pairs,
+      ...options.label === undefined ? [] : ['--label', options.label],
+    ])
     const output = await readTimingRemote({ host, directory, controlPath: 'none', args })
     IO.summary(readBranchReport(output, BranchComparison.BranchReportStart, BranchComparison.BranchReportEnd))
   },

@@ -29,18 +29,20 @@ function registerComparisonCommand(command: Command): void {
     .argument('<baseline>', 'Absolute baseline checkout.')
     .argument('<candidate>', 'Absolute candidate checkout.')
     .option('--pairs <count>', 'Independent baseline/candidate pairs per round.', '5')
-    .action(async (baseline: string, candidate: string, options: { pairs: string }) => {
+    .option('--label <name>', 'Agent or chat name for the live timing log.')
+    .action(async (baseline: string, candidate: string, options: { pairs: string; label?: string }) => {
       const comparison: BranchComparisonOptions = {
         baseline: CLIKit.resolveCallerPath(baseline),
         candidate: CLIKit.resolveCallerPath(candidate),
         pairs: Number(options.pairs),
+        label: options.label,
       }
       await runBranchComparison(comparison)
     })
 }
 
 type ReceiveOptions = { bundle: string; manifest: string; directory: string; ref?: string }
-type RunOptions = { repo: string; fixture: string; samples: string; edits: string }
+type RunOptions = { repo: string; fixture: string; samples: string; edits: string; label?: string }
 type RemoteCommandOptions = { cwd: string; detach?: string; controlPath?: string }
 type CopyOptions = { download?: boolean; controlPath?: string }
 
@@ -98,12 +100,14 @@ function registerMeasurementCommands(command: Command): void {
     .requiredOption('--fixture <path>', 'Canonical fixture held constant across checkpoints.')
     .option('--samples <count>', 'Independent preview process sessions.', '1')
     .option('--edits <count>', 'Edits per session; warm samples exclude the first complete cycle.', '24')
+    .option('--label <name>', 'Agent or chat name for the live timing log.')
     .action(async (options: RunOptions) => {
       const directory = await runMeasurements({
         repo: CLIKit.resolveCallerPath(options.repo),
         fixture: CLIKit.resolveCallerPath(options.fixture),
         samples: Number(options.samples),
         edits: Number(options.edits),
+        label: options.label,
       })
       printResult({ directory })
     })

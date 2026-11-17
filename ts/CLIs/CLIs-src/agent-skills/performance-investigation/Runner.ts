@@ -10,10 +10,17 @@ import { JobsDirectory, PreviewReportsDirectory, TimingLockName } from './JobFil
 import { parsePreviewReport, requireReport } from './ReportContract'
 import { collectSamples } from './RunnerSamples'
 import { assertMaterializedTree, readTreeEntries } from './SourceTree'
-import { appendTimingProgress, describeTimingSample } from './TimingProgress'
+import { appendTimingProgress, describeTimingLabel, describeTimingSample } from './TimingProgress'
 
 /** RunnerOptions selects saved source, a canonical fixture and independent preview sessions. */
-export type RunnerOptions = { repo: string; fixture: string; samples: number; edits: number; frameCount?: 2 }
+export type RunnerOptions = {
+  repo: string
+  fixture: string
+  samples: number
+  edits: number
+  frameCount?: 2
+  label?: string
+}
 
 type MeasurementJobStatus = 'running' | 'passed' | 'failed'
 type MeasurementEnvironmentValue = string | undefined
@@ -56,6 +63,7 @@ const measurementJobSchema = Schema.object({
     samples: Schema.number(),
     edits: Schema.number(),
     frameCount: Schema.literal(2).optional(),
+    label: Schema.string().optional(),
   }),
   environment: Schema.record(Schema.string(), Schema.string()),
   system: Schema.object({ architecture: Schema.string(), kernel: Schema.string(), os: Schema.string() }),
@@ -111,6 +119,7 @@ export async function withTimingLock<Result>(run: () => Promise<Result>): Promis
 /** runMeasurementJob measures one retained job while its caller holds the timing lease. */
 export async function runMeasurementJob(options: RunnerOptions, directory: string): Promise<void> {
   requireRunnerOptions(options)
+  const label = describeTimingLabel(options.label)
   const fixture = await FS.readFile(options.fixture, 'utf8')
   const job = await describeJob(options, fixture)
   await FS.mkdir(directory)
@@ -118,7 +127,7 @@ export async function runMeasurementJob(options: RunnerOptions, directory: strin
   await FS.writeFile(fixturePath, fixture)
   IO.print(`Performance job: ${directory}`)
   await appendTimingProgress(
-    `Starting ${job.commit.slice(0, 12)} · ${options.samples} sessions × ${options.edits} edits`,
+    `Starting ${job.commit.slice(0, 12)} · ${label} · ${options.samples} sessions × ${options.edits} edits`,
   )
   await Try(() => collectSamples(directory, job, () => measurePreview(job, fixturePath, directory)), {
     finally: (_thrown, error) =>

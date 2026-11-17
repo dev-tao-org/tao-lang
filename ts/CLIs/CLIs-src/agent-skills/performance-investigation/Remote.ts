@@ -6,7 +6,7 @@ import { FS, Path } from '@shared/os'
 import Exec from '@shared/os/exec'
 
 /** RemoteExecution selects a runner directory, optional detached log and existing SSH control socket. */
-export type RemoteExecution = { directory: string; log?: string; controlPath?: string }
+export type RemoteExecution = { directory: string; log?: string; controlPath?: string; terminal?: boolean }
 
 /** executeRemote reuses SSH configuration and authentication without introducing a separate agent identity. */
 export async function executeRemote(
@@ -22,6 +22,7 @@ export async function executeRemote(
     'BatchMode=yes',
     '-o',
     'ConnectTimeout=10',
+    ...options.terminal ? ['-tt'] : [],
     ...options.controlPath ? ['-S', options.controlPath] : [],
     '--',
     host,

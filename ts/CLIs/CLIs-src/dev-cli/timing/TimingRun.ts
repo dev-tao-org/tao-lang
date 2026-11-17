@@ -16,6 +16,7 @@ export type TimingRun = {
   fixture?: string
   samples: number
   edits: number
+  label?: string
   dryRun?: boolean
   controlPath?: string
 }
@@ -93,5 +94,6 @@ function createRunnerArguments(options: TimingRun, fixture: string): string[] {
     String(options.samples),
     '--edits',
     String(options.edits),
+    ...options.label === undefined ? [] : ['--label', options.label],
   ])
 }
