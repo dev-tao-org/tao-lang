@@ -1,0 +1,49 @@
+name: Prepare the locked Linux toolchain
+description: Restore the pinned single-user Nix installation and portable tool profile.
+runs:
+  using: composite
+  steps:
+    - name: Prepare the runner-owned Nix store
+      shell: bash
+      run: |
+        if [ ! -O /nix ] && { [ ! -d /nix ] || [ -z "$(ls -A /nix)" ]; }; then
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /nix
+        fi
+        test -O /nix
+    - name: Restore the Nix installation and locked toolchain
+      id: archive
+      uses: actions/cache/restore@v4
+      with:
+        key: tao-verify-linux-nix-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', '.config/bootstrap-tao-dev-env', '.config/nix/*.nix', '.config/nix/nix-bootstrap.sh', '.config/nix/action.yml') }}
+        path: |
+          /nix
+          ~/.nix-profile
+          ~/.local/state/nix
+          .devenv/portable-generations
+    - name: Activate the locked portable toolchain
+      shell: bash
+      run: ./.config/bootstrap-tao-dev-env --install-nix --tools-only
+    - name: Keep only the installed and portable closures in the archive
+      id: prune
+      continue-on-error: true
+      if: steps.archive.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        export PATH="$HOME/.nix-profile/bin:$PATH"
+        # Root both profiles before collecting build-only paths, including unpacked Nix sources.
+        ln -sfn "$(readlink -f "$HOME/.nix-profile")" /nix/var/nix/gcroots/tao-nix-profile
+        ln -sfn "$(readlink -f .devenv/profile)" /nix/var/nix/gcroots/tao-portable-profile
+        nix-store --gc 2>&1 | tail -n 2
+        nix-build --version
+        .devenv/profile/bin/bun --version
+    - name: Save the locked toolchain
+      if: steps.prune.outcome == 'success'
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ steps.archive.outputs.cache-primary-key }}
+        path: |
+          /nix
+          ~/.nix-profile
+          ~/.local/state/nix
+          .devenv/portable-generations

@@ -30,29 +30,7 @@ jobs:
       TAO_SETUP_STORAGE: 'false'
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-      - uses: nix-community/cache-nix-action@v7
-        with:
-          primary-key: tao-typescript-tools-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', '.config/nix/*.nix', '.config/bootstrap-tao-dev-env') }}
-          restore-prefixes-first-match: tao-typescript-tools-v2-${{ runner.os }}-${{ runner.arch }}-
-          paths: |
-            ~/.cache/nix
-            .devenv/portable-generations
-            .devenv/profile
-          gc-max-store-size-linux: 6G
-      - name: Make restored caches writable
-        run: |
-          for cache_directory in .devenv "$HOME/.cache"; do
-            if [ -d "$cache_directory" ]; then
-              sudo chown -hR "$(id -u):$(id -g)" "$cache_directory"
-            fi
-          done
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-      # This job needs the pinned CLI tools, not the full Android SDK/NDK development shell.
-      - name: Prepare portable TypeScript tools
-        run: ./.config/bootstrap-tao-dev-env --tools-only
+      - uses: ./.config/nix
       - name: Restore dependency and formatter downloads
         uses: actions/cache@v4
         with:

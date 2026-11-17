@@ -37,18 +37,10 @@ jobs:
         run: |
           # The hosted NDKs are unused because this job installs a prebuilt Expo Go APK.
           sudo rm -rf -- "${ANDROID_HOME:?Missing Android SDK}/ndk"
-      - uses: cachix/install-nix-action@v31
-      - uses: nix-community/cache-nix-action@v7
+      - uses: ./.config/nix
         if: matrix.platform == 'android'
-        with:
-          # Share the portable Linux toolchain cache with typescript.yml.
-          primary-key: tao-typescript-tools-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('devenv.lock', '.config/nix/*.nix', '.config/bootstrap-tao-dev-env') }}
-          restore-prefixes-first-match: tao-typescript-tools-v2-${{ runner.os }}-${{ runner.arch }}-
-          paths: |
-            ~/.cache/nix
-            .devenv/portable-generations
-            .devenv/profile
-          gc-max-store-size-linux: 6G
+      - uses: cachix/install-nix-action@v31
+        if: matrix.platform == 'ios'
       - uses: nix-community/cache-nix-action@v7
         if: matrix.platform == 'ios'
         with:
@@ -57,6 +49,7 @@ jobs:
             ~/.cache/nix
             .devenv/ci-tools
       - name: Make restored tool caches writable
+        if: matrix.platform == 'ios'
         run: |
           for cache_directory in .devenv "$HOME/.cache"; do
             if [ -d "$cache_directory" ]; then
@@ -64,11 +57,9 @@ jobs:
             fi
           done
       - uses: cachix/cachix-action@v16
+        if: matrix.platform == 'ios'
         with:
           name: devenv
-      - name: Prepare the locked Linux CLI tools
-        if: matrix.platform == 'android'
-        run: ./.config/bootstrap-tao-dev-env --tools-only
       - name: Prepare the locked macOS CLI tools
         if: matrix.platform == 'ios'
         run: |

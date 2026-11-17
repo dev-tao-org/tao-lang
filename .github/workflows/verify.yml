@@ -20,7 +20,7 @@ on:
       android_shards:
         description: Android shard count
         type: number
-        default: 3
+        default: 2
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
         env:
           TYPESCRIPT_WIDTH: ${{ inputs.typescript_shards || 3 }}
           IOS_WIDTH: ${{ inputs.ios_shards || 2 }}
-          ANDROID_WIDTH: ${{ inputs.android_shards || 3 }}
+          ANDROID_WIDTH: ${{ inputs.android_shards || 2 }}
         run: |
           [[ "$TYPESCRIPT_WIDTH" =~ ^[1-8]$ && "$IOS_WIDTH" =~ ^[1-7]$ && "$ANDROID_WIDTH" =~ ^[1-7]$ ]]
           portable=$(jq -cn --argjson n "$TYPESCRIPT_WIDTH" '["check","web"] + [range(1; $n + 1)]')
