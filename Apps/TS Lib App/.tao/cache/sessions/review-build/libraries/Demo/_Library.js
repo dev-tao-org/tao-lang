@@ -200,17 +200,6 @@ function nowMs() {
 function timestampMs() {
   return performance.timeOrigin + performance.now();
 }
-function scheduleMicrotask(action) {
-  let active = true;
-  queueMicrotask(() => {
-    if (active) {
-      action();
-    }
-  });
-  return () => {
-    active = false;
-  };
-}
 // shared/shared-src/universal/Timings.ts
 var entry = Symbol("timing entry");
 var action = Symbol("timing operation");
@@ -582,6 +571,58 @@ function isObjectOrFunction(value) {
   return typeof value === "object" && value !== null || typeof value === "function";
 }
 
+// 7-runtime/runtime-src/client/ObservationDelivery.ts
+function requireSynchronousObserver(receive) {
+  if (Object.getPrototypeOf(receive) === AsyncFunctionPrototype) {
+    throwAsynchronousObservation();
+  }
+}
+function deliverObservation(receive, value, stop) {
+  const parent = activeDelivery;
+  const delivery = { stop, writeRejected: false };
+  activeDelivery = delivery;
+  Try(() => Bridge_preact_signals_core_default.untracked(() => {
+    const result = receive(value);
+    requireSynchronousResult(result, stop);
+  }), {
+    finally() {
+      activeDelivery = parent;
+      if (delivery.writeRejected) {
+        throwObservationWrite();
+      }
+    }
+  });
+}
+function assertObservationAllowsWrite() {
+  if (activeDelivery) {
+    activeDelivery.writeRejected = true;
+    activeDelivery.stop();
+    throwObservationWrite();
+  }
+}
+var AsyncFunctionPrototype = Object.getPrototypeOf(async () => {});
+var activeDelivery;
+function requireSynchronousResult(result, stop) {
+  if (!isThenable(result)) {
+    return;
+  }
+  stop();
+  Try(() => {
+    Promise.prototype.then.call(result, undefined, () => {
+      return;
+    });
+  }, { catch: () => {
+    return;
+  } });
+  throwAsynchronousObservation();
+}
+function throwAsynchronousObservation() {
+  return ThrowUserInput("Observation callbacks must finish synchronously. Do not use async or return a promise.");
+}
+function throwObservationWrite() {
+  return ThrowUserInput("Observation callbacks cannot write Tao state. Move the write to an action or external event.");
+}
+
 // 7-runtime/runtime-src/client/ValueSnapshots.ts
 function registerValueCapability(capability) {
   valueCapabilities.add(capability);
@@ -785,9 +826,6 @@ function createReactiveEngine(options = {}) {
     pending: [],
     disposed: false,
     evaluationDepth: 0,
-    deliveryChainCount: 0,
-    cancelDeliveryChainReset: undefined,
-    activeDelivery: undefined,
     deliveryScheduled: false,
     flushingDelivery: false
   });
@@ -813,7 +851,6 @@ function useValue(expression) {
 function batch(perform) {
   return defaultEngine.batch(perform);
 }
-var MaxReentrantDeliveries = 100;
 var defaultEngine = createReactiveEngine();
 function buildEngine(state) {
   return {
@@ -868,6 +905,7 @@ function evaluateNode(state, evaluate, previous) {
 }
 function observeNode(state, node, receive) {
   assertActive(state);
+  requireSynchronousObserver(receive);
   let active = true;
   let deliveryPending = false;
   let pendingValue = decodeReactiveValue(node.value.value);
@@ -885,7 +923,7 @@ function observeNode(state, node, receive) {
       deliveryPending = false;
       if (active && !areValueSnapshotsEqual(lastDelivered, pendingValue)) {
         lastDelivered = pendingValue;
-        deliverValue(state, receive, lastDelivered, stop);
+        deliverObservation(receive, lastDelivered, stop);
       }
     });
   }));
@@ -898,8 +936,7 @@ function observeNode(state, node, receive) {
     state.allStops.delete(stop);
   };
   state.allStops.add(stop);
-  state.activeDelivery?.createdStops.add(stop);
-  Try(() => deliverValue(state, receive, lastDelivered, stop), {
+  Try(() => deliverObservation(receive, lastDelivered, stop), {
     catch(thrown) {
       stop();
       return Throw(thrown);
@@ -910,24 +947,6 @@ function observeNode(state, node, receive) {
 function watchNode(state, node, changed) {
   assertActive(state);
   changed(decodeReactiveValue(node.value.value));
-}
-function deliverValue(state, receive, value, stop) {
-  const parent = state.activeDelivery;
-  state.activeDelivery = { stop, createdStops: new Set };
-  Try(() => Bridge_preact_signals_core_default.untracked(() => receive(value)), {
-    finally() {
-      state.activeDelivery = parent;
-    }
-  });
-}
-function scheduleDeliveryChainReset(state) {
-  state.cancelDeliveryChainReset?.();
-  state.cancelDeliveryChainReset = scheduleMicrotask(() => resetDeliveryChain(state));
-}
-function resetDeliveryChain(state) {
-  state.cancelDeliveryChainReset?.();
-  state.cancelDeliveryChainReset = undefined;
-  state.deliveryChainCount = 0;
 }
 function queueDelivery(state, deliver) {
   state.pending.push(deliver);
@@ -982,6 +1001,7 @@ function createWritable(state, initial) {
   });
 }
 function updateSource(state, source, value) {
+  assertObservationAllowsWrite();
   assertActive(state);
   const snapshot = takeValueSnapshot(value);
   const previous = source.peek();
@@ -989,33 +1009,15 @@ function updateSource(state, source, value) {
   if (Object.is(next, previous)) {
     return;
   }
-  requireBoundedFeedback(state);
   Bridge_preact_signals_core_default.batch(() => {
     source.value = next;
   });
-}
-function requireBoundedFeedback(state) {
-  const delivery = state.activeDelivery;
-  if (!delivery) {
-    resetDeliveryChain(state);
-    return;
-  }
-  state.deliveryChainCount += 1;
-  if (state.deliveryChainCount >= MaxReentrantDeliveries) {
-    delivery.stop();
-    delivery.createdStops.forEach((stop) => stop());
-    resetDeliveryChain(state);
-    ThrowUserInput("Reactive observers exceeded the reentrant delivery limit; break the update cycle.");
-  }
-  scheduleDeliveryChainReset(state);
 }
 function disposeEngine(state) {
   if (state.disposed) {
     return;
   }
   state.disposed = true;
-  state.cancelDeliveryChainReset?.();
-  state.cancelDeliveryChainReset = undefined;
   disposeObservers(state);
   state.pending = [];
 }

@@ -15,10 +15,11 @@ It runs the pinned TypeScript compiler on each generated project's own `tsconfig
 continuing to workspace checks and tests. Generated projects allow unused locals and parameters.
 Kitchen Sink writes `Apps/Dev/.tao/cache/sessions/review-build/build/`. Demo writes
 `Apps/TS Lib App/.tao/cache/sessions/review-build/libraries/Demo/`, including generated sources under `source/`.
-Both projects use identical ignore rules allowing `review-build/build/` and `review-build/libraries/`,
-without selecting individual library names. These real output files are tracked for review.
-Machine-specific TypeScript configuration, dependency links, incremental state and temporary
-publication generations remain ignored. The formatter excludes all `.tao/` output.
+The tracked Demo package includes its manifest, JavaScript and declarations. It resolves its
+dependencies through the package manifest. The Kitchen Sink build and Demo's inspection sources
+resolve sidecars and toolchain files from the checkout that generated them, so Git ignores those
+trees. Run `./agent verify` to regenerate and typecheck them in the current checkout. The formatter
+excludes all `.tao/` output.
 
 There is no separate tracking compiler or output comparison step in `check`. Studio uses a separate
 session. App output, library packages, sidecar snapshots and runtime hosts belong to their session;

@@ -21,6 +21,7 @@ export default registerCommand({
     await CLIKit.runSteps(
       () => fmt.action(paths),
       () => verifyReviewBuilds(options),
+      () => check.action(),
       () => workspaceTests([], undefined, { yes: options.yes }),
     )
   },
@@ -36,7 +37,6 @@ async function verifyReviewBuilds(options: { yes?: boolean }): Promise<void> {
     () => compile.action('Demo', { package: Repo.resolvePath(LibraryConsumer), session: ReviewSession }),
     () => checkReviewBuild(KitchenSinkBuild),
     () => checkReviewBuild(DemoLibrarySource),
-    () => check.action(),
   )
 }
 

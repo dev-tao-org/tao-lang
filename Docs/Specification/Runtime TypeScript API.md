@@ -154,6 +154,12 @@ Lists compare in order, including duplicates. Records compare by fields regardle
 Equal calculation results retain their previous snapshot and do not trigger downstream evaluations.
 Primitive values and capability handles use `Object.is`.
 
+Observation callbacks run synchronously and cannot return a promise or thenable. They may read
+Tao state. A write, including an equal-value write or one inside a nested action, fails before
+changing state. The runtime stops the violating observer, reports the failure, and continues to
+deliver to independent observers. Use a computed expression for derived state and an action or
+managed external-event callback for writes.
+
 #### Immutable and changing values
 
 The agreed future contract distinguishes immutable snapshots, reactive readers and writable references. Immutable values also support observation: `observe` calls back immediately once, retains no subscription, and returns an observation whose `unobserve()` is harmless. Reactive readers deliver the initial value and subsequent changed values. Observation does not grant write authority.

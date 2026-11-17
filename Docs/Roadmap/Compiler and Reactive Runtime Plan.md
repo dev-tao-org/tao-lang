@@ -180,7 +180,7 @@ The public contract is small:
 ```ts
 interface Expression<T> {
   jsValue(): T
-  observe(receive: (value: T) => void): Observation
+  observe<Result>(receive: ObservationCallback<T, Result>): Observation
 }
 
 interface WritableExpression<T> extends Expression<ValueSnapshot<T>> {
@@ -196,6 +196,9 @@ interface Observation {
 - Ordinary lists and records are deeply readonly runtime-owned snapshots. Copy external data at
   ingress and reuse owned snapshots on reads. Preserve capability identity.
 - `observe` delivers the current value immediately and subsequent changed values after settlement.
+- Observation callbacks are synchronous and read-only. The runtime stops a callback that attempts
+  a write or returns a thenable. Keep the same callback restriction when generating sidecar readers
+  and route authored failure handling through the future managed execution boundary.
 - Compare ordinary lists by ordered content and records by fields. Equal calculations reuse the
   previous snapshot and keep dependent computations cached. Primitives and capabilities compare
   with `Object.is`. Release observations on `unobserve` and owner disposal.
@@ -281,7 +284,7 @@ delivery, not to replaying queued mutations later. Read-your-writes is required 
 normal settlement boundary. Notification batching is not transaction isolation or rollback.
 
 Both policies share nesting, pending-change tracking, equality checks, error cleanup, observer
-delivery and reentrant-write handling. Only the flush-scheduling policy should differ where possible:
+delivery and the read-only observation boundary. Only the flush-scheduling policy should differ where possible:
 
 ```ts
 interface Batching {
@@ -296,7 +299,7 @@ type ScheduleFlush = (flush: () => void) => void
   one action/event boundary can cause multiple settlements.
 - Deferred: schedule one microtask after the current synchronous stack, coalescing separate writes.
   Reading before that flush must refresh necessary computations without prematurely delivering
-  observer callbacks. Reentrant callbacks may require another bounded settlement pass.
+  observer callbacks. A callback that attempts to write fails before changing state.
 - No batch remains open across `await`. Define and test failed-operation cleanup without inventing
   rollback. An already queued callback must not touch a disposed owner.
 
@@ -313,7 +316,7 @@ computation and synchronous batching. Notification-only microtask coalescing is 
 experiment: delaying a Preact subscription receiver may leave every computed evaluation synchronous.
 Any deferred-computation candidate must prove reduced evaluation counts, fresh in-batch reads and
 correct callback timing using supported APIs. Do not construct a second scheduler/graph merely to
-preserve the draft interface. Define bounded reentrant-update handling and a cycle/failure policy.
+preserve the draft interface. Preserve independent deliveries after an observer fails.
 
 Count evaluations, notifications and allocations independently. Admit a candidate only with semantic
 parity, supported provider APIs, one graph and bounded ownership/cleanup. Deferred delivery and
@@ -405,7 +408,8 @@ plan or obtaining its review. Commit, push, merge and landing each follow curren
 
 Use minimal meaningful tests, dominated by representative Tao journeys. Internal tests cover only
 the contracts not yet expressible in the current language: dynamic/diamond dependencies, cached
-reads, equal results, nested/standalone batches, in-batch reads, reentrant updates and disposal.
+reads, equal results, nested/standalone batches, in-batch reads, observation write rejection,
+independent delivery and disposal.
 Use recording schedulers/clocks for deterministic notification timing; do not assert fragile timings.
 
 Exercise changed/unchanged hook topology, hook-bearing injections, failed-edit recovery, component
