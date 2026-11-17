@@ -1,0 +1,13 @@
+ts-library Calculations {
+  publish { FormatCaption }
+}
+
+package
+func FormatCaption(Value text) {
+  return JoinCaption(Value: Value, Prefix: "Aliased capture: ")
+}
+
+package
+func JoinCaption(Prefix text, Value text) -> text {
+  return "{ Prefix }{ Value }"
+}

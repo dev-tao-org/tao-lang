@@ -19,7 +19,7 @@ view Greeting(First text, Second text) {
 
 #### `publish { Greeting, @cards, }`
 
-A `ts-library` declares one `publish` block. Separate its entries with commas; a trailing comma is optional. An individual `package` view becomes a named root export. Selecting a local `@cards` package publishes its `package` declarations at their corresponding subpaths. For example, a view in `@cards/details` is exported from `@cards/details`. Publication supports views with text parameters; compilation fails if a selection includes a declaration it cannot export. Helpers with `file` or `folder` visibility and declarations owned by dependencies stay internal.
+A `ts-library` declares one `publish` block. Separate its entries with commas; a trailing comma is optional. An individual `package` view or pure function becomes a named root export. Selecting a local `@cards` package publishes its `package` declarations at their corresponding subpaths. For example, a view in `@cards/details` is exported from `@cards/details`. Publication supports views and pure functions with text parameters; compilation fails if a selection includes a declaration it cannot export. Helpers with `file` or `folder` visibility and declarations owned by dependencies stay internal.
 
 #### Compiling the library
 
@@ -65,4 +65,4 @@ Run `tao init <existing-directory> --library` to scaffold a Tao library and Reac
 
 #### Supported subset
 
-The current target is Expo and React Native Web. Published views support `text` parameters and ordinary React children. Published datasource, action and typed calculation contracts, explicit distribution builds, and runtime shutdown remain future work.
+Published views target Expo and React Native Web and support `text` parameters and ordinary React children. A pure [text function](Pure%20Functions.md) receives a named object such as `{ Value: 'Ada' }` and returns a string synchronously. A library that publishes only pure functions and does not import views can run without a React Native host. Other calculation types, published datasource and action contracts, explicit distribution builds, and runtime shutdown remain future work.

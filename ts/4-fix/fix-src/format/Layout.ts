@@ -31,6 +31,9 @@ export const Layout = {
   LetDeclaration(lm) {
     lm.onOwnLineProperty('visibility')
   },
+  FunctionDeclaration(lm) {
+    lm.onOwnLineProperty('visibility')
+  },
   Block(lm) {
     lm.block()
   },
@@ -43,6 +46,9 @@ export const Layout = {
     lm.list()
   },
   ArgumentList(lm) {
+    lm.list()
+  },
+  FunctionArgumentList(lm) {
     lm.list()
   },
   UseStatement(lm) {

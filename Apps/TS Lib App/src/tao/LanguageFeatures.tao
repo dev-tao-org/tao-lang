@@ -1,6 +1,7 @@
 use tao@ui Button, Col, Input, Text, Text as AliasText
 use @cards Caption, Caption as PackageCaption
 use @cards/details DetailedCard
+use @calculations FormatCaption, JoinCaption
 use FolderScope, PackageScope
 
 file
@@ -36,7 +37,7 @@ view LanguageFeatures(Name text) {
   }
 
   view CapturedCaption(Value text) {
-    let Caption = "Aliased capture: { Value }"
+    let Caption = FormatCaption(Value)
     render Text(Caption)
   }
 
@@ -62,7 +63,7 @@ view LanguageFeatures(Name text) {
   view CaptionEquality {
     state Start = "a"
     state End = "bc"
-    let Caption = "{ Start }{ End }"
+    let Caption = JoinCaption(Prefix: Start, Value: End)
     action Redistribute() {
       set Start = "ab"
       set End = "c"

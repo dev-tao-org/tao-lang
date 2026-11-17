@@ -49,6 +49,7 @@ export default grammar({
         $.ActionDeclaration,
         $.SetStatement,
         $.DoStatement,
+        $.ReturnStatement,
         $.PressBinding,
       )
     },
@@ -58,6 +59,7 @@ export default grammar({
         $.ViewDeclaration,
         $.TestsDeclaration,
         $.LetDeclaration,
+        $.FunctionDeclaration,
         $.UseStatement,
         $.RequiresDeclaration,
         $.TypeScriptLibraryDeclaration,
@@ -65,7 +67,7 @@ export default grammar({
       )
     },
     _Expression($) {
-      return choice($.QualifiedName, $.TextLiteral, $.InterpolatedText)
+      return choice($.QualifiedName, $.TextLiteral, $.InterpolatedText, $.FunctionCall)
     },
     _ViewRenderStatement($) {
       return choice($.RenderInjectStatement, $.RenderViewExpressionStatement)
@@ -165,6 +167,19 @@ export default grammar({
     },
     ActionDeclaration($) {
       return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))
+    },
+    FunctionDeclaration($) {
+      return seq(
+        optional(field('visibility', $.Visibility)),
+        'func',
+        field('name', $.Identifier),
+        field('parameters', $.ParameterList),
+        optional(seq('->', field('returnType', $.QualifiedName))),
+        field('block', $.Block),
+      )
+    },
+    ReturnStatement($) {
+      return seq('return', field('value', $._Expression))
     },
     SetStatement($) {
       return seq('set', field('target', $.QualifiedName), '=', field('value', $._Expression))
@@ -283,6 +298,15 @@ export default grammar({
     },
 
     // Expressions
+    FunctionCall($) {
+      return seq(field('target', $.QualifiedName), field('argumentList', $.FunctionArgumentList))
+    },
+    FunctionArgumentList($) {
+      return seq('(', optional(seq($.FunctionArgument, repeat(seq(',', $.FunctionArgument)))), ')')
+    },
+    FunctionArgument($) {
+      return seq(optional(seq(field('label', $.Identifier), ':')), field('value', $._Expression))
+    },
     ArgumentList($) {
       return seq(
         '(',

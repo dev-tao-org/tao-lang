@@ -1,7 +1,7 @@
-import type * as AST from '@ast-gen'
-import { Switch } from '@shared'
-import { emitAppBinding } from './RuntimeEmitter'
-import { compileLetDeclaration } from './ValuesCompiler'
+import * as AST from '@ast-gen'
+import { Errors, Switch } from '@shared'
+import { emitAppBinding, emitFunctionDeclaration } from './RuntimeEmitter'
+import { compileExpression, compileLetDeclaration } from './ValuesCompiler'
 import { compileViewDeclaration, type ViewCompilationContext } from './ViewsCompiler'
 
 /** DeclarationContext carries module facts shared by exhaustive declaration handlers. */
@@ -17,6 +17,7 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
   return Switch.kind(node, {
     AppDeclaration: app => compileInitialization(emitAppBinding(app, context.scope)),
     LetDeclaration: declaration => compileInitialization(compileLetDeclaration(declaration, context.scope)),
+    FunctionDeclaration: definition => compileInitialization(compileFunctionDefinition(definition, context.scope)),
     ViewDeclaration: view => compileViewDeclaration(view, createViewCompilationContext(view, context)),
     TestsDeclaration: omitRuntimeDeclaration,
     UseStatement: omitRuntimeDeclaration,
@@ -24,6 +25,15 @@ export function compileDeclaration(node: AST.Declaration, context: DeclarationCo
     TypeScriptLibraryDeclaration: omitRuntimeDeclaration,
     PublishDeclaration: omitRuntimeDeclaration,
   })
+}
+
+function compileFunctionDefinition(node: AST.FunctionDeclaration, scope: string): string {
+  const returned = AST.FindFunctionReturn(node)
+  if (!returned) {
+    Errors.ThrowShouldNeverHappen(`Missing return from validated function ${node.name.value}.`)
+  }
+  const result = compileExpression(returned.value, scope)
+  return emitFunctionDeclaration(node, scope, result)
 }
 
 function createViewCompilationContext(

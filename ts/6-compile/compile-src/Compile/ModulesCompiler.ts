@@ -204,6 +204,9 @@ function compileBindingTypes(
 }
 
 function resolveBindingType(node: AST.ValueDeclaration, context: DeclarationCompiler.DeclarationContext): string {
+  if (AST.IsKind(node, 'FunctionDeclaration')) {
+    return 'TR.TextFunction'
+  }
   if (!AST.IsLetDeclaration(node)) {
     return 'TR.View'
   }

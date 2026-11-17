@@ -25,7 +25,7 @@ type ResolvedValuesByKey = Map<string, CachedViewBinding>
 
 function resolveModuleValue(module: LinkedModule, name: string, resolve: ResolveLinkedValue): ViewBinding | undefined {
   const declaration = AST.FindValueDeclaration(module.document, name)
-  if (declaration?.kind === 'ViewDeclaration') {
+  if (declaration?.kind === 'ViewDeclaration' || declaration?.kind === 'FunctionDeclaration') {
     return declaration
   }
   if (declaration?.kind === 'LetDeclaration') {

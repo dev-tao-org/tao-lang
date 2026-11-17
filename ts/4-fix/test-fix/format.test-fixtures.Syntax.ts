@@ -12,10 +12,11 @@ export const syntaxFixture = S`
   requires npm:@date-fns/tz version 4.1.0
   ts-library Demo{publish{Root,@cards,}}
   file let Caption is text="Hello"
+  file func Join(Left text, Right text)->text{return "{Left}{Right}"}
   folder app Demo{root Root}
   package view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  state Status is text="Caption: {Title}{ " {Subtitle} " }"
+  state Status is text="Caption: {Join(Right:Subtitle, Left:Title)}{ " {Subtitle} " }"
   action Rename (Value text){set Status=Value}
   action Save(){do Rename (Caption)}
   render #root UI . Col{#child Panel( Title,Caption ) let Message=Hidden UI.Text(Message) UI.Button(Status){on press Save} UI.Button(Subtitle){on press->do Rename(Title)}}
@@ -46,6 +47,11 @@ export const formattedSyntaxFixture = S`
   file
   let Caption is text = "Hello"
 
+  file
+  func Join(Left text, Right text) -> text {
+    return "{ Left }{ Right }"
+  }
+
   folder
   app Demo {
     root Root
@@ -54,7 +60,7 @@ export const formattedSyntaxFixture = S`
   package
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    state Status is text = "Caption: { Title }{ " { Subtitle } " }"
+    state Status is text = "Caption: { Join(Right: Subtitle, Left: Title) }{ " { Subtitle } " }"
     action Rename(Value text) {
       set Status = Value
     }
@@ -131,6 +137,11 @@ export const syntaxKinds = {
   LetDeclaration: true,
   StateDeclaration: true,
   ActionDeclaration: true,
+  FunctionDeclaration: true,
+  FunctionCall: true,
+  FunctionArgumentList: true,
+  FunctionArgument: true,
+  ReturnStatement: true,
   SetStatement: true,
   DoStatement: true,
   PressBinding: true,

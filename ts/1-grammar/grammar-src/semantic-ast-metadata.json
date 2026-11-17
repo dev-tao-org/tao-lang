@@ -9,6 +9,9 @@
     "DoStatement": {
       "argumentList": "arguments"
     },
+    "FunctionCall": {
+      "argumentList": "arguments"
+    },
     "ViewRenderExpression": {
       "argumentList": "arguments",
       "view": "target"
@@ -23,6 +26,12 @@
     },
     "DoStatement": {
       "arguments": "readonly Expression[]"
+    },
+    "FunctionCall": {
+      "arguments": "readonly FunctionArgument[]"
+    },
+    "FunctionDeclaration": {
+      "parameters": "readonly Parameter[]"
     },
     "InlineAction": {
       "body": "InlineActionBody"
@@ -58,7 +67,7 @@
     "CaptureValue": ["Name", "ContextReference"],
     "TestStep": ["RunStatement", "PressStatement", "TypeStatement", "ExpectStatement"],
     "Expectation": ["TextExpectation", "InputExpectation"],
-    "ValueDeclaration": ["AppDeclaration", "ViewDeclaration", "LetDeclaration"],
+    "ValueDeclaration": ["AppDeclaration", "ViewDeclaration", "LetDeclaration", "FunctionDeclaration"],
     "ViewValueDeclaration": ["LetDeclaration", "StateDeclaration"],
     "ViewDeclarationStatement": [
       "LetDeclaration",

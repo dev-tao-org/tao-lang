@@ -9,6 +9,7 @@ export function compileExpression(node: AST.Expression, scope: ScopeCode): strin
     Name: name => RuntimeEmitter.emitName(name, scope),
     TextLiteral: emitLiteral,
     InterpolatedText: text => RuntimeEmitter.emitInterpolatedText(compileTextParts(text, scope)),
+    FunctionCall: call => RuntimeEmitter.emitFunctionCall(call, scope, compileFunctionArguments(call, scope)),
   })
 }
 
@@ -69,6 +70,14 @@ function compileTextParts(node: AST.InterpolatedText, scope: ScopeCode): string 
       TextSegment: segment => emitStringLiteral(segment.value),
       TextInterpolation: interpolation => compileExpression(interpolation.value, scope),
     }))
+}
+
+function compileFunctionArguments(node: AST.FunctionCall, scope: ScopeCode): string {
+  return listMap(node.arguments, argument => {
+    const label = argument.label ? emitLiteral(argument.label) : 'undefined'
+    const value = compileExpression(argument.value, scope)
+    return `[${label}, ${value}]`
+  })
 }
 
 function updateBinding(names: Set<string>, name: string, isText: boolean): void {

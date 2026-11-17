@@ -40,7 +40,7 @@ function requireNoStatementDiagnostics(diagnostics: readonly StatementDiagnostic
   UserInput.fail(message, { path, diagnostics })
 }
 
-type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'action' | 'library' | 'tests' | 'test' | 'expect'
+type BlockOwner = 'file' | 'app' | 'view' | 'render' | 'action' | 'function' | 'library' | 'tests' | 'test' | 'expect'
 type ValidationScope = 'all' | 'requirements'
 type StatementKind = AST.Statement['kind']
 type StatementPlacement = { syntax: string; owners: readonly BlockOwner[] }
@@ -57,6 +57,7 @@ const PlacementByKind: PlacementByStatementKind = {
   AppDeclaration: { syntax: 'App declarations', owners: FileOwners },
   DoStatement: { syntax: 'Do statements', owners: ActionOwners },
   ExpectStatement: { syntax: 'Expect statements', owners: TestOwners },
+  FunctionDeclaration: { syntax: 'Pure function declarations', owners: FileOwners },
   InputExpectation: { syntax: 'Input value expectations', owners: ExpectOwners },
   LetDeclaration: { syntax: 'Let declarations', owners: ['file', 'view', 'render'] },
   PressBinding: { syntax: 'Press bindings', owners: ['render'] },
@@ -66,6 +67,7 @@ const PlacementByKind: PlacementByStatementKind = {
   RenderViewExpressionStatement: { syntax: 'Render statements', owners: ['view'] },
   RequiresDeclaration: { syntax: 'Requirements', owners: FileOwners },
   RootDeclaration: { syntax: 'Root declarations', owners: ['app'] },
+  ReturnStatement: { syntax: 'Return statements', owners: ['function'] },
   RunStatement: { syntax: 'Run statements', owners: TestOwners },
   SetStatement: { syntax: 'Set statements', owners: ActionOwners },
   StateDeclaration: { syntax: 'State declarations', owners: ['view'] },
@@ -86,6 +88,7 @@ const OwnerDescription: OwnerDescriptions = {
   view: 'directly inside a view',
   render: 'inside a view invocation',
   action: 'inside an action',
+  function: 'inside a pure function',
   library: 'directly inside a ts-library',
   tests: 'directly inside a tests suite',
   test: 'directly inside a test case',
@@ -99,6 +102,7 @@ const RequiredByOwner: RequiredStatementByOwner = {
     message: 'A view must contain exactly one render statement.',
   },
   library: { kinds: ['PublishDeclaration'], message: 'A ts-library must contain exactly one publish declaration.' },
+  function: { kinds: ['ReturnStatement'], message: 'A text function must contain exactly one return statement.' },
   render: {
     kinds: ['PressBinding'],
     message: 'A view invocation can have only one press binding.',
@@ -113,6 +117,7 @@ const OwnerByBlockKind: BlockOwnerByKind = {
   ActionDeclaration: 'action',
   AppDeclaration: 'app',
   ExpectStatement: 'expect',
+  FunctionDeclaration: 'function',
   TestDeclaration: 'test',
   TestsDeclaration: 'tests',
   TypeScriptLibraryDeclaration: 'library',
@@ -165,7 +170,7 @@ function collectDeclarationNameDiagnostics(statement: AST.Statement, diagnostics
   ) {
     addNameDiagnostic(statement.name, diagnostics)
   }
-  if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration'])) {
+  if (AST.IsKind(statement, ['ViewDeclaration', 'ActionDeclaration', 'FunctionDeclaration'])) {
     for (const parameter of statement.parameters) {
       addNameDiagnostic(parameter.name, diagnostics)
     }

@@ -37,6 +37,24 @@ export const Formatting = {
     fm.oneSpaceAfter('action')
     fm.noSpaceBeforeProperty('parameters')
   },
+  FunctionDeclaration(fm) {
+    fm.oneSpaceAfter('func')
+    fm.oneSpaceAround('->')
+    fm.noSpaceBeforeProperty('parameters')
+  },
+  FunctionCall(fm) {
+    fm.noSpaceBeforeProperty('argumentList')
+  },
+  FunctionArgumentList(fm) {
+    fm.commaSpacedList()
+  },
+  FunctionArgument(fm) {
+    fm.noSpaceBefore(':')
+    fm.oneSpaceAfter(':')
+  },
+  ReturnStatement(fm) {
+    fm.oneSpaceAfter('return')
+  },
   SetStatement(fm) {
     fm.oneSpaceAfter('set')
     fm.oneSpaceAround('=')

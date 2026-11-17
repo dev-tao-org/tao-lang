@@ -5,7 +5,8 @@ import { ReactiveCaptionProbe as _taoForeignView1 } from "../../../sidecars/1/sr
 import type { Scope as ImportedScope0 } from "../../../dependencies/tao/@ui/Views";
 import type { Scope as ImportedScope1 } from "./@cards/Card";
 import type { Scope as ImportedScope2 } from "./@cards/details/DetailedCard";
-import type { Scope as ImportedScope3 } from "./ScopeExamples";
+import type { Scope as ImportedScope3 } from "./@calculations/Calculations";
+import type { Scope as ImportedScope4 } from "./ScopeExamples";
 
 export type Scope = {
   readonly "FileCaption": TR.GeneratedValue<string>;
@@ -21,8 +22,10 @@ export type Scope = {
   readonly "Caption": ImportedScope1["Caption"];
   readonly "PackageCaption": ImportedScope1["Caption"];
   readonly "DetailedCard": ImportedScope2["DetailedCard"];
-  readonly "FolderScope": ImportedScope3["FolderScope"];
-  readonly "PackageScope": ImportedScope3["PackageScope"];
+  readonly "FormatCaption": ImportedScope3["FormatCaption"];
+  readonly "JoinCaption": ImportedScope3["JoinCaption"];
+  readonly "FolderScope": ImportedScope4["FolderScope"];
+  readonly "PackageScope": ImportedScope4["PackageScope"];
 };
 
 export type Imports = {
@@ -34,8 +37,10 @@ export type Imports = {
   readonly "Caption": Pick<ImportedScope1, "Caption">;
   readonly "PackageCaption": Pick<ImportedScope1, "Caption">;
   readonly "DetailedCard": Pick<ImportedScope2, "DetailedCard">;
-  readonly "FolderScope": Pick<ImportedScope3, "FolderScope">;
-  readonly "PackageScope": Pick<ImportedScope3, "PackageScope">;
+  readonly "FormatCaption": Pick<ImportedScope3, "FormatCaption">;
+  readonly "JoinCaption": Pick<ImportedScope3, "JoinCaption">;
+  readonly "FolderScope": Pick<ImportedScope4, "FolderScope">;
+  readonly "PackageScope": Pick<ImportedScope4, "PackageScope">;
 };
 
 export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.Scope>>): void {
@@ -47,6 +52,8 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
   TR.AliasBinding(_Scope, "Caption", () => _Modules["ts/packages/src/tao/@cards/Card.ts"]!["Caption"]);
   TR.AliasBinding(_Scope, "PackageCaption", () => _Modules["ts/packages/src/tao/@cards/Card.ts"]!["Caption"]);
   TR.AliasBinding(_Scope, "DetailedCard", () => _Modules["ts/packages/src/tao/@cards/details/DetailedCard.ts"]!["DetailedCard"]);
+  TR.AliasBinding(_Scope, "FormatCaption", () => _Modules["ts/packages/src/tao/@calculations/Calculations.ts"]!["FormatCaption"]);
+  TR.AliasBinding(_Scope, "JoinCaption", () => _Modules["ts/packages/src/tao/@calculations/Calculations.ts"]!["JoinCaption"]);
   TR.AliasBinding(_Scope, "FolderScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["FolderScope"]);
   TR.AliasBinding(_Scope, "PackageScope", () => _Modules["ts/packages/src/tao/ScopeExamples.ts"]!["PackageScope"]);
 }

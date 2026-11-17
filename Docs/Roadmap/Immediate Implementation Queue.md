@@ -64,7 +64,7 @@ Keep cross-library interaction requirements with this runtime boundary and the r
 
 Owners: [Compiler and reactive runtime](Compiler%20and%20Reactive%20Runtime%20Plan.md), [Language decisions](Tao%20Language%20Design%20Decisions.md).
 
-Text interpolation and derived text values now share the runtime's reactive graph. Compiled Tao views pass tracked values through lexical bindings and read snapshots at render boundaries. See [Reactive Expressions](../Specification/Reactive%20Expressions.md).
+Text interpolation and named pure text calls now share the runtime's reactive graph. Compiled Tao views pass tracked values through lexical bindings and read snapshots at render boundaries. A text-only library can publish named pure functions for headless TypeScript consumers. See [Reactive Expressions](../Specification/Reactive%20Expressions.md) and [Pure Functions](../Specification/Pure%20Functions.md).
 
 Complete generated sidecar contracts, checked conversions, immutable snapshots and structural equality, observation/writable-state integration, pure and inline functions, typed matching and inferred returns. Effects remain explicit actions. Reuse already implemented behavior rather than reopening its decisions. Prove authored Tao calculations and headless TypeScript-library consumption.
 

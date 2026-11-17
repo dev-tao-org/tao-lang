@@ -7,8 +7,9 @@ import { ReactiveCaptionProbe as _taoForeignView1 } from "../../../sidecars/1/sr
 export function TaoView_LanguageFeatures$CapturedCaption_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View }, "Value" | "Caption"> & { readonly "Value": TR.GeneratedValue<string>; readonly "Caption": TR.GeneratedValue<string> };
+  const _Imported_FormatCaption = TR.ScopeAliases<ModuleImports["FormatCaption"]>(_Scope, { ["FormatCaption"]: "FormatCaption" });
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
-  TR.LetDeclaration(_Scope, "Caption", TR.InterpolatedText(["Aliased capture: ", _Scope["Value"]]));
+  TR.LetDeclaration(_Scope, "Caption", TR.FunctionCall(_Imported_FormatCaption["FormatCaption"], [[undefined, _Scope["Value"]]]));
   return TR.finishViewRender(_Render, TR.ViewRenderExpression(
     _Imported_Text["Text"],
     TR.ViewRenderArguments([_Scope["Caption"]], [])
@@ -54,12 +55,13 @@ export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.Vie
 export function TaoView_LanguageFeatures$CaptionEquality_f61fcef90f44(_Props: TR.ViewComponentProps) {
   const _Render = TR.beginViewRender(_Props);
   const _Scope = _Render.scope as Omit<Omit<ModuleScope, "Name" | "CapturedCaption" | "StateEditor" | "CaptionEquality"> & { readonly "Name": TR.GeneratedValue<string>; readonly "CapturedCaption": TR.View; readonly "StateEditor": TR.View; readonly "CaptionEquality": TR.View }, "Start" | "End" | "Caption" | "Redistribute"> & { readonly "Start": TR.GeneratedValue<string>; readonly "End": TR.GeneratedValue<string>; readonly "Caption": TR.GeneratedValue<string>; readonly "Redistribute": unknown };
+  const _Imported_JoinCaption = TR.ScopeAliases<ModuleImports["JoinCaption"]>(_Scope, { ["JoinCaption"]: "JoinCaption" });
   const _Imported_Text = TR.ScopeAliases<ModuleImports["Text"]>(_Scope, { ["Text"]: "Text" });
   const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   TR.useStateDeclaration(_Scope, "Start", () => "a");
   TR.useStateDeclaration(_Scope, "End", () => "bc");
-  TR.LetDeclaration(_Scope, "Caption", TR.InterpolatedText([_Scope["Start"], _Scope["End"]]));
+  TR.LetDeclaration(_Scope, "Caption", TR.FunctionCall(_Imported_JoinCaption["JoinCaption"], [["Prefix", _Scope["Start"]], ["Value", _Scope["End"]]]));
   TR.useActionDeclaration(_Scope, "Redistribute", [], _Scope => {
     TR.SetStatement(_Scope, "Start", "ab");
     TR.SetStatement(_Scope, "End", "c");

@@ -60,6 +60,18 @@ export function emitInterpolatedText(parts: string): string {
   return `TR.InterpolatedText(${parts})`
 }
 
+/** emitFunctionDeclaration registers a pure calculation with its lexical scope. */
+export function emitFunctionDeclaration(node: AST.FunctionDeclaration, scope: string, body: string): string {
+  const parameters = CodegenUtil.listMap(node.parameters, CodegenUtil.compileName)
+  const value = `TR.FunctionDeclaration(${scope}, ${parameters}, ${scope} => ${body})`
+  return emitNamedDeclaration(node, scope, value)
+}
+
+/** emitFunctionCall derives a value from a resolved function and its authored arguments. */
+export function emitFunctionCall(node: AST.FunctionCall, scope: CodegenUtil.ScopeCode, args: string): string {
+  return `TR.FunctionCall(${emitName(node.target, scope)}, ${args})`
+}
+
 /** emitObservedValue reads a lexical value for an injected render hook. */
 export function emitObservedValue(name: AST.Name, scope: CodegenUtil.ScopeCode): string {
   return `TR.useReadValue(${emitName(name, scope)})`

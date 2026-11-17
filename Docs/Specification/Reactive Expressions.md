@@ -42,4 +42,4 @@ Actions execute explicitly in response to events through `do`. Changes to their 
 
 #### Availability
 
-Text interpolation and derived text values are available in Tao apps and compiled TypeScript libraries. The broader expression model, including conditional reads, pure function calls and collection values, is agreed future behavior.
+Text interpolation and [pure text function calls](Pure%20Functions.md) are available in Tao apps and compiled TypeScript libraries. The broader expression model, including conditional reads, contextual inline functions and collection values, is agreed future behavior.

@@ -4,6 +4,7 @@ export { ForeignView } from './ForeignView'
 export type { ForeignViewComponent } from './ForeignView'
 export { LibraryView, type LibraryViewProps } from './LibraryView'
 export { ModuleApplied } from './Preview'
+export { FunctionCall, FunctionDeclaration, invokeTextFunction, type TextFunction } from './PureFunctions'
 export {
   AliasBinding,
   LetDeclaration,

@@ -41,6 +41,8 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   ViewRenderExpression: constructViewRenderExpression,
   ActionDeclaration: constructActionDeclaration,
   DoStatement: constructDoStatement,
+  FunctionDeclaration: constructFunctionDeclaration,
+  FunctionCall: constructFunctionCall,
   ExpectStatement: constructExpectStatement,
   Injection: constructInjection,
   InjectionCapture: constructCapture,
@@ -110,6 +112,25 @@ function constructActionDeclaration(cst: CST.SyntaxNode): Generated.ActionDeclar
   })
 }
 
+function constructFunctionDeclaration(cst: CST.SyntaxNode): Generated.FunctionDeclaration {
+  return makeNode(cst, 'FunctionDeclaration', {
+    name: constructFieldNode(cst, 'name', 'Name'),
+    parameters: constructParameters(cst),
+    returnType: constructOptionalField(cst, 'returnType', 'Name'),
+    visibility: constructOptionalVisibility(cst),
+    block: constructFieldNode(cst, 'block', 'Block'),
+  })
+}
+
+function constructFunctionCall(cst: CST.SyntaxNode): Generated.FunctionCall {
+  const argumentsNode = CST.RequiredField(cst, 'argumentList')
+  const children = argumentsNode.namedChildren.filter(CST.IsSemanticNode)
+  return makeNode(cst, 'FunctionCall', {
+    target: constructFieldNode(cst, 'target', 'Name'),
+    arguments: constructChildren(children, 'FunctionArgument'),
+  })
+}
+
 function constructParameters(cst: CST.SyntaxNode): Generated.Parameter[] {
   const parameters = cst.childForFieldName('parameters')
   return constructChildren(parameters?.namedChildren.filter(CST.IsSemanticNode) ?? [], 'Parameter')
@@ -135,7 +156,7 @@ function constructDoStatement(cst: CST.SyntaxNode): Generated.DoStatement {
 function constructArguments(cst: CST.SyntaxNode): Generated.Expression[] {
   const argumentsNode = cst.childForFieldName('argumentList')
   const children = argumentsNode?.namedChildren.filter(CST.IsSemanticNode) ?? []
-  return constructChildren(children, ['Name', 'TextLiteral', 'InterpolatedText'])
+  return constructChildren(children, ['Name', 'TextLiteral', 'InterpolatedText', 'FunctionCall'])
 }
 
 function constructExpectStatement(cst: CST.SyntaxNode): Generated.ExpectStatement {

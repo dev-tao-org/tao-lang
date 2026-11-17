@@ -3,7 +3,7 @@ import { S } from '@shared'
 import { emitJsonDocument } from '../codegen-util'
 import { compileModuleImport } from '../GeneratedPaths'
 import { LibraryScopePath } from './LibraryCompiler'
-import { type PublishedView, publishedViewBinding } from './LibraryPublications'
+import { type PublishedDefinition, publishedDefinitionBinding } from './LibraryPublications'
 import type { CompiledFiles } from './ModulesCompiler'
 
 /** LibraryPackageConfiguration supplies the generated package name and installer-visible dependencies. */
@@ -15,13 +15,13 @@ export type LibraryPackageConfiguration = {
 
 /** compileLibraryPackageFiles emits source facades and a relocatable package manifest and TypeScript config. */
 export function compileLibraryPackageFiles(
-  views: readonly PublishedView[],
+  publications: readonly PublishedDefinition[],
   configuration: LibraryPackageConfiguration,
 ): CompiledFiles {
   const files: LibraryPackageFiles = {}
   const exports: LibraryPackageExports = {}
   const paths: LibraryLocalPaths = {}
-  const groups = groupPublishedViews(views)
+  const groups = groupPublishedDefinitions(publications)
   for (const [subpath, selected] of groups) {
     const facade = subpath === '.' ? 'Library.ts' : `${subpath.slice(2)}.ts`
     const path = `ts/${facade}`
@@ -42,36 +42,39 @@ type LibraryPackageFiles = Record<string, string>
 type LibraryLocalPaths = Record<string, string[]>
 
 /** collectLibraryPackageSpecifiers lists the exact local facade addresses emitted for publications. */
-export function collectLibraryPackageSpecifiers(views: readonly PublishedView[]): ReadonlySet<string> {
-  return new Set([...groupPublishedViews(views).keys()].filter(path => path !== '.').map(path => path.slice(2)))
+export function collectLibraryPackageSpecifiers(publications: readonly PublishedDefinition[]): ReadonlySet<string> {
+  return new Set(
+    [...groupPublishedDefinitions(publications).keys()].filter(path => path !== '.').map(path => path.slice(2)),
+  )
 }
 
-function groupPublishedViews(views: readonly PublishedView[]): Map<string, PublishedView[]> {
-  const groups = new Map<string, PublishedView[]>([['.', []]])
-  for (const view of views) {
-    const packageRoot = view.subpath.split('/').slice(0, 2).join('/')
+function groupPublishedDefinitions(publications: readonly PublishedDefinition[]): Map<string, PublishedDefinition[]> {
+  const groups = new Map<string, PublishedDefinition[]>([['.', []]])
+  for (const definition of publications) {
+    const packageRoot = definition.subpath.split('/').slice(0, 2).join('/')
     if (!groups.has(packageRoot)) {
       groups.set(packageRoot, [])
     }
-    const group = groups.get(view.subpath)
+    const group = groups.get(definition.subpath)
     if (group) {
-      group.push(view)
+      group.push(definition)
     } else {
-      groups.set(view.subpath, [view])
+      groups.set(definition.subpath, [definition])
     }
   }
   return groups
 }
 
-function compileFacade(path: string, views: readonly PublishedView[]): string {
+function compileFacade(path: string, publications: readonly PublishedDefinition[]): string {
   const source = compileModuleImport(path, LibraryScopePath)
-  if (views.length === 0) {
+  if (publications.length === 0) {
     return S`
       import ${source};
       export {};
     `
   }
-  const exports = views.map(view => `${publishedViewBinding(view)} as ${view.name}`).join(', ')
+  const exports = publications.map(definition => `${publishedDefinitionBinding(definition)} as ${definition.name}`)
+    .join(', ')
   return S`
     export { ${exports} } from ${source};
   `

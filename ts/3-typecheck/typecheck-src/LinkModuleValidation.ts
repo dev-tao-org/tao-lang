@@ -11,6 +11,7 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
         names.add(AST.GetAppRoot(app).value)
       },
       ViewDeclaration: view => collectViewReferences(view, names, new Set()),
+      FunctionDeclaration: definition => collectFunctionReferences(definition, names),
       LetDeclaration: definition => addLetReferences(definition, names),
       TestsDeclaration: tests => collectTestReferences(tests, names),
       // Imports and requirements introduce bindings but do not reference Tao values.
@@ -21,6 +22,20 @@ export function collectReferencedNames(document: AST.Document): ReadonlySet<stri
     })
   }
   return names
+}
+
+function collectFunctionReferences(node: AST.FunctionDeclaration, names: Set<string>): void {
+  const localNames = new Set(node.parameters.map(parameter => parameter.name.value))
+  for (const parameter of node.parameters) {
+    names.add(parameter.type.value)
+  }
+  if (node.returnType) {
+    names.add(node.returnType.value)
+  }
+  const returned = AST.FindFunctionReturn(node)
+  if (returned) {
+    AST.VisitExpressionNames(returned.value, name => addReference(name.value, names, localNames))
+  }
 }
 
 function collectTestReferences(tests: AST.TestsDeclaration, names: Set<string>): void {

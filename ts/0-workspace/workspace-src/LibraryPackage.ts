@@ -50,10 +50,10 @@ export async function compileLibraryPackage(request: LibraryPackageRequest): Pro
   const ownSources = new Set(modules.filter(module => module.project?.root === root).map(module => module.path))
   const program = Typecheck.linkModules(entry, modules)
   const selection = { declaration: publication, ownSources, packageRoots }
-  const views = Compile.collectLibraryPublications(program, selection)
-  const specifiers = Compile.collectLibraryPackageSpecifiers(views)
+  const publications = Compile.collectLibraryPublications(program, selection)
+  const specifiers = Compile.collectLibraryPackageSpecifiers(publications)
   const sidecars = await captureLibrarySidecars(program, root, specifiers)
-  const library = Compile.compileLibrary(program, views, sidecars.resolveImport)
+  const library = Compile.compileLibrary(program, publications, sidecars.resolveImport)
   const packageFiles = await compileLibraryFiles(library, program, request.name)
   const output = Path.resolve(request.out)
   await FS.mkdir(Path.dirname(output))
@@ -98,7 +98,7 @@ async function compileLibraryFiles(
     'react': pins.react!,
     'react-native': pins['react-native']!,
   }
-  const packageFiles = Compile.compileLibraryPackageFiles(library.views, {
+  const packageFiles = Compile.compileLibraryPackageFiles(library.publications, {
     name,
     peerDependencies,
     dependencies: collectLibraryDependencies(program, peerDependencies),

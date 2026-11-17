@@ -78,13 +78,18 @@ view Heading {
 package
 view SaveButton {
   state Status = "Ready"
-  let Caption = "Save: { Status }"
+  let Caption = FormatStatus(Status)
   action Save() {
     set Status = "Saved"
   }
   render Button(Caption) {
     on press Save
   }
+}
+
+file
+func FormatStatus(Value text) {
+  return "Save: { Value }"
 }
 
 package

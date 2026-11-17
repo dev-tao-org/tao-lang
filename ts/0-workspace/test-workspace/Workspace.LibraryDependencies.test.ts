@@ -90,6 +90,18 @@ Tests.test(
   90_000,
 )
 
+Tests.test('published Tao functions are callable headlessly by a TypeScript consumer', async () => {
+  const root = await createStandaloneLibraryFixture()
+  await Try(async () => {
+    const output = Path.join(root, '.tao/cache/sessions/.cli/libraries/Calculations')
+    const name = '@tao-dev/ts-lib-example'
+    const entry = Path.join(root, 'src/tao/@calculations/Calculations.tao')
+    await compileLibraryPackage({ entry, out: output, name })
+    await installRelocatedLibrary(root, output, name)
+    await verifyHeadlessCalculations(root)
+  }, { finally: () => FS.rm(root, { recursive: true, force: true }) })
+})
+
 Tests.test('library compilation requires a prepared external dependency without preparing it implicitly', async () => {
   const root = await createStandaloneLibraryFixture()
   await Try(async () => {
@@ -113,6 +125,27 @@ Tests.test('library compilation requires a prepared external dependency without 
     },
   })
 })
+
+async function verifyHeadlessCalculations(root: string): Promise<void> {
+  const cwd = Path.join(root, 'src/ts')
+  const entry = Path.join(cwd, 'HeadlessCalculations.ts')
+  const flags = [
+    '--strict',
+    '--target',
+    'esnext',
+    '--module',
+    'esnext',
+    '--moduleResolution',
+    'bundler',
+    '--skipLibCheck',
+    '--noEmit',
+    '--allowImportingTsExtensions',
+  ]
+  await Exec.captureStdout('tsc', [...flags, entry], { cwd })
+  await FS.rm(Path.join(cwd, 'node_modules/react-native'), { force: true })
+  const result = await Exec.captureStdout('bun', ['run', entry], { cwd })
+  Tests.expect(result).toBe('Aliased capture: Grace')
+}
 
 async function createDependencyWrapper(root: string): Promise<void> {
   const widgets = root + '-widgets'

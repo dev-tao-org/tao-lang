@@ -25,7 +25,7 @@ export function IsLetDeclaration(node: AST.Node): node is AST.LetDeclaration {
 
 /** IsValueDeclaration narrows a semantic node to a declaration that owns a name. */
 export function IsValueDeclaration(node: AST.Node): node is AST.ValueDeclaration {
-  return AST.IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDeclaration'])
+  return AST.IsKind(node, ['AppDeclaration', 'ViewDeclaration', 'LetDeclaration', 'FunctionDeclaration'])
 }
 
 /** IsDeclaration narrows a statement to a module declaration. */
@@ -60,7 +60,19 @@ export function VisitExpressionNames(value: AST.Expression, visit: (name: AST.Na
         VisitExpressionNames(part.value, visit)
       }
     }
+    return
   }
+  if (AST.IsKind(value, 'FunctionCall')) {
+    visit(value.target)
+    for (const argument of value.arguments) {
+      VisitExpressionNames(argument.value, visit)
+    }
+  }
+}
+
+/** FindFunctionReturn returns the first authored return in the function body. */
+export function FindFunctionReturn(node: AST.FunctionDeclaration): AST.ReturnStatement | undefined {
+  return node.block.statements.find(statement => AST.IsKind(statement, 'ReturnStatement'))
 }
 
 /** GetViewRenderExpressions lists nested view renders in one render block, in authored order. */

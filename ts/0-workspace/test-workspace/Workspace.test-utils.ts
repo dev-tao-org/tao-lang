@@ -45,6 +45,7 @@ const LibraryConsumerSources = [
   'package.json',
   'tsconfig.json',
   'Consumer.tsx',
+  'HeadlessCalculations.ts',
   'ForeignGreeting.tsx',
   'ReactiveCaptionProbe.tsx',
   'test',

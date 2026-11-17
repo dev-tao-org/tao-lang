@@ -54,6 +54,7 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
       }
     },
     LetDeclaration: value => visitLet(value, scope),
+    FunctionDeclaration: definition => visitFunction(definition, scope),
     ViewDeclaration: view => visitView(view, scope),
     TestsDeclaration(tests) {
       for (const test of AST.GetTests(tests)) {
@@ -74,6 +75,21 @@ function visitDeclaration(node: AST.Declaration, scope: Scope): void {
     },
     PublishDeclaration: publication => visitPublication(publication, scope),
   })
+}
+
+function visitFunction(node: AST.FunctionDeclaration, parent: Scope): void {
+  const scope = createChildScope(parent)
+  for (const parameter of node.parameters) {
+    reference(parent, parameter.type)
+    declare(scope, parameter.name)
+  }
+  if (node.returnType) {
+    reference(parent, node.returnType)
+  }
+  const returned = AST.FindFunctionReturn(node)
+  if (returned) {
+    AST.VisitExpressionNames(returned.value, name => reference(scope, name))
+  }
 }
 
 function visitPublication(node: AST.PublishDeclaration, scope: Scope): void {

@@ -7,6 +7,7 @@ import * as Source4 from "./packages/src/tao/LanguageFeatures";
 import * as Source5 from "./packages/src/tao/ScopeExamples";
 import * as Source6 from "./packages/src/tao/ValueSnapshots";
 import * as Source7 from "./dependencies/tao/@ui/Views";
+import * as Source8 from "./packages/src/tao/@calculations/Calculations";
 
 const _scope0 = TR.Scope() as Source0.Scope;
 const _scope1 = TR.Scope() as Source1.Scope;
@@ -16,6 +17,7 @@ const _scope4 = TR.Scope() as Source4.Scope;
 const _scope5 = TR.Scope() as Source5.Scope;
 const _scope6 = TR.Scope() as Source6.Scope;
 const _scope7 = TR.Scope() as Source7.Scope;
+const _scope8 = TR.Scope() as Source8.Scope;
 const _Modules = { "ts/packages/src/tao/Library.ts": _scope0,
 "ts/packages/src/tao/@cards/Card.ts": _scope1,
 "ts/packages/src/tao/@cards/Other.ts": _scope2,
@@ -23,7 +25,8 @@ const _Modules = { "ts/packages/src/tao/Library.ts": _scope0,
 "ts/packages/src/tao/LanguageFeatures.ts": _scope4,
 "ts/packages/src/tao/ScopeExamples.ts": _scope5,
 "ts/packages/src/tao/ValueSnapshots.ts": _scope6,
-"ts/dependencies/tao/@ui/Views.ts": _scope7 };
+"ts/dependencies/tao/@ui/Views.ts": _scope7,
+"ts/packages/src/tao/@calculations/Calculations.ts": _scope8 };
 Source0.bindAliases(_scope0, _Modules);
 Source1.bindAliases(_scope1, _Modules);
 Source2.bindAliases(_scope2, _Modules);
@@ -32,6 +35,7 @@ Source4.bindAliases(_scope4, _Modules);
 Source5.bindAliases(_scope5, _Modules);
 Source6.bindAliases(_scope6, _Modules);
 Source7.bindAliases(_scope7, _Modules);
+Source8.bindAliases(_scope8, _Modules);
 Source0.bindDeclarations(_scope0);
 Source1.bindDeclarations(_scope1);
 Source2.bindDeclarations(_scope2);
@@ -40,6 +44,7 @@ Source4.bindDeclarations(_scope4);
 Source5.bindDeclarations(_scope5);
 Source6.bindDeclarations(_scope6);
 Source7.bindDeclarations(_scope7);
+Source8.bindDeclarations(_scope8);
 Source4.initializeFileCaption(_scope4);
 Source4.initializeEscapedCaption(_scope4);
 

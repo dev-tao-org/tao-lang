@@ -5,12 +5,12 @@ import * as Typecheck from '@typecheck'
 
 import { isTextParameter } from '../ValuesCompiler'
 
-/** PublishedView retains the owning source and canonical TypeScript export. */
-export type PublishedView = {
+/** PublishedDefinition retains the owning source and canonical TypeScript export. */
+export type PublishedDefinition = {
   subpath: string
   name: string
   source: string
-  declaration: AST.ViewDeclaration
+  declaration: PublishableDeclaration
 }
 
 /** LibraryPublication selects one publish block, the current project's sources and named package roots. */
@@ -23,10 +23,10 @@ export type LibraryPublication = {
 /** PublishedPackageRoots maps local published package names to their authored roots. */
 export type PublishedPackageRoots = ReadonlyMap<string, string>
 
-/** publishedViewBinding names the shared implementation binding for a public component. */
-export function publishedViewBinding(view: PublishedView): string {
-  const packageIdentity = Platform.hashText(view.subpath).slice(0, 12)
-  return `Published_${view.name}_${packageIdentity}`
+/** publishedDefinitionBinding names the shared implementation binding for a public declaration. */
+export function publishedDefinitionBinding(definition: PublishedDefinition): string {
+  const packageIdentity = Platform.hashText(definition.subpath).slice(0, 12)
+  return `Published_${definition.name}_${packageIdentity}`
 }
 
 /** requireLibraryPublication selects the single publish block of a validated library. */
@@ -43,24 +43,24 @@ export function requireLibraryPublication(document: AST.Document, target?: strin
 export function collectLibraryPublications(
   program: Typecheck.LinkedProgram,
   publication: LibraryPublication,
-): readonly PublishedView[] {
+): readonly PublishedDefinition[] {
   const entry = program.modules.find(module => module.path === program.entry)!
-  const views = publication.declaration.members.flatMap(member => {
+  const publications = publication.declaration.members.flatMap(member => {
     const name = member.value
     return name.startsWith('@')
-      ? collectPackageViews(program, publication, name)
-      : [collectRootView(program, publication, entry, name)]
+      ? collectPackageDefinitions(program, publication, name)
+      : [collectRootDefinition(program, publication, entry, name)]
   })
-  assertUniquePublications(views)
-  return views
+  assertUniquePublications(publications)
+  return publications
 }
 
-function collectRootView(
+function collectRootDefinition(
   program: Typecheck.LinkedProgram,
   publication: LibraryPublication,
   entry: Typecheck.LinkedModule,
   name: string,
-): PublishedView {
+): PublishedDefinition {
   const binding = entry.bindings.find(binding => binding.name === name)
   if (binding && binding.name !== binding.target) {
     UserInput.fail(`Publish ${binding.target} by its declaration name.`)
@@ -68,31 +68,31 @@ function collectRootView(
   const source = binding?.source ?? entry.path
   const owner = program.modules.find(module => module.path === source)!
   const declaration = AST.FindValueDeclaration(owner.document, name)
-  return requirePublishedView(owner, declaration, '.', name, publication.ownSources)
+  return requirePublishedDefinition(owner, declaration, '.', name, publication.ownSources)
 }
 
-function collectPackageViews(
+function collectPackageDefinitions(
   program: Typecheck.LinkedProgram,
   publication: LibraryPublication,
   name: string,
-): PublishedView[] {
+): PublishedDefinition[] {
   const root = publication.packageRoots.get(name)
   if (root === undefined) {
     UserInput.fail(`Published package ${name} is not a local Tao package.`)
   }
-  const views = program.modules.flatMap(module => packageViews(module, root, name, publication.ownSources))
-  if (views.length === 0) {
+  const publications = program.modules.flatMap(module => packageDefinitions(module, root, name, publication.ownSources))
+  if (publications.length === 0) {
     UserInput.fail(`Published package ${name} has no package-visible declarations.`)
   }
-  return views
+  return publications
 }
 
-function packageViews(
+function packageDefinitions(
   module: Typecheck.LinkedModule,
   root: string,
   name: string,
   ownSources: ReadonlySet<string>,
-): PublishedView[] {
+): PublishedDefinition[] {
   if (!ownSources.has(module.path) || !Path.isWithin(root, module.path)) {
     return []
   }
@@ -102,36 +102,46 @@ function packageViews(
   }
   const subpath = directory ? `./${name}/${directory}` : `./${name}`
   return AST.GetValueDeclarations(module.document).filter(declaration => declaration.visibility === 'package')
-    .map(declaration => requirePublishedView(module, declaration, subpath, declaration.name.value, ownSources))
+    .map(declaration => requirePublishedDefinition(module, declaration, subpath, declaration.name.value, ownSources))
 }
 
-type CandidateViewDeclaration = AST.ValueDeclaration | undefined
+type PublishableDeclaration = AST.ViewDeclaration | AST.FunctionDeclaration
 
-function requirePublishedView(
+type CandidateDeclaration = AST.ValueDeclaration | undefined
+
+function requirePublishedDefinition(
   owner: Typecheck.LinkedModule,
-  declaration: CandidateViewDeclaration,
+  declaration: CandidateDeclaration,
   subpath: string,
   name: string,
   ownSources: ReadonlySet<string>,
-): PublishedView {
+): PublishedDefinition {
   if (!ownSources.has(owner.path)) {
     UserInput.fail(`Cannot publish dependency definition ${name}.`)
   }
   if (!declaration || declaration.visibility !== 'package') {
     UserInput.fail(`Published definition ${name} must be an own-project package-visible declaration.`)
   }
-  if (!AST.IsViewDeclaration(declaration) || !declaration.parameters.every(isTextParameter)) {
-    UserInput.fail(`TypeScript library publication ${name} supports only views with text parameters.`)
-  }
+  requirePublishableDefinition(declaration, name)
   return { subpath, name, source: owner.path, declaration }
 }
 
-function assertUniquePublications(views: readonly PublishedView[]): void {
+function requirePublishableDefinition(
+  node: AST.ValueDeclaration,
+  name: string,
+): asserts node is PublishableDeclaration {
+  const supported = AST.IsKind(node, ['ViewDeclaration', 'FunctionDeclaration'])
+  if (!supported || !node.parameters.every(isTextParameter)) {
+    UserInput.fail(`TypeScript library publication ${name} supports views and pure functions with text parameters.`)
+  }
+}
+
+function assertUniquePublications(publications: readonly PublishedDefinition[]): void {
   const addresses = new Set<string>()
   const declarations = new Set<string>()
-  for (const view of views) {
-    const address = publishedViewKey(view)
-    const declaration = Typecheck.createModuleMemberKey(view.source, view.name)
+  for (const definition of publications) {
+    const address = publishedDefinitionKey(definition)
+    const declaration = Typecheck.createModuleMemberKey(definition.source, definition.name)
     if (addresses.has(address) || declarations.has(declaration)) {
       UserInput.fail(`Duplicate published TypeScript export: ${address}.`)
     }
@@ -140,6 +150,6 @@ function assertUniquePublications(views: readonly PublishedView[]): void {
   }
 }
 
-function publishedViewKey(view: PublishedView): string {
-  return `${view.subpath}/${view.name}`
+function publishedDefinitionKey(definition: PublishedDefinition): string {
+  return `${definition.subpath}/${definition.name}`
 }
