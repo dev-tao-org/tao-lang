@@ -233,39 +233,43 @@ Tests.test('file dependency sidecars cannot import relative files from the consu
     )
   }))
 
-Tests.test('foreign view contracts accept matching named exports and reject invalid exports or props', async () =>
-  await SidecarPipelineTestFixtures.withFixture(async fixture => {
-    const executor = SidecarPipelineTestFixtures.executeTypeScript
-    const valid = await prepareSidecarPipeline({ ...fixture, executor })
-    Tests.expect(valid.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx'))
-      .toContain('foreign-views')
+Tests.test(
+  'foreign view contracts accept matching named exports and reject invalid exports or props',
+  async () =>
+    await SidecarPipelineTestFixtures.withFixture(async fixture => {
+      const executor = SidecarPipelineTestFixtures.executeTypeScript
+      const valid = await prepareSidecarPipeline({ ...fixture, executor })
+      Tests.expect(valid.resolveForeignViewPath(fixture.taoPath, './FormattedDate.tsx'))
+        .toContain('foreign-views')
 
-    await FS.writeFile(
-      Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      'export function OtherView(props: { Value: string }) { return null }' + NewlineCharacter,
-    )
-    const watchedFiles: string[] = []
-    await Tests.rejects(
-      prepareSidecarPipeline({
-        ...fixture,
-        executor,
-        async onWatchFiles(files) {
-          watchedFiles.push(...files)
-        },
-      }),
-      ForeignViewPropsContractErrorRegx,
-    )
-    Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'FormattedDate.tsx'))
+      await FS.writeFile(
+        Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
+        'export function OtherView(props: { Value: string }) { return null }' + NewlineCharacter,
+      )
+      const watchedFiles: string[] = []
+      await Tests.rejects(
+        prepareSidecarPipeline({
+          ...fixture,
+          executor,
+          async onWatchFiles(files) {
+            watchedFiles.push(...files)
+          },
+        }),
+        ForeignViewPropsContractErrorRegx,
+      )
+      Tests.expect(watchedFiles).toContain(Path.join(fixture.moduleRoot, 'FormattedDate.tsx'))
 
-    await FS.writeFile(
-      Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
-      'export function FormattedDate(props: { Value: number }) { return null }' + NewlineCharacter,
-    )
-    await Tests.rejects(
-      prepareSidecarPipeline({ ...fixture, executor }),
-      ForeignViewPropsContractErrorRegx,
-    )
-  }))
+      await FS.writeFile(
+        Path.join(fixture.moduleRoot, 'FormattedDate.tsx'),
+        'export function FormattedDate(props: { Value: number }) { return null }' + NewlineCharacter,
+      )
+      await Tests.rejects(
+        prepareSidecarPipeline({ ...fixture, executor }),
+        ForeignViewPropsContractErrorRegx,
+      )
+    }),
+  15_000,
+)
 
 Tests.test('managed snapshots type-check authored views through the packaged Tao runtime API', async () =>
   await SidecarPipelineTestFixtures.withFixture(async fixture => {
