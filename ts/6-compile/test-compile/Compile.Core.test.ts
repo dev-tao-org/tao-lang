@@ -52,6 +52,26 @@ Tests.test('foreign views reject non-text parameter contracts', () => {
     .toThrow('parameters must all use the text type')
 })
 
+Tests.test('a wrapped scalar alias converts the value supplied on each live read', () => {
+  const source = S`
+    type Score is number
+    app Demo { root Main }
+    view Main {
+      state Current = Score 2
+      let Source = (Current)
+      let Points = (Source as number)
+      render inject Points \`\`\`ts return <Tao.Text>{String(Points)}</Tao.Text> \`\`\`
+    }
+  `
+  const document = AST.transform(Grammar.createParser().parse(source))!
+  const code = combineGeneratedText(compile(document, { revision: 'wrapped-scalar-alias' }))
+
+  Tests.expect(code).toContain('TR.LetReferenceDeclaration(_Scope, "Source", "Current");')
+  Tests.expect(code).toContain(
+    'TR.LetReferenceDeclaration(_Scope, "Points", "Source", _Value => TR.WidenScalar(_Scope, "number", _Value));',
+  )
+})
+
 Tests.test('folder-visible apps register root views for sibling lazy bindings', () => {
   const helloPath = '/hello.tao'
   const interactionsPath = '/interactions.tao'

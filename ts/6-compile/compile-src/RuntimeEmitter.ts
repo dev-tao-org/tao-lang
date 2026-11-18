@@ -55,11 +55,20 @@ export function emitLetDeclaration(node: AST.LetDeclaration, scope: string, valu
   return emitNamedDeclaration(node, scope, value)
 }
 
+type EmitLocalAliasValue = (parameter: string) => string
+const LocalAliasParameter = '_Value'
+
 /** emitLocalAlias makes a view-local name follow its lexical source. */
-export function emitLocalAlias(node: AST.LetDeclaration, scope: string, reference: AST.Name, adapt?: string): string {
-  return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${CodegenUtil.emitLiteral(reference)}${
-    adapt ? `, _Value => ${adapt}` : ''
-  });`
+export function emitLocalAlias(
+  node: AST.LetDeclaration,
+  scope: string,
+  reference: AST.Name,
+  emitValue: EmitLocalAliasValue,
+): string {
+  const value = emitValue(LocalAliasParameter)
+  const adapter = value === LocalAliasParameter ? '' : `, ${LocalAliasParameter} => ${value}`
+  const source = CodegenUtil.emitLiteral(reference)
+  return `TR.LetReferenceDeclaration(${scope}, ${CodegenUtil.compileName(node)}, ${source}${adapter});`
 }
 
 /** emitScalarExpression delegates checked nominal construction or widening to the runtime. */

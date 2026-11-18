@@ -4,14 +4,14 @@ import { emitLiteral, getScopeValue, listMap, type ScopeCode } from './codegen-u
 import * as RuntimeEmitter from './RuntimeEmitter'
 
 /** compileExpression emits the authored scalar operation or lexical lookup. */
-export function compileExpression(node: AST.Expression, scope: ScopeCode, boundOperand?: string): string {
+export function compileExpression(node: AST.Expression, scope: ScopeCode): string {
   const scalar = (expression: AST.ScalarApplication) =>
-    RuntimeEmitter.emitScalarExpression(expression, scope, compileExpression(expression.value, scope, boundOperand))
+    RuntimeEmitter.emitScalarExpression(expression, scope, compileExpression(expression.value, scope))
   return Switch.kind(node, {
-    Name: name => boundOperand ?? RuntimeEmitter.emitName(name, scope),
+    Name: name => RuntimeEmitter.emitName(name, scope),
     TextLiteral: emitLiteral,
     NumberLiteral: literal => Object.is(literal.value, -0) ? '-0' : String(literal.value),
-    GroupedExpression: group => compileExpression(group.value, scope, boundOperand),
+    GroupedExpression: group => compileExpression(group.value, scope),
     ConstructionExpression: scalar,
     ConversionExpression: scalar,
   })
@@ -22,8 +22,12 @@ export function compileLetDeclaration(node: AST.LetDeclaration, scope: ScopeCode
   const scopeName = getScopeValue(scope)
   const operand = AST.GetExpressionOperand(node.value)
   if (typeof scope !== 'string' && scope.liveLocalAliases && AST.IsKind(operand, 'Name')) {
-    const adapted = compileExpression(node.value, scope, '_Value')
-    return RuntimeEmitter.emitLocalAlias(node, scopeName, operand, adapted === '_Value' ? undefined : adapted)
+    return RuntimeEmitter.emitLocalAlias(
+      node,
+      scopeName,
+      operand,
+      parameter => compileExpression(node.value, bindLocalAliasOperand(scope, operand, parameter)),
+    )
   }
   return RuntimeEmitter.emitLetDeclaration(node, scopeName, compileExpression(node.value, scope))
 }
@@ -92,6 +96,15 @@ export function collectPrimitiveBindings(
 }
 
 type MutablePrimitiveBindings = Map<string, PrimitiveType>
+
+type ResolvedScopeCode = Exclude<ScopeCode, string>
+
+function bindLocalAliasOperand(scope: ResolvedScopeCode, operand: AST.Name, parameter: string): ResolvedScopeCode {
+  return {
+    ...scope,
+    resolveReference: name => name === operand.value ? parameter : scope.resolveReference(name),
+  }
+}
 
 function updateBinding(names: MutablePrimitiveBindings, name: string, type?: PrimitiveType): void {
   if (type) {
