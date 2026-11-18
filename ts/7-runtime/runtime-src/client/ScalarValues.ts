@@ -1,19 +1,19 @@
 import { UserInput } from '@shared'
 import type { Scope } from './Scope'
 
-/** ScalarTypeDeclaration records a checked file-local type or alias for compiled expressions. */
-export function ScalarTypeDeclaration(scope: Scope, name: string, base: string, identity?: string): void {
+/** ScalarTypeDeclaration records a checked file-local nominal scalar type for compiled expressions. */
+export function ScalarTypeDeclaration(scope: Scope, name: string, identity: string): void {
   const existing = (scope as ScalarScope)[scalarTypes]
-  const declarations = existing ?? new Map<string, ScalarDefinition>()
+  const declarations = existing ?? new Map<string, string>()
   if (!existing) {
     Object.defineProperty(scope, scalarTypes, { value: declarations })
   }
-  declarations.set(name, { base, identity })
+  declarations.set(name, identity)
 }
 
 /** ConstructScalar creates an immutable nominal value from its compatible scalar representation. */
 export function ConstructScalar(scope: Scope, type: string, value: unknown): unknown {
-  const identity = findScalarIdentity(scope, type)
+  const identity = (scope as ScalarScope)[scalarTypes]?.get(type)
   UserInput.Require(identity !== undefined, `Expected a nominal type for ${type}.`)
   if (isNominalScalar(value) && value.identity === identity) {
     return value
@@ -23,7 +23,7 @@ export function ConstructScalar(scope: Scope, type: string, value: unknown): unk
 
 /** WidenScalar uses an existing value at a checked type, exposing primitive backing at a primitive target. */
 export function WidenScalar(scope: Scope, type: string, value: unknown): unknown {
-  return findScalarIdentity(scope, type) ? value : unwrapScalar(value)
+  return (scope as ScalarScope)[scalarTypes]?.has(type) ? value : unwrapScalar(value)
 }
 
 /** unwrapScalar supplies the backing value when a binding expects a primitive. */
@@ -47,8 +47,7 @@ export function compareNominalScalars(left: unknown, right: unknown): boolean {
 }
 
 type PrimitiveScalar = string | number
-type ScalarDefinition = { base: string; identity?: string }
-type ScalarScope = Scope & { readonly [scalarTypes]?: Map<string, ScalarDefinition> }
+type ScalarScope = Scope & { readonly [scalarTypes]?: Map<string, string> }
 const scalarTypes: unique symbol = Symbol('TaoScalarTypes')
 
 class NominalScalar {
@@ -63,14 +62,4 @@ function requirePrimitiveScalar(value: unknown): PrimitiveScalar {
   const isFiniteNumber = typeof value === 'number' && Number.isFinite(value)
   UserInput.Require(typeof value === 'string' || isFiniteNumber, 'Expected a text or finite number value.')
   return value
-}
-
-function findScalarIdentity(scope: Scope, type: string): string | undefined {
-  const declarations = (scope as ScalarScope)[scalarTypes]
-  for (let declaration = declarations?.get(type); declaration; declaration = declarations?.get(declaration.base)) {
-    if (declaration.identity) {
-      return declaration.identity
-    }
-  }
-  return undefined
 }

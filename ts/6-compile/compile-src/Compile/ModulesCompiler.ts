@@ -110,7 +110,6 @@ function createModuleCompilationContext(
     componentPrefix: '_Views.',
     moduleIdentity: Platform.hashText(generatedPath).slice(0, 12),
     primitiveBindings: primitiveBindings.get(module.path) ?? new Map(),
-    scalarTypes: module.scalarTypes,
     moduleBindings: module.bindings,
     resolveForeignComponent: node => foreignNames.get(Typecheck.createModuleMemberKey(module.path, node.range.start)),
   }

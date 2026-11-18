@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import * as Grammar from '@grammar'
 import { Json } from '@shared'
 import Exec from '@shared/os/exec'
-import * as Typecheck from '@typecheck'
+import type * as Typecheck from '@typecheck'
 
 import { NewlineCharacter, S, Try } from '@shared'
 import { Artifacts, FS, Path, Platform } from '@shared/os'
@@ -61,13 +61,7 @@ export async function executeTypeScript(
 export function createProgramFor(path: string, document: AST.Document): SidecarFixtureProgram {
   return {
     entry: path,
-    modules: [{
-      path,
-      document,
-      bindings: [],
-      imports: [],
-      scalarTypes: Typecheck.createScalarTypeScope(document, path),
-    }],
+    modules: [{ path, document, bindings: [], imports: [] }],
     definitions: [],
   }
 }

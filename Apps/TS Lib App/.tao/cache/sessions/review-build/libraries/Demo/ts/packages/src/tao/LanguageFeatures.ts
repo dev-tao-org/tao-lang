@@ -51,9 +51,8 @@ export function bindAliases(_Scope: Scope, _Modules: Readonly<Record<string, TR.
 }
 
 export function bindDeclarations(_Scope: Scope): void {
-  TR.ScalarTypeDeclaration(_Scope, "CaptionText", "text", "f61fcef90f44:CaptionText");
-  TR.ScalarTypeDeclaration(_Scope, "Score", "number", "f61fcef90f44:Score");
-  TR.ScalarTypeDeclaration(_Scope, "Total", "number");
+  TR.ScalarTypeDeclaration(_Scope, "CaptionText", "f61fcef90f44:CaptionText");
+  TR.ScalarTypeDeclaration(_Scope, "Score", "f61fcef90f44:Score");
   TR.LetDeclaration(_Scope, "LanguageFeatures", TR.ViewDeclaration("LanguageFeatures", ["Name"], _Views.TaoView_LanguageFeatures_f61fcef90f44, _Scope));
   TR.LetDeclaration(_Scope, "ScoreReadout", TR.ViewDeclaration("ScoreReadout", ["Value"], _Views.TaoView_ScoreReadout_f61fcef90f44, _Scope));
   TR.LetDeclaration(_Scope, "ForeignGreeting", TR.ForeignView("ForeignGreeting", ["Value"], _taoForeignView0, _Scope));

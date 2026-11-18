@@ -11,8 +11,7 @@ export const syntaxFixture = S`
   requires github:acme/widgets version v1.2.0 as Widgets
   requires npm:@date-fns/tz version 4.1.0
   ts-library Demo{publish{Root,@cards,}}
-  type Label is text
-  type Count=number
+  type  Label   is  text
   file let Caption=Label("Hello")as text
   folder app Demo{root Root}
   package view Root( Title text,Subtitle text ){
@@ -47,8 +46,6 @@ export const formattedSyntaxFixture = S`
   }
 
   type Label is text
-
-  type Count = number
 
   file
   let Caption = Label ("Hello") as text

@@ -9,12 +9,10 @@ export function buildModulePrimitiveBindings(program: Typecheck.LinkedProgram): 
   const bindings = new Map(
     program.modules.map(module => [module.path, new Map(module.bindings.map(binding => [binding.name, binding]))]),
   )
-  const modules = new Map(program.modules.map(module => [module.path, module]))
   const declarations = new Map<string, PrimitiveType>()
   const ownNames = new Map(program.modules.map(module => [module.path, new Map<string, PrimitiveType>()]))
   for (const definition of program.definitions) {
-    const module = modules.get(definition.source)!
-    const type = projectExpressionType(definition.declaration.value, module.scalarTypes, name => {
+    const type = projectExpressionType(definition.declaration.value, name => {
       const binding = bindings.get(definition.source)?.get(name.value)
       return declarations.get(
         Typecheck.createModuleMemberKey(binding?.source ?? definition.source, binding?.target ?? name.value),

@@ -4,10 +4,9 @@ Use `as` to widen a value from a nominal scalar type to one of its ancestors.
 
 ````tao
 type Score is number
-type Total = number
 
 view Scores {
-  state Points = Score 2 as Total
+  state Points = Score 2 as number
 
   action Update() { set Points = 7 }
 
@@ -23,11 +22,11 @@ Tao resolves the conversion from the operand's static type and the requested typ
 
 #### `state Type Name = Value`
 
-Inside a view, `state Total Points = Score 2` has the same behavior as `state Points = Score 2 as Total`. The conversion applies to the complete initializer expression. With `type Total = number`, `state Total Points = 2` is a same-type error, just like `state Points = 2 as Total`.
+Inside a view, `state number Points = Score 2` has the same behavior as `state Points = Score 2 as number`. The conversion applies to the complete initializer expression. `state number Points = 2` is a same-type error, just like `state Points = 2 as number`.
 
 #### File-local scalar types
 
-`type Score is number` declares a distinct type backed by `number`. `type Total = number` and `type Points = Total` share the identity of `number`. File-local types can derive from `text`, `number`, or another file-local type. Use `Score 2` to construct a nominal scalar, or `Score (Value)` for a grouped input. Number literals support finite decimal and scientific-notation values.
+`type Score is number` declares a distinct type backed by `number`. File-local types can derive from `text`, `number`, or another file-local type. Use `Score 2` to construct a nominal scalar, or `Score (Value)` for a grouped input. Number literals support finite decimal and scientific-notation values.
 
 #### Declared converters
 
@@ -35,7 +34,7 @@ Declared converters are agreed future behavior. When a converter applies, it run
 
 Either the source or the target type can declare the converter in its `with` body. The source type name binds the operand inside that body. The converter's result type is its declared target. Converters follow the rules for pure functions.
 
-Tao considers converters whose declared target has the requested type identity and whose declared source is the operand's type or one of its nominal ancestors. A transparent alias shares its target's identity. The closest declared source wins, starting with the operand's own type. If two candidates are equally close, Tao reports an ambiguity at the conversion and identifies both declarations. A selected converter runs once for each evaluation of the expression. If it fails, the failure propagates.
+Tao considers converters whose declared target has the requested type identity and whose declared source is the operand's type or one of its nominal ancestors. The closest declared source wins, starting with the operand's own type. If two candidates are equally close, Tao reports an ambiguity at the conversion and identifies both declarations. A selected converter runs once for each evaluation of the expression. If it fails, the failure propagates.
 
 The following example chooses `OrderNumber as PublicCode` over the declaration on `NumberCode`. Both converters are declared on a source type. The target-owned `OrderNumber as ExportCode` is also available.
 

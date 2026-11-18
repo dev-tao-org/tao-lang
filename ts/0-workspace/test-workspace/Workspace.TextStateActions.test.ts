@@ -49,10 +49,9 @@ Tests.test('scalar as rejects same types, unrelated domains and incompatible sta
   const cases = [
     [
       S`
-        type Foo = text
-        type Bar = Foo
-        let Raw = "value"
-        let Cast = Raw as Bar
+        type Score is number
+        let Raw = Score 2
+        let Cast = Raw as Score
       `,
       'Raw is already',
     ],
@@ -65,8 +64,8 @@ Tests.test('scalar as rejects same types, unrelated domains and incompatible sta
     ],
     [
       S`
-        type Foo = Bar
-        type Bar = Foo
+        type Foo is Bar
+        type Bar is Foo
       `,
       'Type cycle includes Foo.',
     ],

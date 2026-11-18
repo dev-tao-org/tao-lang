@@ -1,6 +1,5 @@
 import * as AST from '@ast-gen'
 import { Switch } from '@shared'
-import * as Typecheck from '@typecheck'
 import { emitLiteral, getScopeValue, listMap, type ScopeCode } from './codegen-util'
 import * as RuntimeEmitter from './RuntimeEmitter'
 
@@ -52,26 +51,24 @@ export type PrimitiveBindings = ReadonlyMap<string, PrimitiveType>
 
 type ResolvePrimitiveName = (name: AST.Name) => PrimitiveType | undefined
 
-/** projectPrimitiveType maps a checked Tao type name, including aliases, to TypeScript. */
-export function projectPrimitiveType(name: AST.Name, types: Typecheck.ScalarTypeScope): PrimitiveType | undefined {
-  const resolved = types.resolve(name)
-  if (resolved === Typecheck.TextType) {
+/** projectPrimitiveType maps a Tao primitive type name to TypeScript. */
+export function projectPrimitiveType(name: AST.Name): PrimitiveType | undefined {
+  if (name.value === 'text') {
     return 'string'
   }
-  return resolved === Typecheck.NumberType ? 'number' : undefined
+  return name.value === 'number' ? 'number' : undefined
 }
 
 /** projectExpressionType identifies primitive literals, names and widening results for TypeScript captures. */
 export function projectExpressionType(
   node: AST.Expression,
-  types: Typecheck.ScalarTypeScope,
   resolveName: ResolvePrimitiveName,
 ): PrimitiveType | undefined {
   return Switch.kind(node, {
     TextLiteral: () => 'string',
     Name: resolveName,
-    ConversionExpression: value => projectPrimitiveType(value.type, types),
-    GroupedExpression: value => projectExpressionType(value.value, types, resolveName),
+    ConversionExpression: value => projectPrimitiveType(value.type),
+    GroupedExpression: value => projectExpressionType(value.value, resolveName),
     NumberLiteral: () => 'number',
     ConstructionExpression: () => undefined,
   })
@@ -82,14 +79,13 @@ export function collectPrimitiveBindings(
   definitions: readonly AST.ViewValueDeclaration[],
   inherited: PrimitiveBindings,
   parameters: readonly AST.Parameter[],
-  types: Typecheck.ScalarTypeScope,
 ): PrimitiveBindings {
   const names = new Map(inherited)
   for (const parameter of parameters) {
-    updateBinding(names, parameter.name.value, projectPrimitiveType(parameter.type, types))
+    updateBinding(names, parameter.name.value, projectPrimitiveType(parameter.type))
   }
   for (const definition of definitions) {
-    const type = projectExpressionType(definition.value, types, name => names.get(name.value))
+    const type = projectExpressionType(definition.value, name => names.get(name.value))
     updateBinding(names, definition.name.value, type)
   }
   return names

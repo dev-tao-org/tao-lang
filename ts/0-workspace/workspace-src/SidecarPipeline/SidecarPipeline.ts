@@ -179,9 +179,6 @@ async function collectSidecarView(
   if (authoredPath === undefined) {
     return
   }
-  if (declaration.parameters.some(parameter => module.scalarTypes.resolve(parameter.type) !== Typecheck.TextType)) {
-    UserInput.Fail(`Foreign view ${AST.GetViewName(declaration)} parameters must all use text.`)
-  }
   const modulePath = FS.realpathSync(Path.resolve(module.path))
   const projectRoot = FS.realpathSync(
     Paths.findNearestProjectRoot(Path.dirname(modulePath)) ?? canonicalConsumerDirectory,

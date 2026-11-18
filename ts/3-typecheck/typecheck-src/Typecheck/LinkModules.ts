@@ -2,7 +2,7 @@ import * as AST from '@ast-gen'
 import { UserInput } from '@shared'
 import { orderDefinitions } from '../LinkModuleDefinitions'
 import { collectReferencedNames } from '../LinkModuleValidation'
-import { createModuleValueResolver } from '../ModuleValueResolution'
+import { createModuleValueResolver, type ModuleScalarScope } from '../ModuleValueResolution'
 import { createScalarTypeScope } from '../ScalarTypes'
 import { assertValidViewScopes } from '../ViewScopeValidation'
 import * as Modules from './Modules'
@@ -33,30 +33,31 @@ export function linkModules(entry: string, sources: readonly Modules.SourceModul
     path: source.path,
     document: source.document,
     bindings: bindings.get(source.path)!,
-    scalarTypes: createScalarTypeScope(source.document, source.path),
     imports: source.imports,
     project: source.project,
   }))
+  const scalarScopes = linkedModules.map(module => ({
+    module,
+    types: createScalarTypeScope(module.document, module.path),
+  }))
   const definitions = orderDefinitions(linkedModules)
-  validateScalarValues(linkedModules, definitions)
+  validateScalarValues(scalarScopes, definitions)
   return { entry, modules: linkedModules, definitions }
 }
 
 function validateScalarValues(
-  modules: readonly Modules.LinkedModule[],
+  scopes: readonly ModuleScalarScope[],
   definitions: readonly Modules.LinkedDefinition[],
 ): void {
   const viewTypes = new Map(
-    modules.flatMap(module =>
-      AST.GetViewDeclarations(module.document).map(view => [view, module.scalarTypes] as const)
-    ),
+    scopes.flatMap(({ module, types }) => AST.GetViewDeclarations(module.document).map(view => [view, types] as const)),
   )
-  const resolveModule = createModuleValueResolver(modules)
+  const resolveModule = createModuleValueResolver(scopes)
   for (const definition of definitions) {
     resolveModule(definition.source, definition.declaration.name.value)
   }
-  for (const module of modules) {
-    assertValidViewScopes(module.document, module.scalarTypes, name => resolveModule(module.path, name), viewTypes)
+  for (const { module, types } of scopes) {
+    assertValidViewScopes(module.document, types, name => resolveModule(module.path, name), viewTypes)
   }
 }
 

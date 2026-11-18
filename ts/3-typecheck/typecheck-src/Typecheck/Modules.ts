@@ -1,6 +1,5 @@
 import type * as AST from '@ast-gen'
 import { NullCharacter } from '@shared'
-import type { ScalarTypeScope } from '../ScalarTypes'
 
 type ModuleMember = string | number
 /** createModuleMemberKey identifies a module-owned member by name, authored path or source offset. */
@@ -31,7 +30,6 @@ export type LinkedModule = {
   path: string
   document: AST.Document
   bindings: readonly ModuleBinding[]
-  scalarTypes: ScalarTypeScope
   imports: SourceModule['imports']
   project?: SourceProject
 }

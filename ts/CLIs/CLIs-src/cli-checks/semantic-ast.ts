@@ -240,9 +240,6 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
   if (kind === 'NumberLiteral') {
     generatedFields.push('  value: number')
   }
-  if (kind === 'TypeDeclaration') {
-    generatedFields.push('  nominal: boolean')
-  }
   return S`
     export type ${kind} = Semantic<${emitSemanticStringLiteral(kind)}, {
     ${Lists.unique(generatedFields).join(`;${NewlineCharacter}`)}

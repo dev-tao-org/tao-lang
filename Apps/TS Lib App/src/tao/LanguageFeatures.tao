@@ -5,7 +5,6 @@ use FolderScope, PackageScope
 
 type CaptionText is text
 type Score is number
-type Total = number
 
 file
 let FileCaption = CaptionText "File-scoped text" as text
@@ -46,7 +45,7 @@ view LanguageFeatures(Name text) {
 
   view StateEditor(Initial text) {
     state Status = Initial
-    state Total Points = Score 2
+    state number Points = Score 2
     action Save() {
       set Status = "Saved state"
       set Points = 7
@@ -69,7 +68,7 @@ view LanguageFeatures(Name text) {
 }
 
 package
-view ScoreReadout(Value Total) {
+view ScoreReadout(Value number) {
   render inject Value ```ts
     return <Tao.Text>{'Points: ' + Value.toString()}</Tao.Text>
   ```

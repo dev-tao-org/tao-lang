@@ -15,7 +15,6 @@ export type ViewCompilationContext = {
   scope: string
   moduleIdentity: string
   primitiveBindings: ValuesCompiler.PrimitiveBindings
-  scalarTypes: Typecheck.ScalarTypeScope
   foreignComponent: OptionalForeignComponent
   scopeType: string
   ownerPath?: readonly string[]
@@ -41,11 +40,7 @@ type RenderCompilation = { result: string; components: string }
 const RenderCompilation = (result: string, components: string): RenderCompilation => ({ result, components })
 
 function compileForeignView(node: AST.ViewDeclaration, context: ViewCompilationContext): DeclarationCompilation {
-  if (
-    node.parameters.some(parameter =>
-      ValuesCompiler.projectPrimitiveType(parameter.type, context.scalarTypes) !== 'string'
-    )
-  ) {
+  if (node.parameters.some(parameter => parameter.type.value !== 'text')) {
     UserInput.Fail(`Foreign view ${node.name.value} parameters must all use the text type.`)
   }
   const component = context.foreignComponent
@@ -115,7 +110,6 @@ function createTaoViewCompileInputs(
     definitions,
     primitiveBindings,
     node.parameters,
-    context.scalarTypes,
   )
   const shadowed = new Set([
     ...context.shadowedNames ?? [],

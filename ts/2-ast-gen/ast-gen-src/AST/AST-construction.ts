@@ -32,7 +32,6 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   QualifiedName: constructName,
   TextLiteral: constructTextLiteral,
   NumberLiteral: constructNumberLiteral,
-  TypeDeclaration: constructTypeDeclaration,
   StateDeclaration: constructStateDeclaration,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
@@ -186,14 +185,6 @@ function constructTextLiteral(cst: CST.SyntaxNode): Generated.TextLiteral {
 
 function constructNumberLiteral(cst: CST.SyntaxNode): Generated.NumberLiteral {
   return makeNode(cst, 'NumberLiteral', { value: Number(cst.text) })
-}
-
-function constructTypeDeclaration(cst: CST.SyntaxNode): Generated.TypeDeclaration {
-  return makeNode(cst, 'TypeDeclaration', {
-    name: constructFieldNode(cst, 'name', 'Name'),
-    base: constructFieldNode(cst, 'base', 'Name'),
-    nominal: cst.children.some(child => child.type === 'is'),
-  })
 }
 
 function constructStateDeclaration(cst: CST.SyntaxNode): Generated.StateDeclaration {

@@ -19,7 +19,7 @@ export function TaoView_LanguageFeatures$StateEditor_f61fcef90f44(_Props: TR.Vie
   const _Imported_Button = TR.ScopeAliases<ModuleImports["Button"]>(_Scope, { ["Button"]: "Button" });
   const _Imported_Col = TR.ScopeAliases<ModuleImports["Col"]>(_Scope, { ["Col"]: "Col" });
   TR.useStateDeclaration(_Scope, "Status", () => _Scope["Initial"]);
-  TR.useStateDeclaration(_Scope, "Points", () => TR.WidenScalar(_Scope, "Total", TR.ConstructScalar(_Scope, "Score", 2)));
+  TR.useStateDeclaration(_Scope, "Points", () => TR.WidenScalar(_Scope, "number", TR.ConstructScalar(_Scope, "Score", 2)));
   TR.useActionDeclaration(_Scope, "Save", [], _Scope => {
     TR.SetStatement(_Scope, "Status", "Saved state");
     TR.SetStatement(_Scope, "Points", 7);

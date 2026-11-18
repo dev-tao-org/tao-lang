@@ -1,4 +1,3 @@
-export { createScalarTypeScope, NumberType, type ScalarTypeScope, TextType } from './ScalarTypes'
 export * from './Typecheck/LinkModules'
 export * from './Typecheck/Modules'
 export * from './Typecheck/Typecheck'

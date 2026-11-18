@@ -36,7 +36,7 @@ export const Formatting = {
   },
   TypeDeclaration(fm) {
     fm.oneSpaceAfter('type')
-    fm.oneSpaceAround('is', '=')
+    fm.oneSpaceAround('is')
   },
   ConversionExpression(fm) {
     fm.oneSpaceAround('as')

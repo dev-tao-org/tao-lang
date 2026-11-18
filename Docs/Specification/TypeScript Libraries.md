@@ -51,7 +51,7 @@ export default function Example() {
 }
 ```
 
-Published `text` and `number` parameters become required TypeScript `string` and `number` props, including when the parameter uses a transparent alias. A published `Children` parameter declared as `text` becomes a string prop. Components accept React children independently.
+Published `text` and `number` parameters become required TypeScript `string` and `number` props. A published `Children` parameter declared as `text` becomes a string prop. Components accept React children independently.
 
 Importing any public entry initializes one shared scope for that library. All of its published views use that scope. Tao keeps view-local state for each mount and retains the shared scope when a view unmounts.
 

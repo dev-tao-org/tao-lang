@@ -3,9 +3,12 @@ import { resolveScalarExpression, type ScalarTypeScope } from './ScalarTypes'
 import { createModuleMemberKey, type LinkedModule } from './Typecheck'
 import { scalarBinding, type ViewBinding } from './ViewScopeValidation'
 
+/** ModuleScalarScope pairs a linked module with its scalar types during validation. */
+export type ModuleScalarScope = { module: LinkedModule; types: ScalarTypeScope }
+
 /** createModuleValueResolver follows linked module aliases to the names needed by scoped actions. */
-export function createModuleValueResolver(modules: readonly LinkedModule[]): ResolveLinkedValue {
-  const modulesByPath = new Map(modules.map(module => [module.path, module]))
+export function createModuleValueResolver(scopes: readonly ModuleScalarScope[]): ResolveLinkedValue {
+  const scopesByPath = new Map(scopes.map(scope => [scope.module.path, scope]))
   const cache: ResolvedValuesByKey = new Map()
   return function resolve(path, name) {
     const key = createModuleMemberKey(path, name)
@@ -13,8 +16,8 @@ export function createModuleValueResolver(modules: readonly LinkedModule[]): Res
     if (existing !== undefined) {
       return existing ?? undefined
     }
-    const module = modulesByPath.get(path)!
-    const value = resolveModuleValue(module, name, resolve)
+    const scope = scopesByPath.get(path)!
+    const value = resolveModuleValue(scope, name, resolve)
     cache.set(key, value ?? null)
     return value
   }
@@ -25,7 +28,7 @@ type CachedViewBinding = ViewBinding | null
 type ResolvedValuesByKey = Map<string, CachedViewBinding>
 
 function resolveModuleValue(
-  module: LinkedModule,
+  { module, types }: ModuleScalarScope,
   name: string,
   resolve: ResolveLinkedValue,
 ): ViewBinding | undefined {
@@ -34,7 +37,7 @@ function resolveModuleValue(
     return declaration
   }
   if (declaration?.kind === 'LetDeclaration') {
-    return resolveLetValue(declaration.value, module.scalarTypes, name => resolve(module.path, name))
+    return resolveLetValue(declaration.value, types, name => resolve(module.path, name))
   }
   const binding = module.bindings.find(binding => binding.name === name)
   return binding ? resolve(binding.source, binding.target) : undefined

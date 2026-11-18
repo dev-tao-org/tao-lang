@@ -72,12 +72,11 @@ export function emitScalarExpression(
   return `TR.${operation}(${CodegenUtil.getScopeValue(scope)}, ${CodegenUtil.emitLiteral(node.type)}, ${value})`
 }
 
-/** emitScalarTypeDeclaration registers a file-owned scalar domain or a transparent alias. */
+/** emitScalarTypeDeclaration registers a file-owned nominal scalar type. */
 export function emitScalarTypeDeclaration(node: AST.TypeDeclaration, scope: string, moduleIdentity: string): string {
   const name = CodegenUtil.emitLiteral(node.name)
-  const base = CodegenUtil.emitLiteral(node.base)
-  const identity = node.nominal ? `, ${CodegenUtil.emitStringLiteral(`${moduleIdentity}:${node.name.value}`)}` : ''
-  return `TR.ScalarTypeDeclaration(${scope}, ${name}, ${base}${identity});`
+  const identity = CodegenUtil.emitStringLiteral(`${moduleIdentity}:${node.name.value}`)
+  return `TR.ScalarTypeDeclaration(${scope}, ${name}, ${identity});`
 }
 
 /** emitStateDeclaration initializes a view-owned state slot on the first render. */

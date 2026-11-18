@@ -6,9 +6,7 @@ use @examples/details PackageBadge
 use ./Library LibraryGreeting
 
 type Label is text
-type CaptionValue = text
 type Score is number
-type Total = number
 
 file
 let DefaultTitle = Label "Kitchen Sink" as text
@@ -82,7 +80,7 @@ view Heading {
 package
 view SaveButton {
   state Caption = "Save"
-  state Total Points = Score 2
+  state number Points = Score 2
   action Save() {
     set Caption = "Saved"
     set Points = 7
@@ -103,7 +101,7 @@ view ScoreReadout(Value number) {
 }
 
 package
-view SidecarGreeting(Value CaptionValue) from ./SidecarGreeting.tsx
+view SidecarGreeting(Value text) from ./SidecarGreeting.tsx
 
 tests "Kitchen Sink" {
   test(Label "Tagged input and control") {

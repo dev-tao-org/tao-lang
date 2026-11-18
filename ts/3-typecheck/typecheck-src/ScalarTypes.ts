@@ -1,7 +1,7 @@
 import * as AST from '@ast-gen'
 import { Switch, UserInput } from '@shared'
 
-/** ScalarType identifies a primitive or nominal scalar domain. Transparent aliases share an identity. */
+/** ScalarType identifies a primitive or nominal scalar domain. */
 export type ScalarType = { name: string; base?: ScalarType }
 
 /** TextType identifies the built-in text domain. */
@@ -13,7 +13,7 @@ export const NumberType: ScalarType = { name: 'number' }
 /** ScalarTypeScope resolves the types declared in one source file. */
 export type ScalarTypeScope = { path: string; resolve(name: AST.Name): ScalarType }
 
-/** createScalarTypeScope resolves transparent aliases and nominal ancestors with cycle detection. */
+/** createScalarTypeScope resolves named scalar types and their nominal ancestors with cycle detection. */
 export function createScalarTypeScope(document: AST.Document, path: string): ScalarTypeScope {
   const declared = new Map<string, AST.TypeDeclaration>()
   const resolved = new Map([['text', TextType], ['number', NumberType]])
@@ -37,7 +37,7 @@ export function createScalarTypeScope(document: AST.Document, path: string): Sca
     visiting.add(key)
     const base = resolve(declaration.base)
     visiting.delete(key)
-    const type = declaration.nominal ? { name: key, base } : base
+    const type = { name: key, base }
     resolved.set(key, type)
     return type
   }

@@ -168,7 +168,7 @@ export default grammar({
       )
     },
     TypeDeclaration($) {
-      return seq('type', field('name', $.Identifier), choice('is', '='), field('base', $.Identifier))
+      return seq('type', field('name', $.Identifier), 'is', field('base', $.Identifier))
     },
     ActionDeclaration($) {
       return seq('action', field('name', $.Identifier), field('parameters', $.ParameterList), field('block', $.Block))

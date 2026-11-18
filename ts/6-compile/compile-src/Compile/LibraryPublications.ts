@@ -126,7 +126,7 @@ function requirePublishedView(
     UserInput.Fail(`TypeScript library publication ${name} supports only views.`)
   }
   const parameterTypes: PublishedParameterTypes = Object.fromEntries(declaration.parameters.map(parameter => {
-    const type = projectPrimitiveType(parameter.type, owner.scalarTypes)
+    const type = projectPrimitiveType(parameter.type)
     UserInput.Require(type !== undefined, 'Expected a text or number parameter.')
     return [parameter.name.value, type]
   }))
