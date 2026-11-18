@@ -17,7 +17,7 @@ view SaveButton {
 
 Declare state inside a view before `render`. Tao infers `text` from `"Save"`. Each instance initializes its own state when mounted and retains it across renders, even when an input used to initialize it later changes.
 
-Use `state Name = Value as Type` to widen an initializer. Its result type sets the state type for later writes. See [Type Conversions](Type%20Conversions.md).
+Use `state Name = Value as Type` to widen an initializer. `state Type Name = Value` is shorthand for the same conversion. Its result type sets the state type for later writes. See [Type Conversions](Type%20Conversions.md).
 
 #### `set Caption = "Saved"`
 

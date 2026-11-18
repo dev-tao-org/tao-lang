@@ -35,6 +35,7 @@ type SemanticMetadata = {
   semanticNames: SemanticNames
   semanticFieldNames: Record<string, SemanticNames>
   requiredFields: Record<string, string[]>
+  cstOnlyFields: Record<string, string[]>
   fieldTypeOverrides: Record<string, SemanticFieldTypes>
   unions: Record<string, string[]>
 }
@@ -212,6 +213,9 @@ function generateNodeType(node: NodeMetadata, metadata: SemanticMetadata): strin
   const kind = semanticName(node.type, metadata)
   const fields = node.fields ?? {}
   const allFields = Objects.copy(fields)
+  for (const field of metadata.cstOnlyFields[kind] ?? []) {
+    delete allFields[field]
+  }
   const overrides = metadata.fieldTypeOverrides[kind] ?? {}
   for (const field of Object.keys(overrides)) {
     if (!allFields[field]) {

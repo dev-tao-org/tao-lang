@@ -46,7 +46,7 @@ view LanguageFeatures(Name text) {
 
   view StateEditor(Initial text) {
     state Status = Initial
-    state Points = Score 2 as Total
+    state Total Points = Score 2
     action Save() {
       set Status = "Saved state"
       set Points = 7

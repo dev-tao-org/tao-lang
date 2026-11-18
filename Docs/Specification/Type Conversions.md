@@ -21,6 +21,10 @@ view Scores {
 
 Tao resolves the conversion from the operand's static type and the requested type. The same expression has the same meaning in a `let`, a `state`, or an argument. A literal and a variable with the same static type qualify for the same conversions. A `let` or `state` infers the result type of its initializer. A state keeps that type for later writes.
 
+#### `state Type Name = Value`
+
+Inside a view, `state Total Points = Score 2` has the same behavior as `state Points = Score 2 as Total`. The conversion applies to the complete initializer expression. With `type Total = number`, `state Total Points = 2` is a same-type error, just like `state Points = 2 as Total`.
+
 #### File-local scalar types
 
 `type Score is number` declares a distinct type backed by `number`. `type Total = number` and `type Points = Total` share the identity of `number`. File-local types can derive from `text`, `number`, or another file-local type. Use `Score 2` to construct a nominal scalar, or `Score (Value)` for a grouped input. Number literals support finite decimal and scientific-notation values.

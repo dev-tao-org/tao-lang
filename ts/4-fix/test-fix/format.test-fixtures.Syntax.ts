@@ -17,7 +17,7 @@ export const syntaxFixture = S`
   folder app Demo{root Root}
   package view Root( Title text,Subtitle text ){
   let Hidden="Private"
-  state Status=Title
+  state  text   Status=Label (Title)
   state Points=2
   action Rename (Value text){set Status=Value}
   action Save(){do Rename (Caption)}
@@ -61,7 +61,7 @@ export const formattedSyntaxFixture = S`
   package
   view Root(Title text, Subtitle text) {
     let Hidden = "Private"
-    state Status = Title
+    state text Status = Label (Title)
     state Points = 2
     action Rename(Value text) {
       set Status = Value

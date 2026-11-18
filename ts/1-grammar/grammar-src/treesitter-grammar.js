@@ -161,6 +161,7 @@ export default grammar({
     StateDeclaration($) {
       return seq(
         'state',
+        optional(field('type', $.Identifier)),
         field('name', $.Identifier),
         '=',
         field('value', $._Expression),

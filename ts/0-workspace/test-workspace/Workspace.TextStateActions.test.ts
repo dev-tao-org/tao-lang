@@ -91,6 +91,24 @@ Tests.test('scalar as rejects same types, unrelated domains and incompatible sta
   }, { finally: () => workspace.dispose() })
 })
 
+Tests.test('typed state applies the same conversion to the entire initializer', async () => {
+  const workspace = Workspace.createWorkspace({})
+  await Try(async () => {
+    for (const state of ['state number Points = Score 2 as number', 'state Points = Score 2 as number as number']) {
+      const result = await workspace.update(S`
+        use tao@ui Text
+        type Score is number
+        app Example { root Main }
+        view Main {
+          ${state}
+          render Text("Ready")
+        }
+      `)
+      Tests.expect(result.status === 'failed' && result.error).toContain('Value is already `number`.')
+    }
+  }, { finally: () => workspace.dispose() })
+})
+
 async function expectRejection(
   workspace: Workspace.WorkspaceSession,
   action: string,

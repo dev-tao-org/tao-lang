@@ -14,7 +14,7 @@ view TextStateActions {
 view Editor(Initial text) {
   state Message = Initial
   state Status = Initial
-  state PointsShown = PriorityScore 2 as Score as Total
+  state Total PointsShown = PriorityScore 2
   let Caption = Message
 
   action Rename() {

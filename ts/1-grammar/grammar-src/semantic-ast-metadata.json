@@ -17,6 +17,9 @@
   "requiredFields": {
     "Capture": ["value"]
   },
+  "cstOnlyFields": {
+    "StateDeclaration": ["type"]
+  },
   "fieldTypeOverrides": {
     "ActionDeclaration": {
       "parameters": "readonly Parameter[]"

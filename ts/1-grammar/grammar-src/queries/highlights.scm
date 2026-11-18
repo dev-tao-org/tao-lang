@@ -20,6 +20,7 @@
 (LetDeclaration name: (Identifier) @variable)
 (StateDeclaration "state" @keyword)
 (StateDeclaration name: (Identifier) @variable)
+(StateDeclaration type: (Identifier) @type)
 (TypeDeclaration ["type" "is"] @keyword)
 (TypeDeclaration name: (Identifier) @type)
 (TypeDeclaration base: (Identifier) @type)

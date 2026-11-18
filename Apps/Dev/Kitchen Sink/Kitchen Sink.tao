@@ -82,7 +82,7 @@ view Heading {
 package
 view SaveButton {
   state Caption = "Save"
-  state Points = Score 2 as Total
+  state Total Points = Score 2
   action Save() {
     set Caption = "Saved"
     set Points = 7

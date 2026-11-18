@@ -31,6 +31,7 @@ export const Formatting = {
   },
   StateDeclaration(fm) {
     fm.oneSpaceAfter('state')
+    fm.oneSpaceBeforeProperty('name')
     fm.oneSpaceAround('=')
   },
   TypeDeclaration(fm) {

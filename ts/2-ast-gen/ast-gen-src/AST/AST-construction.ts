@@ -33,6 +33,7 @@ const constructors: Partial<Record<CstKind, CustomConstructor>> = {
   TextLiteral: constructTextLiteral,
   NumberLiteral: constructNumberLiteral,
   TypeDeclaration: constructTypeDeclaration,
+  StateDeclaration: constructStateDeclaration,
   RenderTag: constructRenderTag,
   ContextReference: constructContextReference,
   ImportPath: constructImportPath,
@@ -193,6 +194,22 @@ function constructTypeDeclaration(cst: CST.SyntaxNode): Generated.TypeDeclaratio
     base: constructFieldNode(cst, 'base', 'Name'),
     nominal: cst.children.some(child => child.type === 'is'),
   })
+}
+
+function constructStateDeclaration(cst: CST.SyntaxNode): Generated.StateDeclaration {
+  const name = constructFieldNode(cst, 'name', 'Name')
+  const value = constructFieldNode(cst, 'value', Generated.ExpressionKinds)
+  const type = constructOptionalField(cst, 'type', 'Name')
+  if (!type) {
+    return makeNode(cst, 'StateDeclaration', { name, value })
+  }
+  const converted: Generated.ConversionExpression = {
+    kind: 'ConversionExpression',
+    range: Shared.Source.startToEnd(type, value),
+    type,
+    value,
+  }
+  return makeNode(cst, 'StateDeclaration', { name, value: converted })
 }
 
 function constructRenderTag(cst: CST.SyntaxNode): Generated.RenderTag {
