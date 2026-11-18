@@ -6,7 +6,12 @@ import { loadRuntime } from './IDE.test-utils'
 const Handler = 'on press -> do Reset()'
 const Fixture = Repo.resolvePath('Apps/Tests/Language/TextStateActions.tao')
 const FollowingBinding = 'let Caption = "Still a separate binding"'
-const ExpectedBody = 'Expected a `do` call, a `set` statement, or a `{ … }` block after `->`.'
+const ExpectedBody = Shared.S`
+  Suggestions:
+     -> do Action()
+     -> set State = ..
+     -> { ... }
+`
 const ExpectedArguments = 'Expected an argument list in parentheses after the action name.'
 
 Tests.test('unfinished press handlers report the exact edited token or insertion point', async () => {

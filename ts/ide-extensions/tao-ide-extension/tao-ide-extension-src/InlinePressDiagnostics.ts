@@ -1,4 +1,4 @@
-import { CarriageReturnCharacter, NewlineCharacter, Range, Regxs, Try } from '@shared'
+import { CarriageReturnCharacter, NewlineCharacter, Range, Regxs, S, Try } from '@shared'
 import { type Node, type Tree } from './Bridge_web-tree-sitter'
 import { collectDiagnostics, type Diagnostic } from './QueryResults'
 
@@ -34,7 +34,12 @@ type PressRepair = { start: number; end: number; text: string }
 type Prefix = { start: number; end: number; text: string }
 
 const Arrow = '->'
-const ExpectedBody = 'Expected a `do` call, a `set` statement, or a `{ … }` block after `->`.'
+const ExpectedBody = S`
+  Suggestions:
+     -> do Action()
+     -> set State = ..
+     -> { ... }
+`
 
 function collectPressIssues(node: Node, source: string, issues: PressIssue[]): void {
   const arrow = findPressArrow(node)
