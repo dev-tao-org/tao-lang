@@ -10,8 +10,10 @@ Open the generated `build` folder as a TypeScript project. It includes a project
 
 Live Metro publication consumes one complete memory revision. After acceptance, the disk inspection mirror replaces its real output directory with the completed build, restoring the previous directory if replacement fails. It does not publish a second Metro update. Source generation does not run a formatter on each edit; emitters produce the readable layout directly.
 
-`./agent verify` compiles Kitchen Sink and Demo in the ordinary named session `review-build`.
-It typechecks the generated Kitchen Sink app before the workspace checks and tests. Workspace tests
+`./agent verify` uses the Tao compile command for Kitchen Sink and Demo in the named session
+`review-build`. It prepares Demo's consumer dependencies, links them into the generated library,
+and typechecks both review builds before the workspace checks and tests. In non-interactive use,
+pass `--yes` to authorize dependency setup. Workspace tests
 typecheck the compiled Demo library in an ordinary TypeScript consumer with its peers installed,
 including after relocating the compiled package. Generated projects allow unused locals and parameters.
 Kitchen Sink writes `Apps/Dev/.tao/cache/sessions/review-build/build/`. Demo writes

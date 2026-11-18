@@ -1,8 +1,6 @@
 import * as CLIKit from '@cli-kit'
 import { Path, Repo } from '@shared/os'
-import * as Workspace from '@workspace'
 import { workspaceTests } from '../../cli-checks/check'
-import { publishCompiledLibrary } from '../../tao-cli/CompileApplication'
 import { registerCommand } from './_command-runner'
 import check from './check'
 import compile from './compile'
@@ -11,7 +9,7 @@ import fmt from './fmt'
 /** verifyCommand fixes, checks and tests the new workspace. */
 export default registerCommand({
   name: 'verify',
-  description: 'Format, regenerate review builds, typecheck the generated app, then check and test the workspace.',
+  description: 'Format, regenerate and typecheck the review builds, then check and test the workspace.',
   arguments: [{
     name: 'format-paths',
     description: 'Limit formatting to named files or globs; checks stay workspace-wide.',
@@ -36,8 +34,14 @@ async function verifyReviewBuilds(options: { yes?: boolean }): Promise<void> {
         session: ReviewSession,
         yes: options.yes,
       }),
-    compileReviewLibrary,
-    checkKitchenSinkBuild,
+    () =>
+      compile.action('Demo', {
+        package: Repo.resolvePath(LibraryConsumer),
+        session: ReviewSession,
+        yes: options.yes,
+      }),
+    () => checkReviewBuild(KitchenSinkBuild),
+    () => checkReviewBuild(LibraryBuild),
   )
 }
 
@@ -45,15 +49,10 @@ const ReviewSession = 'review-build'
 const KitchenSink = 'Apps/Dev/Kitchen Sink/Kitchen Sink.tao'
 const LibraryConsumer = 'Apps/TS Lib App/src/ts'
 const KitchenSinkBuild = `Apps/Dev/.tao/cache/sessions/${ReviewSession}/build`
+const LibraryBuild = `Apps/TS Lib App/.tao/cache/sessions/${ReviewSession}/libraries/Demo/ts`
 
-async function compileReviewLibrary(): Promise<void> {
-  const directory = Repo.resolvePath(LibraryConsumer)
-  const target = await Workspace.resolveCompileTarget(directory, 'Demo')
-  await publishCompiledLibrary(target, ReviewSession, undefined, { directory })
-}
-
-async function checkKitchenSinkBuild(): Promise<void> {
-  const config = Path.join(KitchenSinkBuild, 'tsconfig.json')
+async function checkReviewBuild(directory: string): Promise<void> {
+  const config = Path.join(directory, 'tsconfig.json')
   await CLIKit.runNonInteractiveCommand('tsc', ['--project', config, '--noEmit'], {
     cwd: Repo.getWorkspaceRoot(),
   })

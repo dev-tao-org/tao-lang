@@ -1,4 +1,5 @@
 import { S } from '@shared'
+import * as Shared from '@shared'
 
 import { emitJsonDocument } from '../codegen-util'
 import { compileModuleImport } from '../GeneratedPaths'
@@ -72,9 +73,11 @@ function compileFacade(path: string, views: readonly PublishedView[]): string {
       export {};
     `
   }
-  const exports = views.map(view => `${publishedViewBinding(view)} as ${view.name}`).join(', ')
+  const exports = views.map(view => `${publishedViewBinding(view)} as ${view.name},`)
   return S`
-    export { ${exports} } from ${source};
+    export {
+      ${Shared.joinTextLines(...exports)}
+    } from ${source};
   `
 }
 
