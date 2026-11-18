@@ -14,6 +14,27 @@ const ExpectedBody = Shared.S`
 `
 const ExpectedArguments = 'Expected an argument list in parentheses after the action name.'
 
+Tests.test('a bare press binding suggests an action and marks the event header', async () => {
+  const runtime = await loadRuntime()
+  Shared.Try(() => {
+    const fixture = FS.readFileSync(Fixture, 'utf8')
+    const binding = 'on press'
+    const start = fixture.indexOf(Handler)
+    const expected = [{
+      range: Shared.Range(start, start + binding.length),
+      message: 'Add an action: `on press -> { ... }`',
+    }]
+    for (const suffix of ['', ' // handler goes here']) {
+      const source = fixture.replace(Handler, binding + suffix)
+      Tests.expect({ suffix, diagnostics: runtime.document.update(source).diagnostics }).toEqual({
+        suffix,
+        diagnostics: expected,
+      })
+    }
+    Tests.expect(runtime.document.update(fixture.replace(Handler, 'on press Reset')).diagnostics).toEqual([])
+  }, { finally: runtime.dispose })
+})
+
 Tests.test('unfinished press handlers report the exact edited token or insertion point', async () => {
   const runtime = await loadRuntime()
   Shared.Try(() => {

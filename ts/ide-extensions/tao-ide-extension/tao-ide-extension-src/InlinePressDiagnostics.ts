@@ -42,12 +42,9 @@ const ExpectedBody = S`
 `
 
 function collectPressIssues(node: Node, source: string, issues: PressIssue[]): void {
-  const arrow = findPressArrow(node)
-  if (arrow) {
-    const issue = classifyPressIssue(node, arrow, source)
-    if (issue) {
-      issues.push(issue)
-    }
+  const issue = classifyPressBinding(node, source)
+  if (issue) {
+    issues.push(issue)
   }
   if (node.hasError) {
     for (const child of node.namedChildren) {
@@ -58,7 +55,7 @@ function collectPressIssues(node: Node, source: string, issues: PressIssue[]): v
   }
 }
 
-function findPressArrow(node: Node): Node | undefined {
+function classifyPressBinding(node: Node, source: string): PressIssue | undefined {
   if (node.type !== 'PressBinding' && node.type !== 'ERROR') {
     return undefined
   }
@@ -67,10 +64,20 @@ function findPressArrow(node: Node): Node | undefined {
     return undefined
   }
   const handler = children[2]
-  if (handler?.type === Arrow) {
-    return handler
+  const arrow = handler?.type === Arrow ? handler : handler?.children.find(child => child.type === Arrow)
+  if (arrow) {
+    return classifyPressIssue(node, arrow, source)
   }
-  return handler?.children.find(child => child.type === Arrow)
+  const press = children[1]
+  if (handler && handler.startIndex !== handler.endIndex) {
+    return undefined
+  }
+  const end = press.endIndex
+  const range = Range(node.startIndex, end)
+  return {
+    scope: Range(range.start, node.endIndex),
+    diagnostic: { range, message: 'Add an action: `on press -> { ... }`' },
+  }
 }
 
 function classifyPressIssue(binding: Node, arrow: Node, source: string): PressIssue | undefined {
