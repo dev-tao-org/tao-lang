@@ -3,7 +3,7 @@ import * as AST from '../AST'
 
 export { IsKind } from '../../_gen_AST/AST-generated'
 
-/** ScalarApplication is an explicit scalar constructor or an as expression. */
+/** ScalarApplication is an explicit scalar constructor or an `as` expression. */
 export type ScalarApplication = AST.ConstructionExpression | AST.ConversionExpression
 
 type ExpressionOperand = AST.Name | AST.TextLiteral | AST.NumberLiteral
